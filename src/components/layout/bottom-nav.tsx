@@ -57,7 +57,7 @@ export function BottomNav({ role }: BottomNavProps) {
 
   if (role === "admin") {
     return (
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/8 bg-zinc-900/95 backdrop-blur-md">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/15 bg-zinc-950 shadow-[0_-1px_0_rgba(255,255,255,0.08)]">
         <div className="flex h-16">
           {adminItems.map((item) => (
             <FlatTab key={item.href} item={item} active={isActive(item.href)} />
@@ -71,7 +71,7 @@ export function BottomNav({ role }: BottomNavProps) {
   const CenterIcon = clienteCenter.icon
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/8 bg-zinc-900/95 backdrop-blur-md">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/15 bg-zinc-950 shadow-[0_-1px_0_rgba(255,255,255,0.08)]">
       <div className="relative flex h-16">
         {clienteLeft.map((item) => (
           <FlatTab key={item.href} item={item} active={isActive(item.href)} />
