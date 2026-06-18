@@ -33,7 +33,7 @@ function traducirErrorAuth(msg: string): string {
     return "La nueva contraseña debe ser diferente a la actual"
   if (m.includes("weak password"))
     return "La contraseña es muy débil. Usa al menos 8 caracteres con letras y números"
-  return "Ocurrió un error inesperado. Intenta de nuevo"
+  return `Ocurrió un error inesperado (${msg}). Intenta de nuevo`
 }
 
 export async function loginAction(data: { email: string; password: string }) {
