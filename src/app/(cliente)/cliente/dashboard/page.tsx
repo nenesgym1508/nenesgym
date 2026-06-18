@@ -14,6 +14,8 @@ import { DashboardCalendar } from "@/components/cliente/dashboard-calendar"
 import { formatDate, formatDatetime, todayInBogota } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 
+export const dynamic = "force-dynamic"
+
 export default async function ClienteDashboardPage() {
   const clientData = await getCurrentClientData()
   if (!clientData) redirect(ROUTES.LOGIN)

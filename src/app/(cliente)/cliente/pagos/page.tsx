@@ -6,6 +6,8 @@ import { PaymentHistory } from "@/components/cliente/payment-history"
 import { PaymentUploadForm } from "@/components/cliente/payment-upload-form"
 import { ROUTES } from "@/constants/routes"
 
+export const dynamic = "force-dynamic"
+
 export default async function ClientePagosPage() {
   const clientData = await getCurrentClientData()
   if (!clientData) redirect(ROUTES.LOGIN)

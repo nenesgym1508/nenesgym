@@ -13,6 +13,8 @@ import { GYM_ID } from "@/constants/plans"
 import { ROUTES } from "@/constants/routes"
 import type { MembershipStatus } from "@/types/membership"
 
+export const dynamic = "force-dynamic"
+
 export default async function AdminClientesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
