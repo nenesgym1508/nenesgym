@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { QrCode, CheckCircle, XCircle, AlertCircle, Camera, Loader2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 
@@ -19,6 +19,7 @@ const STATUS_CONFIG = {
 export default function QrScanner() {
   const scannerRef = useRef<HTMLDivElement>(null)
   const qrRef = useRef<InstanceType<typeof import("html5-qrcode")["Html5Qrcode"]> | null>(null)
+  const readerId = "qr-reader-" + useId().replace(/:/g, "")
   const [status, setStatus] = useState<ScanStatus>("idle")
   const [message, setMessage] = useState("")
   const [remainingDays, setRemainingDays] = useState<number | null>(null)
@@ -29,10 +30,9 @@ export default function QrScanner() {
       const { Html5Qrcode } = await import("html5-qrcode")
       if (!scannerRef.current) return
 
-      const id = "qr-reader-" + Date.now()
-      scannerRef.current.id = id
+      scannerRef.current.id = readerId
 
-      const qr = new Html5Qrcode(id)
+      const qr = new Html5Qrcode(readerId)
       qrRef.current = qr
 
       setStatus("scanning")

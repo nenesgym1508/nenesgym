@@ -44,3 +44,19 @@ export async function getRecentAttendance(gymId: string, days = 7) {
     .order("check_in_date", { ascending: false })
   return data ?? []
 }
+
+export async function getMonthlyAttendance(clientId: string, year: number, month: number) {
+  const supabase = await createClient()
+  const startDate = new Date(year, month - 1, 1).toLocaleDateString("sv-SE", { timeZone: "America/Bogota" })
+  const endDate = new Date(year, month, 0).toLocaleDateString("sv-SE", { timeZone: "America/Bogota" })
+  
+  const { data } = await supabase
+    .from("attendance")
+    .select("check_in_date")
+    .eq("client_id", clientId)
+    .gte("check_in_date", startDate)
+    .lte("check_in_date", endDate)
+    .order("check_in_date", { ascending: false })
+  
+  return data ?? []
+}

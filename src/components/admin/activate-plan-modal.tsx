@@ -118,28 +118,49 @@ export function ActivatePlanModal({ clientId, clientName, plans }: ActivatePlanM
                 {/* Selección de plan */}
                 <div className="space-y-2 mb-4">
                   <label className="text-xs font-medium text-zinc-400">Plan</label>
-                  <div className="space-y-1.5">
-                    {plans.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => setPlanId(p.id)}
-                        className={`w-full flex items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors ${
-                          planId === p.id
-                            ? "border-red-600 bg-red-600/10"
-                            : "border-white/10 bg-white/5 hover:border-white/20"
-                        }`}
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-zinc-200">{p.name}</p>
-                          <p className="text-[11px] text-zinc-500">
-                            {p.days} días en {p.duration_days} días calendario
-                          </p>
-                        </div>
-                        <span className="text-sm font-semibold text-zinc-300">
-                          {formatCOP(p.price_cents)}
-                        </span>
-                      </button>
-                    ))}
+                  <div className="space-y-2">
+                    {(() => {
+                      const singleDayPlan = plans.find(p => p.days === 1 || p.name.toLowerCase().includes('suelto'))
+                      const singleDayPrice = singleDayPlan ? singleDayPlan.price_cents : 500000
+
+                      return plans.map((p) => {
+                        const isSingleDay = p.days === 1
+                        const expectedFullPrice = p.days * singleDayPrice
+                        const discountPercent = !isSingleDay && expectedFullPrice > 0
+                          ? Math.round((1 - (p.price_cents / expectedFullPrice)) * 100)
+                          : 0
+
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => setPlanId(p.id)}
+                            className={`w-full flex items-center justify-between rounded-xl border p-3.5 text-left transition-all ${
+                              planId === p.id
+                                ? "border-red-500 bg-red-950/20 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.15)]"
+                                : "border-white/10 bg-white/[0.02] text-zinc-300 hover:border-white/20"
+                            }`}
+                          >
+                            <div className="space-y-0.5">
+                              <p className="text-sm font-semibold text-zinc-200">{p.name}</p>
+                              <p className="text-[11px] text-zinc-500">
+                                {p.days} días en {p.duration_days} días calendario
+                              </p>
+                            </div>
+                            
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+                              <span className="text-sm font-bold text-zinc-100">
+                                {formatCOP(p.price_cents)}
+                              </span>
+                              {discountPercent > 0 && (
+                                <span className="rounded bg-green-500/10 border border-green-500/20 px-2 py-0.5 text-[9px] font-bold text-green-400 uppercase tracking-wider">
+                                  Ahorra {discountPercent}%
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        )
+                      })
+                    })()}
                   </div>
                 </div>
 

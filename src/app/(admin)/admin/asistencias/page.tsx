@@ -2,8 +2,11 @@ import { redirect } from "next/navigation"
 import { Clock } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { getTodayAttendance } from "@/services/attendance.service"
+import { getAllClients } from "@/services/clients.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
+import { GymQrModal } from "@/components/admin/gym-qr-modal"
+import { ManualCheckInModal } from "@/components/admin/manual-checkin-modal"
 import { formatDatetime } from "@/lib/dates"
 import { GYM_ID } from "@/constants/plans"
 import { ROUTES } from "@/constants/routes"
@@ -16,12 +19,27 @@ export default async function AdminAsistenciasPage() {
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
   if (profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
 
-  const attendance = await getTodayAttendance(GYM_ID)
-  const today = new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Bogota" })
+  const [attendance, clients, { data: gym }] = await Promise.all([
+    getTodayAttendance(GYM_ID),
+    getAllClients(),
+    supabase.from("gyms").select("name, checkin_token").eq("id", GYM_ID).single(),
+  ])
+
+  const clientOptions = clients.map((c) => {
+    const ct = c as typeof c & { profile?: { full_name?: string | null } | null }
+    return { id: c.id, name: ct.profile?.full_name ?? "Sin nombre" }
+  })
+
+  const today = new Date().toLocaleDateString("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "America/Bogota",
+  })
 
   return (
     <div>
-      <PageHeader title="Asistencias" />
+      <PageHeader title="Ingresos" />
       <div className="p-4 space-y-4">
         <div>
           <p className="text-xs text-zinc-500 capitalize">{today}</p>
@@ -29,6 +47,13 @@ export default async function AdminAsistenciasPage() {
             {attendance.length} <span className="text-lg font-normal text-zinc-400">ingresos hoy</span>
           </p>
         </div>
+
+        {/* Acciones */}
+        <div className="flex flex-wrap gap-2">
+          {gym && <GymQrModal token={gym.checkin_token} gymName={gym.name} />}
+          <ManualCheckInModal clients={clientOptions} />
+        </div>
+
         {attendance.length === 0 ? (
           <Card className="text-center py-12">
             <Clock className="size-8 text-zinc-600 mx-auto mb-3" />

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { ROUTES } from "@/constants/routes"
+import { env } from "@/lib/env"
 
 function traducirErrorAuth(msg: string): string {
   const m = msg.toLowerCase()
@@ -87,8 +88,34 @@ export async function updateProfileNameAction(fullName: string) {
   if (!user) return { error: "No autenticado" }
   const { error } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", user.id)
   if (error) return { error: "Error al actualizar el nombre" }
-  revalidatePath(ROUTES.ADMIN_PERFIL)
+  revalidatePath(ROUTES.ADMIN_MAS)
   revalidatePath(ROUTES.ADMIN_DASHBOARD)
+  revalidatePath(ROUTES.CLIENTE_PERFIL)
+  revalidatePath(ROUTES.CLIENTE_DASHBOARD)
+  return { success: true }
+}
+
+export async function updateProfilePhoneAction(phone: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "No autenticado" }
+  const { error } = await supabase
+    .from("profiles")
+    .update({ phone: phone || null })
+    .eq("id", user.id)
+  if (error) return { error: "Error al actualizar el teléfono" }
+  revalidatePath(ROUTES.CLIENTE_PERFIL)
+  return { success: true }
+}
+
+export async function updatePasswordAction(newPassword: string) {
+  if (newPassword.length < 6)
+    return { error: "La contraseña debe tener al menos 6 caracteres" }
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "No autenticado" }
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) return { error: traducirErrorAuth(error.message) }
   return { success: true }
 }
 
@@ -102,7 +129,7 @@ export async function updateEmailAction(newEmail: string) {
 export async function resetPasswordAction(email: string) {
   const supabase = await createClient()
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`,
+    redirectTo: `${env.NEXT_PUBLIC_APP_URL}/reset-password`,
   })
   if (error) return { error: traducirErrorAuth(error.message) }
   return { success: true }

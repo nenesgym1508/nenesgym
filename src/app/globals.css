@@ -10,6 +10,7 @@
   --font-sans: var(--font-geist);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+  --font-bebas: var(--font-bebas);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -109,12 +110,22 @@
   --chart-5: oklch(0.269 0 0);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary: oklch(0.5748 0.2257 27.91);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.5748 0.2257 27.91);
+
+  /* Chart — asistencia, ingresos, progreso */
+  --chart-1: oklch(0.5748 0.2257 27.91);  /* rojo — primario */
+  --chart-2: oklch(0.68 0.18 40);          /* naranja */
+  --chart-3: oklch(0.74 0.15 85);          /* ámbar */
+  --chart-4: oklch(0.62 0.16 145);         /* verde — éxito */
+  --chart-5: oklch(0.60 0.12 225);         /* azul — info */
+
+  /* Glow del acento para hover/focus */
+  --primary-glow: oklch(0.5748 0.2257 27.91 / 20%);
 }
 
 @layer base {
@@ -127,4 +138,33 @@
   html {
     @apply font-sans;
   }
+
+  /* Números/stats — siempre alineados en tablas y dashboards */
+  [data-stat], .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Botones y elementos interactivos — transición uniforme */
+  button, a, [role="button"] {
+    transition: opacity 150ms ease, background-color 150ms ease,
+      color 150ms ease, border-color 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  /* Foco visible — usa el ring del tema */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
+
+/* ——————————————————————————————————————————
+   Design Brief — NENE'S GYM
+   Registro: Product (Familiaridad Ganada)
+   Firma: Rojo #dc2626 como único semáforo —
+     aparece SOLO en estados activos, CTA primario
+     y badges de estado. Todo lo demás es gris.
+   Tipografía: Geist (display + cuerpo). Sin mezcla.
+   Lenguaje: Bordes hairline, sin sombras.
+   ——————————————————————————————————————————
+*/

@@ -87,22 +87,48 @@ export function PaymentUploadForm({ plans }: PaymentUploadFormProps) {
       {plans.length > 0 && (
         <div className="space-y-2">
           <label className="text-sm font-medium text-zinc-300">Selecciona un plan</label>
-          <div className="grid grid-cols-1 gap-2">
-            {plans.map((plan) => (
-              <button
-                key={plan.id}
-                type="button"
-                onClick={() => setSelectedPlan(selectedPlan?.id === plan.id ? null : plan)}
-                className={`flex items-center justify-between rounded-lg border px-3 py-3 text-left transition-colors ${
-                  selectedPlan?.id === plan.id
-                    ? "border-red-600 bg-red-600/10 text-red-400"
-                    : "border-white/10 bg-white/5 text-zinc-300 hover:border-white/20"
-                }`}
-              >
-                <span className="text-sm font-medium">{plan.name}</span>
-                <span className="text-sm font-semibold">{formatCOP(plan.price_cents)}</span>
-              </button>
-            ))}
+          <div className="grid grid-cols-1 gap-2.5">
+            {(() => {
+              const singleDayPlan = plans.find(p => p.days === 1 || p.name.toLowerCase().includes('suelto'))
+              const singleDayPrice = singleDayPlan ? singleDayPlan.price_cents : 500000
+
+              return plans.map((plan) => {
+                const isSingleDay = plan.days === 1
+                const expectedFullPrice = plan.days * singleDayPrice
+                const discountPercent = !isSingleDay && expectedFullPrice > 0
+                  ? Math.round((1 - (plan.price_cents / expectedFullPrice)) * 100)
+                  : 0
+
+                return (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => setSelectedPlan(selectedPlan?.id === plan.id ? null : plan)}
+                    className={`relative flex items-center justify-between rounded-xl border p-4 text-left transition-all ${
+                      selectedPlan?.id === plan.id
+                        ? "border-red-500 bg-red-950/20 text-red-400 shadow-[0_0_12px_rgba(239,68,68,0.15)]"
+                        : "border-white/10 bg-white/[0.02] text-zinc-300 hover:border-white/20 hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    <div className="space-y-1 pr-4">
+                      <span className="text-sm font-semibold text-zinc-200 block">{plan.name}</span>
+                      <span className="text-[11px] text-zinc-500 block">
+                        {plan.days} días de uso · 30 días de vigencia
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <span className="text-sm font-bold text-zinc-100">{formatCOP(plan.price_cents)}</span>
+                      {discountPercent > 0 && (
+                        <span className="rounded bg-green-500/10 border border-green-500/20 px-2 py-0.5 text-[10px] font-bold text-green-400 uppercase tracking-wider">
+                          Ahorra {discountPercent}%
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })
+            })()}
           </div>
         </div>
       )}

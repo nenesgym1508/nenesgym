@@ -34,6 +34,9 @@
 | 10 | Activación manual de plan por cliente | ✅ Completado | 2026-06-16 |
 | 11 | Íconos PWA + manifest | ✅ Completado | 2026-06-15 |
 | 12 | Deploy a Vercel producción + variables de entorno | ✅ Completado | 2026-06-16 |
+| 13 | Calendario de asistencia en dashboard (lógica mensual, indicador de inicio, días sin servicio por plan) | ✅ Completado | 2026-06-18 |
+| 14 | Rediseño de Catálogo de Planes (Día suelto, Mensuales de 20 y 24 días con cálculo dinámico de ahorro y badges verdes) | ✅ Completado | 2026-06-18 |
+| 15 | Optimización de Instalador PWA (botón mini en Header al lado de Salir, modal con pasos específicos de Safari para iOS) | ✅ Completado | 2026-06-18 |
 
 ---
 
@@ -99,6 +102,15 @@ Proyecto `nenesgym` en equipo `nenesgym1508-7305's projects`. Variables configur
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
 `NEXT_PUBLIC_APP_URL`. Build limpio (18 rutas). Repo GitHub conectado (`nenesgym1508/nenesgym`, público).
 URL producción: `https://nenesgym.vercel.app`.
+
+### 13. Calendario de asistencia en dashboard — ✅
+Integración de un calendario mensual con visualización de asistencias en verde y faltas en rojo translúcido. El día actual se resalta en rojo brillante con sombra y escala ampliada. Se marca el día de activación de la membresía con un anillo blanco en el borde. El componente discrimina los días de descanso según el plan del cliente (los fines de semana no cuentan para planes de 20 días/5 días por semana, y solo domingos para planes de 24 días).
+
+### 14. Rediseño de Catálogo de Planes — ✅
+Depuración de la base de datos Supabase para ofrecer exclusivamente tres planes: "Día suelto" ($5.000), "Mensual (5 días/semana) (20 días)" ($70.000) y "Mensual (6 días/semana) (24 días)" ($80.000). Se rediseñó la UI en cliente y administrador para calcular y presentar el porcentaje de ahorro real (30% y 33% respectivamente) mediante badges elegantes en color verde translúcido.
+
+### 15. Optimización de Instalador PWA — ✅
+El banner grande de instalación PWA fue removido del cuerpo central del dashboard del cliente para ahorrar espacio. En su lugar, se implementó un botón miniatura "Instalar App" en la cabecera (Header) al lado de "Salir". Para dispositivos iOS (Safari), al pulsar el botón se despliega un modal elegante explicando los pasos manuales de instalación usando el botón de Compartir nativo.
 
 ---
 
