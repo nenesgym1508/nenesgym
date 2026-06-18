@@ -13,6 +13,8 @@ import { formatDate, formatDatetime } from "@/lib/dates"
 import { GYM_ID } from "@/constants/plans"
 import { ROUTES } from "@/constants/routes"
 
+export const dynamic = "force-dynamic"
+
 export default async function AdminDashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
