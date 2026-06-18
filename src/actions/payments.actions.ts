@@ -1,0 +1,59 @@
+"use server"
+
+import { revalidatePath } from "next/cache"
+import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { GYM_ID } from "@/constants/plans"
+import { ROUTES } from "@/constants/routes"
+import type { PaymentMethod } from "@/types/payment"
+
+export async function uploadPaymentAction(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "No autenticado" }
+
+  const { data: client } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("profile_id", user.id)
+    .single()
+  if (!client) return { error: "Perfil de cliente no encontrado" }
+
+  const file = formData.get("receipt") as File | null
+  const planId = formData.get("plan_id") as string | null
+  const method = (formData.get("method") as PaymentMethod) ?? "nequi"
+  const amountCentsStr = formData.get("amount_cents") as string
+  const amountCents = parseInt(amountCentsStr)
+
+  if (!amountCents || amountCents <= 0) return { error: "Monto inválido" }
+
+  let receiptPath: string | null = null
+  if (file && file.size > 0) {
+    const adminClient = createAdminClient()
+    const ext = file.name.split(".").pop() ?? "jpg"
+    const fileName = `${Date.now()}.${ext}`
+    const path = `${GYM_ID}/${client.id}/${fileName}`
+
+    const { error: uploadError } = await adminClient.storage
+      .from("receipts")
+      .upload(path, file, { contentType: file.type, upsert: false })
+
+    if (uploadError) return { error: "Error al subir el comprobante: " + uploadError.message }
+    receiptPath = path
+  }
+
+  const { error: paymentError } = await supabase.from("payments").insert({
+    gym_id: GYM_ID,
+    client_id: client.id,
+    plan_id: planId || null,
+    amount_cents: amountCents,
+    method,
+    status: "pending",
+    receipt_path: receiptPath,
+  })
+
+  if (paymentError) return { error: "Error al registrar el pago: " + paymentError.message }
+
+  revalidatePath(ROUTES.CLIENTE_PAGOS)
+  return { success: true }
+}

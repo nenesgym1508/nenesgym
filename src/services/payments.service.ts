@@ -1,0 +1,67 @@
+import { createClient } from "@/lib/supabase/server"
+
+export async function getClientPayments(clientId: string) {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("payments")
+    .select("*, plan:plans(name, days)")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false })
+  return data ?? []
+}
+
+export async function getPendingPayments() {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("payments")
+    .select(
+      `
+      *,
+      plan:plans(name, days, duration_days),
+      client:clients(
+        id,
+        profile:profiles(full_name, email, phone)
+      )
+    `
+    )
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+  return data ?? []
+}
+
+export async function getAllPayments() {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("payments")
+    .select(
+      `
+      *,
+      plan:plans(name),
+      client:clients(
+        id,
+        profile:profiles(full_name, email)
+      )
+    `
+    )
+    .order("created_at", { ascending: false })
+    .limit(100)
+  return data ?? []
+}
+
+export async function getReceiptSignedUrl(path: string) {
+  const supabase = await createClient()
+  const { data } = await supabase.storage
+    .from("receipts")
+    .createSignedUrl(path, 3600)
+  return data?.signedUrl ?? null
+}
+
+export async function getAvailablePlans() {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("plans")
+    .select("*")
+    .eq("is_active", true)
+    .order("price_cents", { ascending: true })
+  return data ?? []
+}
