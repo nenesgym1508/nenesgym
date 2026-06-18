@@ -3,7 +3,7 @@
 > PWA de gestión de gimnasio (profesor/admin + clientes): membresías con cupo de días +
 > vencimiento mensual, pagos con comprobante, check-in por QR.
 
-**Última actualización:** 2026-06-16
+**Última actualización:** 2026-06-18
 
 ## Datos del proyecto
 
