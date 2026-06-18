@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { loginSchema, type LoginInput } from "@/schemas/client.schema"
-import { loginAction } from "@/actions/auth.actions"
+import { loginAction, resetPasswordAction } from "@/actions/auth.actions"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ROUTES } from "@/constants/routes"
@@ -14,6 +14,8 @@ import { ROUTES } from "@/constants/routes"
 export function LoginForm() {
   const [showPwd, setShowPwd] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [resetSent, setResetSent] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
 
   const {
     register,
@@ -25,6 +27,16 @@ export function LoginForm() {
     setServerError(null)
     const result = await loginAction(data)
     if (result?.error) setServerError(result.error)
+  }
+
+  const handleReset = async () => {
+    const email = (document.getElementById("email") as HTMLInputElement)?.value
+    if (!email) { setServerError("Ingresa tu correo primero"); return }
+    setResetLoading(true)
+    const result = await resetPasswordAction(email)
+    setResetLoading(false)
+    if (result?.error) setServerError(result.error)
+    else setResetSent(true)
   }
 
   return (
@@ -56,6 +68,23 @@ export function LoginForm() {
           {showPwd ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </button>
       </div>
+
+      <div className="flex justify-end -mt-1">
+        <button
+          type="button"
+          onClick={handleReset}
+          disabled={resetLoading}
+          className="text-xs text-zinc-500 hover:text-red-400 transition-colors"
+        >
+          {resetLoading ? "Enviando..." : "¿Olvidaste tu contraseña?"}
+        </button>
+      </div>
+
+      {resetSent && (
+        <p className="rounded-lg bg-green-500/10 border border-green-500/30 px-3 py-2 text-sm text-green-400">
+          Te enviamos un correo para restablecer tu contraseña.
+        </p>
+      )}
 
       {serverError && (
         <p className="rounded-lg bg-red-500/10 border border-red-500/30 px-3 py-2 text-sm text-red-400">

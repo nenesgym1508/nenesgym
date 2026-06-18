@@ -41,7 +41,10 @@ export async function loginAction(data: { email: string; password: string }) {
     email: data.email,
     password: data.password,
   })
-  if (error) return { error: traducirErrorAuth(error.message) }
+  if (error) {
+    console.error('[loginAction] Supabase error:', error.message, error.status)
+    return { error: traducirErrorAuth(error.message) }
+  }
 
   const { data: { user } } = await supabase.auth.getUser()
   if (user) {
@@ -92,6 +95,15 @@ export async function updateProfileNameAction(fullName: string) {
 export async function updateEmailAction(newEmail: string) {
   const supabase = await createClient()
   const { error } = await supabase.auth.updateUser({ email: newEmail })
+  if (error) return { error: traducirErrorAuth(error.message) }
+  return { success: true }
+}
+
+export async function resetPasswordAction(email: string) {
+  const supabase = await createClient()
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`,
+  })
   if (error) return { error: traducirErrorAuth(error.message) }
   return { success: true }
 }
