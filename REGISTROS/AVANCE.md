@@ -95,9 +95,10 @@ Desde el panel de Clientes, botón "Activar plan" por cliente: selecciona plan +
 en `public/icons/`.
 
 ### 12. Deploy a Vercel — ✅
-Proyecto `nenes-gym` creado en el primer deploy. Variables configuradas:
+Proyecto `nenesgym` en equipo `nenesgym1508-7305's projects`. Variables configuradas:
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
-`NEXT_PUBLIC_APP_URL`. Build limpio (14 rutas). Dev local activo en `localhost:3000`.
+`NEXT_PUBLIC_APP_URL`. Build limpio (18 rutas). Repo GitHub conectado (`nenesgym1508/nenesgym`, público).
+URL producción: `https://nenesgym.vercel.app`.
 
 ---
 
