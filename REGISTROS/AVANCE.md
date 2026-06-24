@@ -3,7 +3,7 @@
 > PWA de gestión de gimnasio (profesor/admin + clientes): membresías con cupo de días +
 > vencimiento mensual, pagos con comprobante, check-in por QR.
 
-**Última actualización:** 2026-06-18
+**Última actualización:** 2026-06-23
 
 ## Datos del proyecto
 
@@ -37,6 +37,8 @@
 | 13 | Calendario de asistencia en dashboard (lógica mensual, indicador de inicio, días sin servicio por plan) | ✅ Completado | 2026-06-18 |
 | 14 | Rediseño de Catálogo de Planes (Día suelto, Mensuales de 20 y 24 días con cálculo dinámico de ahorro y badges verdes) | ✅ Completado | 2026-06-18 |
 | 15 | Optimización de Instalador PWA (botón mini en Header al lado de Salir, modal con pasos específicos de Safari para iOS) | ✅ Completado | 2026-06-18 |
+| 16 | Alineación con spec v1: nav 5 tabs + FAB Entrada, perfil cliente, admin "Más" con gestión de planes/gym, estados UI reutilizables | ✅ Completado | 2026-06-23 |
+| 17 | Fix caché de navegador: headers HTTP no-store en next.config.ts, iconos PWA regenerados, bottom nav visible en fondo oscuro | ✅ Completado | 2026-06-23 |
 
 ---
 
@@ -111,6 +113,23 @@ Depuración de la base de datos Supabase para ofrecer exclusivamente tres planes
 
 ### 15. Optimización de Instalador PWA — ✅
 El banner grande de instalación PWA fue removido del cuerpo central del dashboard del cliente para ahorrar espacio. En su lugar, se implementó un botón miniatura "Instalar App" en la cabecera (Header) al lado de "Salir". Para dispositivos iOS (Safari), al pulsar el botón se despliega un modal elegante explicando los pasos manuales de instalación usando el botón de Compartir nativo.
+
+### 16. Alineación con spec v1 — ✅
+Cierre de los gaps G1–G8 identificados en el plan de alineación:
+- **Nav 5 tabs + FAB central** (`bottom-nav.tsx`): cliente tiene Inicio · Pagos · [Entrada FAB rojo elevado] · Progreso · Perfil. Admin tiene Panel · Clientes · Pagos · Ingresos · Más. Naming unificado: "Entrada" en cliente, "Ingresos" en admin.
+- **Perfil cliente** (`/cliente/perfil`): nombre, teléfono, correo, cambiar contraseña, cerrar sesión, línea "Mi gimnasio: NENE'S GYM". Reutiliza `ClientProfileForm`.
+- **Dashboard cliente completo**: aviso de pago pendiente/rechazado, mini-resumen de progreso (peso + IMC), estado "ya ingresaste hoy", `InstallAppCard` en header.
+- **Entrada completa** (`/cliente/asistencia`): estado del día ("ya registraste"/"aún no"), últimos 3 ingresos, fallback de código manual (`ManualCheckin` dentro de `qr-scanner.tsx`).
+- **Admin "Más"** (`/admin/mas`): gestión de planes (nombre/precio/días via `PlansManager`), días de gracia y nombre del gym (`GymSettingsForm`), perfil del profesor, cerrar sesión.
+- **Admin Asistencias**: botón "Ver QR del gimnasio" (`GymQrModal`) y "Registrar ingreso manual" (`ManualCheckInModal`) cableados.
+- **Estados UI reutilizables**: `EmptyState`, `LoadingState`, `ErrorState` en `src/components/ui/states.tsx`.
+- **Rutas**: `CLIENTE_PERFIL` y `ADMIN_MAS` añadidas a `routes.ts`.
+
+### 17. Fix caché de navegador y visibilidad de bottom nav — ✅
+- **`next.config.ts`**: añadidos headers HTTP `Cache-Control: no-store, max-age=0` para todas las rutas de página (excluye `_next/static`, `_next/image`, `icons`). Los navegadores y Vercel nunca cachean el HTML desde ahora.
+- **`layout.tsx`**: eliminadas las meta tags `httpEquiv="Cache-Control"` que los navegadores modernos ignoran para bundles JS. Los headers HTTP son la fuente de verdad.
+- **`bottom-nav.tsx`**: cambiado `bg-zinc-900/95 backdrop-blur-md` → `bg-zinc-950` sólido y `border-white/8` → `border-white/15`. El nav se camuflaba sobre el fondo negro del page en desktop.
+- **Iconos PWA**: `icon-192.png` e `icon-512.png` regenerados con `sharp` + SVG (fondo rojo `#dc2626`, letra "N" blanca centrada). Los archivos faltaban o estaban corruptos, lo que impedía que el navegador disparara `beforeinstallprompt`.
 
 ---
 
