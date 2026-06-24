@@ -8,7 +8,6 @@ import { progressRecordSchema } from "@/schemas/progress.schema"
 import { addProgressRecord } from "@/actions/progress.actions"
 import { Input, Textarea } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import type { z } from "zod"
 
 type ProgressInput = z.infer<typeof progressRecordSchema>
@@ -48,25 +47,32 @@ export function ProgressForm() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-white/15 py-4 text-sm text-zinc-500 hover:border-white/25 hover:text-zinc-400 transition-colors"
+        className="group flex w-full items-center justify-center gap-2.5 rounded-2xl border border-dashed border-white/12 bg-white/[0.02] py-4 text-sm font-medium text-zinc-500 transition-all hover:border-red-600/40 hover:bg-red-950/20 hover:text-zinc-300"
       >
-        <Plus className="size-4" />
-        Registrar medidas
+        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-800 transition-colors group-hover:bg-red-600/20">
+          <Plus className="size-3.5 transition-colors group-hover:text-red-400" />
+        </div>
+        Registrar nueva medición
       </button>
     )
   }
 
   if (success) {
     return (
-      <Card className="flex flex-col items-center gap-3 py-6 text-center">
-        <CheckCircle className="size-8 text-green-400" />
-        <p className="font-medium text-zinc-200">Registro guardado</p>
-      </Card>
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-green-900/40 bg-green-950/20 py-8 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500/15">
+          <CheckCircle className="size-6 text-green-400" />
+        </div>
+        <div>
+          <p className="font-semibold text-zinc-200">Registro guardado</p>
+          <p className="mt-0.5 text-xs text-zinc-500">Tus medidas fueron guardadas correctamente</p>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card>
+    <div className="rounded-2xl border border-white/8 bg-zinc-900/60 p-4">
       <h3 className="text-sm font-semibold text-zinc-200 mb-4">Nueva medición</h3>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
@@ -120,6 +126,6 @@ export function ProgressForm() {
           </Button>
         </div>
       </form>
-    </Card>
+    </div>
   )
 }

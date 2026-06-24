@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Zap, X, Loader2, CheckCircle } from "lucide-react"
 import { createManualPaymentAction } from "@/actions/admin.actions"
-import { formatCOP } from "@/lib/utils"
+import { formatCOP, computePlanDiscount } from "@/lib/utils"
 import { PAYMENT_METHOD_LABELS } from "@/constants/plans"
 import type { PaymentMethod } from "@/types/payment"
 
@@ -124,11 +124,7 @@ export function ActivatePlanModal({ clientId, clientName, plans }: ActivatePlanM
                       const singleDayPrice = singleDayPlan ? singleDayPlan.price_cents : 500000
 
                       return plans.map((p) => {
-                        const isSingleDay = p.days === 1
-                        const expectedFullPrice = p.days * singleDayPrice
-                        const discountPercent = !isSingleDay && expectedFullPrice > 0
-                          ? Math.round((1 - (p.price_cents / expectedFullPrice)) * 100)
-                          : 0
+                        const discountPercent = computePlanDiscount(p.price_cents, p.days, singleDayPrice)
 
                         return (
                           <button

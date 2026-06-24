@@ -3,7 +3,7 @@
 > Cada error detectado durante el desarrollo, su causa raíz y cómo se resolvió.
 > Formato por entrada: **Síntoma → Causa raíz → Solución → Estado**.
 
-**Última actualización:** 2026-06-16
+**Última actualización:** 2026-06-24
 
 ---
 
@@ -19,6 +19,8 @@
 | ERR-006 | 2026-06-16 | "Debes confirmar tu correo" innecesario al iniciar sesión | ✅ Resuelto |
 | ERR-007 | 2026-06-16 | El admin aparecía en la lista de Clientes | ✅ Resuelto |
 | ERR-008 | 2026-06-16 | `permission denied for function approve_payment` | ✅ Resuelto |
+| ERR-009 | 2026-06-24 | Números Nequi/Daviplata del gym no aparecían en el form del cliente | ✅ Resuelto |
+| ERR-010 | 2026-06-24 | "No se pudo analizar el comprobante" (API key vacía + modelo descontinuado) | ✅ Resuelto |
 
 ---
 
@@ -101,3 +103,30 @@
 - **Estado:** ✅ Resuelto — GRANT aplicado en producción el 2026-06-16 (migración
   `grant_execute_payment_functions_to_authenticated`). Verificado: ambas funciones tienen
   `authenticated=X` en su ACL.
+
+### ERR-009 — Números Nequi/Daviplata del gym no aparecían en el form del cliente
+- **Síntoma:** El número Nequi guardado en `/admin/mas` no se mostraba en el formulario de pago del
+  cliente.
+- **Causa raíz:** `updateGymSettingsAction` hacía el `UPDATE` de la tabla `gyms` usando
+  `ctx.supabase` (cliente con RLS del usuario admin). La política RLS de `gyms` no permitía ese
+  UPDATE, por lo que el guardado fallaba en silencio y los campos quedaban en `null`.
+- **Solución:** Usar `createAdminClient()` (service role, sin RLS) para el UPDATE en
+  `src/actions/admin.actions.ts`. Además, el formulario del cliente ahora obtiene las cuentas vía
+  `GET /api/gym-cuentas` (que también usa el admin client) en lugar de props del servidor.
+- **Nota:** Tras el fix, el valor que aparecía (`175287585`, 9 dígitos) resultó ser un dato de
+  prueba mal escrito guardado previamente. Pendiente: corregirlo en `/admin/mas` (ver AVANCE.md).
+- **Estado:** ✅ Resuelto.
+
+### ERR-010 — "No se pudo analizar el comprobante" (API key vacía + modelo descontinuado)
+- **Síntoma:** Al subir un comprobante, siempre devolvía el error "No se pudo analizar el
+  comprobante. Intentá con una imagen más clara." (HTTP 422).
+- **Causa raíz:** Dos problemas encadenados: (1) `GEMINI_API_KEY` estaba vacía en `.env.local`, así
+  que la llamada a Gemini fallaba; (2) tras configurar la clave, el modelo `gemini-2.0-flash` ya no
+  está disponible (Google lo descontinuó → HTTP 404 "model is no longer available").
+- **Solución:** Configurar `GEMINI_API_KEY` en `.env.local` y cambiar el modelo a
+  **`gemini-2.5-flash`** en `src/app/api/analizar-comprobante/route.ts`. Verificado con `curl`
+  contra `generativelanguage.googleapis.com` que la clave autentica (formato nuevo `AQ.*`, funciona
+  por header `x-goog-api-key` y por query param `?key=`) y que el modelo procesa peticiones.
+- **Nota:** La clave debe agregarse también en las variables de entorno de Vercel para que funcione
+  en producción (ver AVANCE.md → próximos pasos).
+- **Estado:** ✅ Resuelto en desarrollo.

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { computeEffectiveStatus } from "@/services/memberships.service"
-import { todayInBogota } from "@/lib/dates"
+import { todayInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 import type { MembershipStatus } from "@/types/membership"
 
@@ -21,20 +21,70 @@ async function requireAdmin() {
   return { supabase, gymId: profile.gym_id }
 }
 
-export async function updateGymSettingsAction(input: { name: string; graceDays: number }) {
+export async function updateGymSettingsAction(input: {
+  name: string
+  graceDays: number
+  nequiNumber?: string
+  nequiTitular?: string
+  daviplataNumber?: string
+  davaplataTitular?: string
+}) {
   const ctx = await requireAdmin()
   if ("error" in ctx) return { error: ctx.error }
   if (!input.name.trim()) return { error: "El nombre es obligatorio" }
   if (input.graceDays < 0 || input.graceDays > 60)
     return { error: "Los días de gracia deben estar entre 0 y 60" }
 
-  const { error } = await ctx.supabase
+  const adminClient = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (adminClient as any)
     .from("gyms")
-    .update({ name: input.name.trim(), grace_days: input.graceDays })
+    .update({
+      name: input.name.trim(),
+      grace_days: input.graceDays,
+      nequi_number: input.nequiNumber?.trim() || null,
+      nequi_titular: input.nequiTitular?.trim() || null,
+      daviplata_number: input.daviplataNumber?.trim() || null,
+      daviplata_titular: input.davaplataTitular?.trim() || null,
+    })
     .eq("id", ctx.gymId)
   if (error) return { error: error.message }
 
   revalidatePath(ROUTES.ADMIN_MAS)
+  return { success: true }
+}
+
+export async function toggleAutoAprobacionAction(clientId: string, value: boolean) {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (ctx.supabase as any)
+    .from("clients")
+    .update({ auto_aprobacion: value })
+    .eq("id", clientId)
+  if (error) return { error: error.message }
+
+  revalidatePath(ROUTES.ADMIN_CLIENTES)
+  return { success: true }
+}
+
+export async function desbloquearComprobanteAction(clientId: string) {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (adminClient as any)
+    .from("clients")
+    .update({
+      comprobante_bloqueado: false,
+      comprobante_bloqueado_hasta: null,
+    })
+    .eq("id", clientId)
+  if (error) return { error: error.message }
+
+  revalidatePath(ROUTES.ADMIN_CLIENTES)
   return { success: true }
 }
 
@@ -85,8 +135,10 @@ export async function approvePaymentAction(
   totalDays: number,
   durationDays: number
 ) {
-  const supabase = await createClient()
-  const { data, error } = await supabase.rpc("approve_payment", {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error }
+
+  const { data, error } = await ctx.supabase.rpc("approve_payment", {
     p_payment_id: paymentId,
     p_total_days: totalDays,
     p_duration_days: durationDays,
@@ -102,8 +154,10 @@ export async function approvePaymentAction(
 }
 
 export async function rejectPaymentAction(paymentId: string, note: string) {
-  const supabase = await createClient()
-  const { data, error } = await supabase.rpc("reject_payment", {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error }
+
+  const { data, error } = await ctx.supabase.rpc("reject_payment", {
     p_payment_id: paymentId,
     p_note: note,
   })
@@ -134,8 +188,15 @@ export async function manualCheckInAction(clientId: string) {
 
   if (!membership) return { error: "El cliente no tiene una membresía activa" }
 
+  const today = todayInBogota()
+  // Modelo base calendario: las faltas también descuentan días.
+  const elapsedDays = eligibleDaysElapsed(
+    membership.start_date,
+    today,
+    daysPerWeekForPlan(membership.total_days)
+  )
   const status = computeEffectiveStatus(
-    membership.used_days,
+    elapsedDays,
     membership.total_days,
     membership.end_date,
     membership.grace_days,
@@ -144,7 +205,6 @@ export async function manualCheckInAction(clientId: string) {
   if (status === "exhausted") return { error: "El cliente no tiene días disponibles" }
   if (status === "expired") return { error: "La membresía del cliente está vencida" }
 
-  const today = todayInBogota()
   const { data: existing } = await admin
     .from("attendance")
     .select("id")
@@ -163,10 +223,10 @@ export async function manualCheckInAction(clientId: string) {
   })
   if (insertError) return { error: insertError.message }
 
-  const { error: updateError } = await admin
-    .from("memberships")
-    .update({ used_days: membership.used_days + 1 })
-    .eq("id", membership.id)
+  // @ts-expect-error — función creada en REGISTROS/migrations/increment_used_days.sql, regenerar tipos tras aplicarla
+  const { error: updateError } = await admin.rpc("increment_used_days", {
+    p_membership_id: membership.id,
+  })
   if (updateError) return { error: updateError.message }
 
   revalidatePath(ROUTES.ADMIN_ASISTENCIAS)

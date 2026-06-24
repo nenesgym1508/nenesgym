@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, X, Loader2, Eye } from "lucide-react"
+import { Check, X, Loader2, Eye, Sparkles, AlertTriangle, CheckCircle, Zap } from "lucide-react"
 import { approvePaymentAction, rejectPaymentAction } from "@/actions/admin.actions"
 import { Card } from "@/components/ui/card"
 import { formatCOP } from "@/lib/utils"
@@ -15,6 +15,15 @@ interface PendingPayment {
   method: PaymentMethod
   receipt_path: string | null
   created_at: string
+  // Campos IA (opcionales — pueden no existir en pagos antiguos)
+  ai_valido?: boolean | null
+  ai_razon?: string | null
+  ai_monto?: number | null
+  ai_referencia?: string | null
+  ai_entidad?: string | null
+  ai_nombre?: string | null
+  ai_numero_destino?: string | null
+  auto_aprobado?: boolean
   plan?: {
     name: string
     days: number
@@ -42,28 +51,22 @@ export function PendingPaymentCard({ payment }: PendingPaymentCardProps) {
 
   const totalDays = payment.plan?.days ?? 20
   const durationDays = payment.plan?.duration_days ?? 30
+  const hasAI = payment.ai_valido !== undefined && payment.ai_valido !== null
+  const aiValido = payment.ai_valido === true
 
   const handleApprove = async () => {
     setStatus("approving")
     const result = await approvePaymentAction(payment.id, totalDays, durationDays)
-    if (result.error) {
-      setErrorMsg(result.error)
-      setStatus("error")
-    } else {
-      setStatus("done")
-    }
+    if (result.error) { setErrorMsg(result.error); setStatus("error") }
+    else setStatus("done")
   }
 
   const handleReject = async () => {
     if (!rejectNote.trim()) return
     setStatus("rejecting")
     const result = await rejectPaymentAction(payment.id, rejectNote)
-    if (result.error) {
-      setErrorMsg(result.error)
-      setStatus("error")
-    } else {
-      setStatus("done")
-    }
+    if (result.error) { setErrorMsg(result.error); setStatus("error") }
+    else setStatus("done")
   }
 
   if (status === "done") {
@@ -82,9 +85,7 @@ export function PendingPaymentCard({ payment }: PendingPaymentCardProps) {
           <p className="text-sm font-semibold text-zinc-100">
             {payment.client?.profile?.full_name ?? "Sin nombre"}
           </p>
-          <p className="text-xs text-zinc-500">
-            {payment.client?.profile?.email ?? ""}
-          </p>
+          <p className="text-xs text-zinc-500">{payment.client?.profile?.email ?? ""}</p>
           {payment.client?.profile?.phone && (
             <p className="text-xs text-zinc-500">{payment.client.profile.phone}</p>
           )}
@@ -95,43 +96,108 @@ export function PendingPaymentCard({ payment }: PendingPaymentCardProps) {
         </div>
       </div>
 
-      {/* Plan */}
+      {/* Plan + fecha */}
       <div className="flex items-center justify-between text-xs">
-        <span className="text-zinc-400">
-          {payment.plan?.name ?? "Plan personalizado"}
-        </span>
+        <span className="text-zinc-400">{payment.plan?.name ?? "Plan personalizado"}</span>
         <span className="text-zinc-500">{formatDate(payment.created_at)}</span>
       </div>
 
-      {/* Detalles del plan a activar */}
+      {/* Detalles del plan */}
       <div className="rounded-lg bg-zinc-800/60 px-3 py-2 text-xs text-zinc-400">
         Membresía: <strong className="text-zinc-200">{totalDays} días</strong> durante{" "}
         <strong className="text-zinc-200">{durationDays} días</strong> calendario
       </div>
 
-      {/* Comprobante */}
+      {/* ── Análisis IA ──────────────────────────────────────────────────────────── */}
+      {hasAI && (
+        <div
+          className={`rounded-xl border p-3 space-y-2 ${
+            aiValido
+              ? "border-green-800/40 bg-green-950/15"
+              : "border-yellow-800/40 bg-yellow-950/15"
+          }`}
+        >
+          {/* Header IA */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="size-3.5 text-zinc-400" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                Análisis IA
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {aiValido ? (
+                <>
+                  <CheckCircle className="size-3.5 text-green-400" />
+                  <span className="text-xs font-semibold text-green-400">Válido</span>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="size-3.5 text-yellow-400" />
+                  <span className="text-xs font-semibold text-yellow-400">Revisar</span>
+                </>
+              )}
+              {payment.auto_aprobado && (
+                <span className="ml-1 flex items-center gap-1 rounded bg-blue-500/15 border border-blue-500/30 px-1.5 py-0.5 text-[10px] font-bold text-blue-400">
+                  <Zap className="size-2.5" />
+                  Auto
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Motivo si no es válido */}
+          {!aiValido && payment.ai_razon && (
+            <p className="text-xs text-yellow-400/80">{payment.ai_razon}</p>
+          )}
+
+          {/* Datos detectados */}
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+            {payment.ai_monto != null && (
+              <AiDataRow label="Monto detectado" value={`$${payment.ai_monto.toLocaleString("es-CO")}`} />
+            )}
+            {payment.ai_entidad && (
+              <AiDataRow label="Entidad" value={payment.ai_entidad} />
+            )}
+            {payment.ai_referencia && (
+              <AiDataRow label="Referencia" value={payment.ai_referencia} />
+            )}
+            {payment.ai_nombre && (
+              <AiDataRow label="Destinatario" value={payment.ai_nombre} />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Comprobante — imagen inline */}
       {payment.receipt_path && (
         <a
           href={`/api/receipt?path=${encodeURIComponent(payment.receipt_path)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300"
+          className="block rounded-xl overflow-hidden border border-white/8 bg-zinc-900 hover:border-white/20 transition-colors"
         >
-          <Eye className="size-3" />
-          Ver comprobante
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/receipt?path=${encodeURIComponent(payment.receipt_path)}`}
+            alt="Comprobante de pago"
+            className="w-full max-h-52 object-contain block"
+          />
+          <div className="flex items-center gap-1.5 px-3 py-2 border-t border-white/8">
+            <Eye className="size-3 text-zinc-500" />
+            <span className="text-xs text-zinc-500">Ver completo</span>
+          </div>
         </a>
       )}
 
       {/* Error */}
-      {status === "error" && (
-        <p className="text-xs text-red-400">{errorMsg}</p>
-      )}
+      {status === "error" && <p className="text-xs text-red-400">{errorMsg}</p>}
 
-      {/* Formulario de rechazo */}
+      {/* Formulario rechazo */}
       {showReject && (
         <div className="space-y-2">
           <textarea
-            placeholder="Motivo del rechazo (requerido)..."
+            placeholder="Motivo del rechazo (requerido)…"
             value={rejectNote}
             onChange={(e) => setRejectNote(e.target.value)}
             rows={2}
@@ -187,5 +253,14 @@ export function PendingPaymentCard({ payment }: PendingPaymentCardProps) {
         </div>
       )}
     </Card>
+  )
+}
+
+function AiDataRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[9px] text-zinc-600">{label}</p>
+      <p className="text-[11px] text-zinc-400 truncate">{value}</p>
+    </div>
   )
 }

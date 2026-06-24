@@ -9,9 +9,8 @@ import { getProgressSummary } from "@/services/progress.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
 import { MembershipBadge } from "@/components/ui/badge"
-import { InstallAppCard } from "@/components/pwa/install-app-card"
 import { DashboardCalendar } from "@/components/cliente/dashboard-calendar"
-import { formatDate, formatDatetime, todayInBogota } from "@/lib/dates"
+import { formatDate, formatDatetime, todayInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 
 export const dynamic = "force-dynamic"
@@ -38,9 +37,19 @@ export default async function ClienteDashboardPage() {
     return new Date(year, month - 1, day)
   })
 
+  // Modelo base calendario: las faltas (días hábiles transcurridos sin asistir)
+  // también descuentan de la membresía.
+  const today = todayInBogota()
+  const daysPerWeek = membership
+    ? daysPerWeekForPlan(membership.plan?.days ?? membership.total_days)
+    : 6
+  const elapsedDays = membership
+    ? eligibleDaysElapsed(membership.start_date, today, daysPerWeek)
+    : 0
+
   const effectiveStatus = membership
     ? computeEffectiveStatus(
-        membership.used_days,
+        elapsedDays,
         membership.total_days,
         membership.end_date,
         membership.grace_days,
@@ -48,7 +57,7 @@ export default async function ClienteDashboardPage() {
       )
     : null
 
-  const remainingDays = membership ? membership.total_days - membership.used_days : 0
+  const remainingDays = membership ? Math.max(0, membership.total_days - elapsedDays) : 0
   const alreadyToday = attendance[0]?.check_in_date === todayInBogota()
 
   // Aviso de pago: solo si el más reciente está pendiente o rechazado.
@@ -71,11 +80,31 @@ export default async function ClienteDashboardPage() {
     <div>
       <PageHeader title="NENE'S GYM" showLogout showInstall />
       <div className="p-4 space-y-4">
-        <div>
-          <p className="text-zinc-400 text-sm">Hola,</p>
-          <h2 className="text-xl font-bold text-zinc-100">
-            {profile.full_name ?? "Usuario"} 👋
-          </h2>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-zinc-400 text-sm">¡Hola!</p>
+            <h2 className="text-xl font-bold text-zinc-100 truncate">
+              {profile.full_name ?? "Usuario"}
+            </h2>
+          </div>
+          <Link href={ROUTES.CLIENTE_ASISTENCIA} className="shrink-0">
+            <div
+              className={`flex items-center gap-2 rounded-xl border px-3.5 py-2.5 transition-colors ${
+                alreadyToday
+                  ? "border-green-700/40 bg-green-500/10"
+                  : "border-red-700/40 bg-red-600/10 hover:bg-red-600/15"
+              }`}
+            >
+              {alreadyToday ? (
+                <CheckCircle2 className="size-4 text-green-400" />
+              ) : (
+                <QrCode className="size-4 text-red-500" />
+              )}
+              <span className="text-xs font-semibold text-zinc-200">
+                {alreadyToday ? "Ya ingresaste" : "Registrar entrada"}
+              </span>
+            </div>
+          </Link>
         </div>
 
         {membership && effectiveStatus ? (
@@ -117,7 +146,7 @@ export default async function ClienteDashboardPage() {
                 attendanceDates={attendanceDates}
                 integrated={true}
                 membershipStartDate={parsedMembershipStart}
-                daysPerWeek={membership?.plan?.days === 20 ? 5 : 6}
+                daysPerWeek={daysPerWeek}
               />
             </div>
           </Card>
@@ -171,39 +200,6 @@ export default async function ClienteDashboardPage() {
             </Card>
           </Link>
         )}
-
-        <div className="grid grid-cols-2 gap-3">
-          <Link href={ROUTES.CLIENTE_ASISTENCIA}>
-            <Card
-              className={`flex flex-col items-center gap-2 py-5 transition-colors cursor-pointer ${
-                alreadyToday ? "border-green-700/40" : "hover:border-red-700/50"
-              }`}
-            >
-              <div
-                className={`size-10 rounded-xl flex items-center justify-center ${
-                  alreadyToday ? "bg-green-500/15" : "bg-red-600/15"
-                }`}
-              >
-                {alreadyToday ? (
-                  <CheckCircle2 className="size-5 text-green-400" />
-                ) : (
-                  <QrCode className="size-5 text-red-500" />
-                )}
-              </div>
-              <span className="text-sm font-medium text-zinc-200">
-                {alreadyToday ? "Ya ingresaste hoy" : "Registrar entrada"}
-              </span>
-            </Card>
-          </Link>
-          <Link href={ROUTES.CLIENTE_PROGRESO}>
-            <Card className="flex flex-col items-center gap-2 py-5 hover:border-zinc-600/50 transition-colors cursor-pointer">
-              <div className="size-10 rounded-xl bg-zinc-800 flex items-center justify-center">
-                <TrendingUp className="size-5 text-zinc-300" />
-              </div>
-              <span className="text-sm font-medium text-zinc-200">Mi progreso</span>
-            </Card>
-          </Link>
-        </div>
 
         {/* Mini resumen de progreso */}
         {latestProgress && (latestProgress.weight_kg != null || latestProgress.bmi != null) && (

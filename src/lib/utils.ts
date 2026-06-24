@@ -15,6 +15,12 @@ export function formatCOP(cents: number): string {
   }).format(cents / 100)
 }
 
+export function computePlanDiscount(planPriceCents: number, planDays: number, singleDayPriceCents: number): number {
+  if (planDays <= 1) return 0
+  const fullPrice = planDays * singleDayPriceCents
+  return fullPrice > 0 ? Math.round((1 - planPriceCents / fullPrice) * 100) : 0
+}
+
 export function getBmiCategory(bmi: number): BmiCategory {
   if (bmi < 18.5) return "underweight"
   if (bmi < 25) return "normal"

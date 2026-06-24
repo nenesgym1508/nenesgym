@@ -27,8 +27,13 @@ export async function uploadPaymentAction(formData: FormData) {
 
   if (!amountCents || amountCents <= 0) return { error: "Monto inválido" }
 
+  const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"]
+  const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
+
   let receiptPath: string | null = null
   if (file && file.size > 0) {
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) return { error: "Tipo de archivo no permitido. Usá JPG, PNG, WEBP o PDF." }
+    if (file.size > MAX_FILE_SIZE) return { error: "El archivo no puede superar 5 MB." }
     const adminClient = createAdminClient()
     const ext = file.name.split(".").pop() ?? "jpg"
     const fileName = `${Date.now()}.${ext}`

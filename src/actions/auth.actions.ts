@@ -78,7 +78,8 @@ export async function registerAction(data: {
   if (error) return { error: traducirErrorAuth(error.message) }
 
   const supabase = await createClient()
-  await supabase.auth.signInWithPassword({ email: data.email, password: data.password })
+  const { error: signInError } = await supabase.auth.signInWithPassword({ email: data.email, password: data.password })
+  if (signInError) return { error: "Cuenta creada. Iniciá sesión manualmente." }
   redirect(ROUTES.CLIENTE_DASHBOARD)
 }
 

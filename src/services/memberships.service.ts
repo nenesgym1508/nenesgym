@@ -45,19 +45,22 @@ export function computeEffectiveStatus(
 
 export async function getAllClientsWithMembership() {
   const supabase = await createClient()
-  const { data } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase as any)
     .from("clients")
     .select(
       `
       id,
+      auto_aprobacion,
+      comprobante_bloqueado,
       profile:profiles!inner(id, full_name, email, phone, role),
       memberships(
-        id, status, total_days, used_days, end_date, grace_days,
-        plan:plans(name)
+        id, status, total_days, used_days, start_date, end_date, grace_days,
+        plan:plans(name, days)
       )
     `
     )
     .eq("profile.role", "client")
     .order("created_at", { ascending: false })
-  return data ?? []
+  return (data ?? []) as Array<{ id: string; auto_aprobacion: boolean; comprobante_bloqueado: boolean; profile: unknown; memberships: unknown[] }>
 }

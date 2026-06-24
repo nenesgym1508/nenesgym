@@ -8,7 +8,9 @@ import { Card } from "@/components/ui/card"
 import { MembershipBadge } from "@/components/ui/badge"
 import { GymQrModal } from "@/components/admin/gym-qr-modal"
 import { ActivatePlanModal } from "@/components/admin/activate-plan-modal"
-import { formatDate } from "@/lib/dates"
+import { AutoAprobacionToggle } from "@/components/admin/auto-aprobacion-toggle"
+import { DesbloquearToggle } from "@/components/admin/desbloquear-toggle"
+import { formatDate, todayInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
 import { GYM_ID } from "@/constants/plans"
 import { ROUTES } from "@/constants/routes"
 import type { MembershipStatus } from "@/types/membership"
@@ -56,22 +58,61 @@ export default async function AdminClientesPage() {
           <Card className="p-0 overflow-hidden">
             {clients.map((c, i) => {
               const ct = c as typeof c & {
+                comprobante_bloqueado?: boolean
                 profile: { full_name?: string | null; email?: string | null } | null
-                memberships?: Array<{ status: string; total_days: number; used_days: number; end_date: string; grace_days: number; plan: { name: string } | null }>
+                memberships?: Array<{
+                  status: string
+                  total_days: number
+                  used_days: number
+                  start_date: string
+                  end_date: string
+                  grace_days: number
+                  plan: { name: string; days?: number } | null
+                }>
               }
-              const latestMem = ct.memberships?.sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
+              const latestMem = (ct.memberships as Array<{
+                status: string; total_days: number; used_days: number
+                start_date: string; end_date: string; grace_days: number
+                plan: { name: string; days?: number } | null
+              }>)?.sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
+              // Modelo base calendario: las faltas también descuentan días.
+              const elapsedDays = latestMem
+                ? eligibleDaysElapsed(
+                    latestMem.start_date,
+                    todayInBogota(),
+                    daysPerWeekForPlan(latestMem.plan?.days ?? latestMem.total_days)
+                  )
+                : 0
+              const remainingDays = latestMem ? Math.max(0, latestMem.total_days - elapsedDays) : 0
               const effectiveStatus = latestMem
-                ? computeEffectiveStatus(latestMem.used_days, latestMem.total_days, latestMem.end_date, latestMem.grace_days, latestMem.status as MembershipStatus)
+                ? computeEffectiveStatus(
+                    elapsedDays,
+                    latestMem.total_days,
+                    latestMem.end_date,
+                    latestMem.grace_days,
+                    latestMem.status as MembershipStatus
+                  )
                 : null
               return (
-                <div key={c.id} className={`px-4 py-3.5 ${i < clients.length - 1 ? "border-b border-white/5" : ""}`}>
+                <div
+                  key={c.id}
+                  className={`px-4 py-3.5 ${i < clients.length - 1 ? "border-b border-white/5" : ""}`}
+                >
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-zinc-200 truncate">{ct.profile?.full_name ?? "Sin nombre"}</p>
+                      <p className="text-sm font-medium text-zinc-200 truncate">
+                        {ct.profile?.full_name ?? "Sin nombre"}
+                      </p>
                       <p className="text-xs text-zinc-500 truncate">{ct.profile?.email ?? ""}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {effectiveStatus ? <MembershipBadge status={effectiveStatus} /> : <span className="text-xs text-zinc-600">Sin membresía</span>}
+                      {ct.comprobante_bloqueado && <DesbloquearToggle clientId={c.id} />}
+                      <AutoAprobacionToggle clientId={c.id} initialValue={c.auto_aprobacion} />
+                      {effectiveStatus ? (
+                        <MembershipBadge status={effectiveStatus} />
+                      ) : (
+                        <span className="text-xs text-zinc-600">Sin membresía</span>
+                      )}
                       <ActivatePlanModal
                         clientId={c.id}
                         clientName={ct.profile?.full_name ?? "Cliente"}
@@ -81,7 +122,9 @@ export default async function AdminClientesPage() {
                   </div>
                   {latestMem && (
                     <p className="text-xs text-zinc-600 mt-1">
-                      {latestMem.plan?.name ?? "Plan personalizado"} · Vence {formatDate(latestMem.end_date)} · {latestMem.total_days - latestMem.used_days} días restantes
+                      {latestMem.plan?.name ?? "Plan personalizado"} · Vence{" "}
+                      {formatDate(latestMem.end_date)} · {remainingDays} días
+                      restantes
                     </p>
                   )}
                 </div>

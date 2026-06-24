@@ -3,7 +3,7 @@
 > PWA de gestión de gimnasio (profesor/admin + clientes): membresías con cupo de días +
 > vencimiento mensual, pagos con comprobante, check-in por QR.
 
-**Última actualización:** 2026-06-23
+**Última actualización:** 2026-06-24
 
 ## Datos del proyecto
 
@@ -39,6 +39,9 @@
 | 15 | Optimización de Instalador PWA (botón mini en Header al lado de Salir, modal con pasos específicos de Safari para iOS) | ✅ Completado | 2026-06-18 |
 | 16 | Alineación con spec v1: nav 5 tabs + FAB Entrada, perfil cliente, admin "Más" con gestión de planes/gym, estados UI reutilizables | ✅ Completado | 2026-06-23 |
 | 17 | Fix caché de navegador: headers HTTP no-store en next.config.ts, iconos PWA regenerados, bottom nav visible en fondo oscuro | ✅ Completado | 2026-06-23 |
+| 18 | Análisis de comprobantes con IA (Gemini): subida → extracción → validaciones → auto-aprobación, strikes, bloqueo, panel admin con imagen | ✅ Completado | 2026-06-24 |
+| 19 | Modelo de membresía base calendario: las faltas también descuentan días (no solo las asistencias) | ✅ Completado | 2026-06-24 |
+| 20 | Ajustes UI dashboard cliente (botón Entrada compacto en cabecera, saludo "¡Hola!" sin emoji) + métodos de pago reducidos a Efectivo y Nequi | ✅ Completado | 2026-06-24 |
 
 ---
 
@@ -131,6 +134,73 @@ Cierre de los gaps G1–G8 identificados en el plan de alineación:
 - **`bottom-nav.tsx`**: cambiado `bg-zinc-900/95 backdrop-blur-md` → `bg-zinc-950` sólido y `border-white/8` → `border-white/15`. El nav se camuflaba sobre el fondo negro del page en desktop.
 - **Iconos PWA**: `icon-192.png` e `icon-512.png` regenerados con `sharp` + SVG (fondo rojo `#dc2626`, letra "N" blanca centrada). Los archivos faltaban o estaban corruptos, lo que impedía que el navegador disparara `beforeinstallprompt`.
 
+### 18. Análisis de comprobantes con IA (Gemini) — ✅
+Replica del sistema antifraude de alenstreaming, adaptado al gimnasio. El cliente sube el
+comprobante, la IA lo analiza y valida, y según la configuración el pago se aprueba solo o queda
+pendiente para el admin.
+
+**Flujo (componente `payment-upload-form.tsx`, multipaso):**
+`plan` → `imagen` → `preview` → `analizando` → `confirmar` → `enviando` → `aprobado`/`pendiente`/`error`.
+- Paso **imagen**: aviso antifraude, cuentas del gym a las que transferir (con botón Copiar, vía
+  `GET /api/gym-cuentas`), detección de imagen completamente negra (muestreo en canvas).
+- Paso **confirmar**: validaciones por colores (verde/ámbar/rojo) — destinatario, monto, fecha,
+  transacción completada, número de cuenta, comprobante repetido. Botón "Confirmar" deshabilitado
+  si hay un bloqueo duro.
+
+**API `POST /api/analizar-comprobante`** (`accion: "analizar" | "confirmar"`):
+- Modelo **`gemini-2.5-flash`** (Google Generative AI). Extrae monto, referencia, entidad, fecha,
+  hora, destinatario, número destino, transacción exitosa.
+- Anti-duplicados: hash **SHA-256** (imagen exacta) + **dHash perceptual** de 64 bits con `jimp`
+  (hamming ≤ 8 sobre los últimos 500 pagos) + **referencia repetida** contra `payments.ai_referencia`.
+- **Rate limit**: 10 análisis/hora por cliente (persistido en `gym_config`).
+- **Veredicto temporal** en `receipt_verdicts` (TTL 15 min) con anti-tampering: el hash de la imagen
+  al confirmar debe coincidir con el del análisis.
+- **Auto-aprobación**: si el cliente tiene `auto_aprobacion = true` y la IA validó, llama a la RPC
+  `approve_payment` y activa la membresía al instante.
+
+**Sistema de strikes** (`registrarStrike`): imagen/referencia repetida suma un strike.
+1 strike = aviso · 2 = bloqueo temporal 24 h (`comprobante_bloqueado_hasta`) · 3 = bloqueo
+permanente (`comprobante_bloqueado = true`). El cliente bloqueado ve un estado especial en vez del
+formulario. El admin puede desbloquear desde `/admin/clientes` (`DesbloquearToggle` →
+`desbloquearComprobanteAction`).
+
+**Panel admin** (`pending-payment-card.tsx`): sección "Análisis IA" con badge Válido/Revisar,
+datos detectados, badge ⚡ Auto si fue auto-aprobado, y **vista previa de la imagen** del
+comprobante inline (vía `/api/receipt`, URL firmada).
+
+**Config del gym** (`/admin/mas` → `GymSettingsForm`): número y titular de Nequi y Daviplata; la IA
+verifica que el comprobante haya sido enviado a esas cuentas. **Auto-aprobación por cliente**
+(`/admin/clientes` → `AutoAprobacionToggle`).
+
+**Migraciones aplicadas:** `ai_pagos` (columnas en `gyms`, `clients.auto_aprobacion`, campos `ai_*`
+y hashes en `payments`, tablas `receipt_verdicts` y `gym_config`) y `strikes_clientes`
+(`clients.strikes_data` JSONB, `comprobante_bloqueado`, `comprobante_bloqueado_hasta`).
+**Variable de entorno:** `GEMINI_API_KEY` (Google AI Studio).
+
+### 19. Modelo de membresía base calendario (las faltas descuentan) — ✅
+Antes, los "días restantes" solo bajaban al registrar asistencia (modelo de usos), por lo que un
+cliente con varias faltas seguía mostrando el cupo completo. Ahora el modelo es **base calendario**:
+cada día hábil que pasa descuenta, asista o no.
+
+- Helper `eligibleDaysElapsed(startDate, today, daysPerWeek)` en `src/lib/dates`: cuenta los días
+  hábiles transcurridos desde la activación hasta **ayer** (hoy no descuenta hasta que pasa).
+  Domingo siempre es libre; sábado también en planes de 5 días/semana.
+- `días restantes = total_days − días hábiles transcurridos` (`membershipRemainingDays`).
+- Aplicado en **dashboard cliente**, **admin clientes**, **check-in manual** y en SQL para
+  consistencia: migración `membresia_base_calendario` crea `eligible_days_elapsed(...)`, y actualiza
+  `membership_effective_status` (marca `exhausted` por calendario) y `process_check_in`
+  (`remaining_days` devuelto es base calendario).
+- `used_days` se conserva como **estadística de veces que asistió**; ya no controla el cupo.
+
+### 20. Ajustes UI dashboard + métodos de pago — ✅
+- **Botón "Registrar entrada"** movido a la cabecera del dashboard, al lado del saludo, en formato
+  compacto (mantiene estado "Ya ingresaste" en verde). Se eliminó la fila de 2 tarjetas grandes.
+- **Tarjeta "Mi progreso"** eliminada del dashboard (ya está en la barra inferior de navegación; el
+  mini-resumen de peso/IMC se conserva).
+- **Saludo**: "Hola, [nombre] 👋" → "**¡Hola!**" + nombre, sin emoji.
+- **Métodos de pago** del formulario del cliente reducidos a **Efectivo** y **Nequi** (se ocultan
+  Transferencia, Daviplata y Otro; el constante global se conserva para mostrar pagos antiguos).
+
 ---
 
 ## ⏳ Próximos pasos / pendientes
@@ -140,6 +210,10 @@ Cierre de los gaps G1–G8 identificados en el plan de alineación:
       `getMembershipsForClient` (ya existen en backend, sin UI).
 - [ ] **Estadística de asistencia 7 días** (`getRecentAttendance`, sin UI).
 - [ ] **Resumen de progreso** del cliente (`getProgressSummary`, sin UI).
+- [ ] ⚠️ **Agregar `GEMINI_API_KEY` en Vercel** (Environment Variables) o el análisis de
+      comprobantes fallará en producción. Ya está en `.env.local` para desarrollo.
+- [ ] ⚠️ **Corregir el número Nequi del gym** en `/admin/mas`: quedó guardado `175287585`
+      (9 dígitos, le falta un dígito). Ver ERR-009.
 - [ ] **QA de seguridad RLS** por rol (cliente A no ve datos de cliente B ni de otro gym).
 - [ ] **Pruebas E2E** del flujo completo: registro → pago → aprobación → check-in → progreso.
 - [ ] Limpiar datos de prueba (fila huérfana en `clients` del admin + pago de prueba de $50.000).

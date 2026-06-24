@@ -40,9 +40,9 @@ export default async function BienvenidaPage() {
           priority
           className="h-56 w-56 object-contain drop-shadow-[0_15px_40px_rgba(220,38,38,0.45)] transition-transform duration-700 hover:scale-105"
         />
-        <h1 
+        <h1
           className="mt-6 text-5xl sm:text-7xl tracking-wider uppercase font-black whitespace-nowrap drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]"
-          style={{ 
+          style={{
             fontFamily: 'var(--font-bebas), Impact, sans-serif',
             background: 'radial-gradient(ellipse at center, #ffffff 30%, #a1a1aa 70%, #52525b 100%)',
             WebkitBackgroundClip: 'text',
