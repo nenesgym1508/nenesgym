@@ -165,38 +165,33 @@ export default async function ClienteDashboardPage() {
               </Link>
             )}
 
-            {/* 3. CTA principal — el elemento más importante */}
-            {bothSessionsDone ? (
-              <div className="flex items-center gap-3 rounded-2xl border border-green-700/40 bg-zinc-900 px-4 py-3.5">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-green-500/15">
-                  <CheckCircle2 className="size-5 text-green-400" />
+            {/* 3+4. CTA + Estado del día — bloque unificado */}
+            <div className="flex flex-col gap-2">
+              {bothSessionsDone ? (
+                <div className="flex items-center gap-3 rounded-2xl border border-green-700/40 bg-zinc-900 px-4 py-3.5">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-green-500/15">
+                    <CheckCircle2 className="size-5 text-green-400" />
+                  </div>
+                  <span className="flex-1 text-base font-bold text-zinc-100">
+                    Completaste tus 2 ingresos de hoy
+                  </span>
                 </div>
-                <span className="flex-1 text-base font-bold text-zinc-100">
-                  Completaste tus 2 ingresos de hoy
-                </span>
-              </div>
-            ) : (
-              <Link
-                href={ROUTES.CLIENTE_ASISTENCIA}
-                className="block animate-btn-heartbeat active:scale-[0.98]"
-              >
-                <Image
-                  src="/btn-registrar.png"
-                  alt="Registrar entrada"
-                  width={2172}
-                  height={724}
-                  className="w-full h-auto"
-                  priority
-                  unoptimized
-                />
-              </Link>
-            )}
-
-            {/* 4. Estado del día */}
-            <div>
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                Estado de hoy
-              </p>
+              ) : (
+                <Link
+                  href={ROUTES.CLIENTE_ASISTENCIA}
+                  className="block animate-btn-heartbeat active:scale-[0.98]"
+                >
+                  <Image
+                    src="/btn-registrar.png"
+                    alt="Registrar entrada"
+                    width={2172}
+                    height={724}
+                    className="w-full h-auto"
+                    priority
+                    unoptimized
+                  />
+                </Link>
+              )}
               <TodayStatusCard
                 trainedToday={alreadyToday}
                 sessionsToday={sessionsToday}
