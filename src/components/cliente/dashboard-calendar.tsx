@@ -1,6 +1,7 @@
 "use client"
 
 import { Card } from "@/components/ui/card"
+import { AttendanceLegend } from "@/components/ui/attendance-legend"
 import { ChevronRight } from "lucide-react"
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, isToday, isBefore, isSunday, isSaturday, startOfDay } from "date-fns"
 import { es } from "date-fns/locale"
@@ -34,24 +35,24 @@ export function DashboardCalendar({ currentDate, attendanceDates, integrated = f
 
   return (
     <Container className={containerClasses}>
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-sm font-medium text-zinc-200">
-          Asistencia - {format(currentDate, "MMMM yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())}
+      <div className="flex justify-between items-center mb-5">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+          Asistencia – {format(currentDate, "MMMM yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())}
         </h3>
         <button className="p-1 hover:bg-white/5 rounded-full transition-colors">
           <ChevronRight className="size-4 text-zinc-400" />
         </button>
       </div>
-      
-      <div className="grid grid-cols-7 gap-y-4 text-center mb-4">
+
+      <div className="grid grid-cols-7 gap-y-3 text-center mb-2">
         {weekDays.map(day => (
-          <div key={day} className="text-[10px] font-semibold text-zinc-500 tracking-wider">
+          <div key={day} className="text-[10px] font-semibold text-zinc-600 tracking-wider">
             {day}
           </div>
         ))}
       </div>
-      
-      <div className="grid grid-cols-7 gap-y-2 text-center">
+
+      <div className="grid grid-cols-7 gap-y-1 text-center">
         {days.map((day, idx) => {
           const isAttended = attendanceDates.some(d => isSameDay(d, day))
           const inSameMonth = isSameMonth(day, monthStart)
@@ -65,14 +66,14 @@ export function DashboardCalendar({ currentDate, attendanceDates, integrated = f
           const isFreeDay = daysPerWeek === 5 ? (isSun || isSat) : isSun
           const isMissed = inSameMonth && isPast && !isAttended && !isFreeDay && !isBeforeActivation
 
-          let dayClasses = "relative text-[13px] font-medium transition-all flex items-center justify-center w-8 h-8 rounded-full "
-          
+          let dayClasses = "relative text-[12px] font-medium transition-all flex items-center justify-center w-7 h-7 rounded-full "
+
           if (isCurrentDay) {
-            dayClasses += "bg-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)] font-bold scale-110"
+            dayClasses += "bg-red-600 text-white shadow-[0_0_18px_rgba(220,38,38,0.7)] font-bold scale-110"
           } else if (isAttended) {
-            dayClasses += "bg-green-600/50 border border-green-500/50 text-white"
+            dayClasses += "bg-green-600/60 border border-green-500/50 text-white font-semibold"
           } else if (isMissed) {
-            dayClasses += "bg-red-500/30 border border-red-500/40 text-white"
+            dayClasses += "bg-red-500/25 border border-red-500/40 text-red-200"
           } else if (!inSameMonth) {
             dayClasses += "text-zinc-700"
           } else {
@@ -82,7 +83,7 @@ export function DashboardCalendar({ currentDate, attendanceDates, integrated = f
           if (isActivationDay) {
             dayClasses += " ring-2 ring-white ring-offset-2 ring-offset-zinc-950"
           }
-          
+
           return (
             <div key={idx} className="flex items-center justify-center h-9">
               <span className={dayClasses}>
@@ -94,20 +95,7 @@ export function DashboardCalendar({ currentDate, attendanceDates, integrated = f
       </div>
       
       {/* Leyenda */}
-      <div className="mt-5 pt-4 border-t border-white/5 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-[11px] text-zinc-400 font-medium">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-green-600/50 border border-green-500/50"></div>
-          <span>Asistido</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-red-500/30 border border-red-500/40"></div>
-          <span>Falta</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.5)]"></div>
-          <span>Hoy</span>
-        </div>
-      </div>
+      <AttendanceLegend className="mt-5 border-t border-white/5 pt-4" />
     </Container>
   )
 }

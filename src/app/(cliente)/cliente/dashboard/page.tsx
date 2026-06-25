@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { QrCode, TrendingUp, Calendar, Clock, CheckCircle2, AlertTriangle, Hourglass } from "lucide-react"
+import Image from "next/image"
+import { QrCode, CheckCircle2, Clock, AlertTriangle, Hourglass, ChevronRight } from "lucide-react"
 import { getCurrentClientData } from "@/services/clients.service"
 import { getActiveMembership, computeEffectiveStatus } from "@/services/memberships.service"
 import { getClientAttendance, getMonthlyAttendance } from "@/services/attendance.service"
@@ -8,9 +9,23 @@ import { getClientPayments } from "@/services/payments.service"
 import { getProgressSummary } from "@/services/progress.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
-import { MembershipBadge } from "@/components/ui/badge"
 import { DashboardCalendar } from "@/components/cliente/dashboard-calendar"
-import { formatDate, formatDatetime, todayInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
+import { MembershipSummaryCard } from "@/components/cliente/membership-summary-card"
+import { TodayStatusCard } from "@/components/cliente/today-status-card"
+import { QuickProgressCard } from "@/components/cliente/quick-progress-card"
+import { WorkoutStreakCard } from "@/components/cliente/workout-streak-card"
+import { MonthlyGoalCard } from "@/components/cliente/monthly-goal-card"
+import { MotivationalBanner } from "@/components/cliente/motivational-banner"
+import {
+  formatDate,
+  formatDatetime,
+  todayInBogota,
+  nowInBogota,
+  eligibleDaysElapsed,
+  daysPerWeekForPlan,
+  getGreeting,
+  computeStreak,
+} from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 
 export const dynamic = "force-dynamic"
@@ -26,7 +41,7 @@ export default async function ClienteDashboardPage() {
 
   const [membership, attendance, monthlyAttendanceData, payments, progress] = await Promise.all([
     client ? getActiveMembership(client.id) : Promise.resolve(null),
-    client ? getClientAttendance(client.id, 5) : Promise.resolve([]),
+    client ? getClientAttendance(client.id, 90) : Promise.resolve([]),
     client ? getMonthlyAttendance(client.id, currentYear, currentMonth) : Promise.resolve([]),
     client ? getClientPayments(client.id) : Promise.resolve([]),
     client ? getProgressSummary(client.id) : Promise.resolve(null),
@@ -37,8 +52,11 @@ export default async function ClienteDashboardPage() {
     return new Date(year, month - 1, day)
   })
 
-  // Modelo base calendario: las faltas (días hábiles transcurridos sin asistir)
-  // también descuentan de la membresía.
+  const streakDates = attendance.map(a => {
+    const [year, month, day] = a.check_in_date.split('T')[0].split('-').map(Number)
+    return new Date(year, month - 1, day)
+  })
+
   const today = todayInBogota()
   const daysPerWeek = membership
     ? daysPerWeekForPlan(membership.plan?.days ?? membership.total_days)
@@ -58,9 +76,18 @@ export default async function ClienteDashboardPage() {
     : null
 
   const remainingDays = membership ? Math.max(0, membership.total_days - elapsedDays) : 0
-  const alreadyToday = attendance[0]?.check_in_date === todayInBogota()
 
-  // Aviso de pago: solo si el más reciente está pendiente o rechazado.
+  const todayRows = attendance.filter(a => a.check_in_date === today)
+  const sessionsToday = todayRows.length
+  const alreadyToday = sessionsToday > 0
+  const bothSessionsDone = sessionsToday >= 2
+  const lastCheckInAt = attendance[0]?.checked_in_at ?? null
+
+  const streak = computeStreak(streakDates, daysPerWeek, nowInBogota())
+  const monthlyCount = new Set(monthlyAttendanceData.map(a => a.check_in_date)).size
+  // La meta alcanzable real = días restantes (ya descuenta las faltas transcurridas).
+  const monthlyGoal = remainingDays
+
   const latestPayment = payments[0]
   const paymentAlert =
     latestPayment && (latestPayment.status === "pending" || latestPayment.status === "rejected")
@@ -68,6 +95,16 @@ export default async function ClienteDashboardPage() {
       : null
 
   const latestProgress = progress?.latest ?? null
+  const prevProgress = progress?.previous ?? null
+  const weightDelta =
+    latestProgress?.weight_kg != null && prevProgress?.weight_kg != null
+      ? latestProgress.weight_kg - prevProgress.weight_kg
+      : null
+  const hasProgress = latestProgress && (latestProgress.weight_kg != null || latestProgress.bmi != null)
+
+  const firstName = profile.full_name?.split(" ")[0] ?? "Usuario"
+  const initial = firstName.charAt(0).toUpperCase()
+  const greeting = getGreeting(nowInBogota())
 
   let parsedMembershipStart: Date | undefined
   if (membership?.start_date) {
@@ -75,72 +112,114 @@ export default async function ClienteDashboardPage() {
     parsedMembershipStart = new Date(y, m - 1, d)
   }
 
+  const recentAttendance = attendance.slice(0, 5)
 
   return (
     <div>
       <PageHeader title="NENE'S GYM" showLogout showInstall />
       <div className="p-4 space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-zinc-400 text-sm">¡Hola!</p>
-            <h2 className="text-xl font-bold text-zinc-100 truncate">
-              {profile.full_name ?? "Usuario"}
+        {/* 1. Saludo + avatar */}
+        <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 fill-mode-both flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-bold text-zinc-100">
+              ¡Hola {firstName}!
             </h2>
+            <p className="text-sm text-zinc-400">{greeting}</p>
           </div>
-          <Link href={ROUTES.CLIENTE_ASISTENCIA} className="shrink-0">
-            <div
-              className={`flex items-center gap-2 rounded-xl border px-3.5 py-2.5 transition-colors ${
-                alreadyToday
-                  ? "border-green-700/40 bg-green-500/10"
-                  : "border-red-700/40 bg-red-600/10 hover:bg-red-600/15"
-              }`}
-            >
-              {alreadyToday ? (
-                <CheckCircle2 className="size-4 text-green-400" />
-              ) : (
-                <QrCode className="size-4 text-red-500" />
-              )}
-              <span className="text-xs font-semibold text-zinc-200">
-                {alreadyToday ? "Ya ingresaste" : "Registrar entrada"}
-              </span>
-            </div>
-          </Link>
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-red-600 bg-zinc-900 text-sm font-bold text-white">
+            {initial}
+          </div>
         </div>
 
         {membership && effectiveStatus ? (
-          <Card className="bg-gradient-to-b from-red-950/20 to-zinc-950/80 border-red-900/30 overflow-hidden">
-            <div className="p-4 border-b border-white/5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  MEMBRESÍA
-                </span>
-                <MembershipBadge status={effectiveStatus} />
-              </div>
-              <div className="flex items-end gap-2">
-                <span className="text-4xl font-black text-zinc-100 leading-none">{remainingDays}</span>
-                <span className="text-zinc-400 mb-0.5 text-xs">
-                  / {membership.total_days} días restantes
-                </span>
-              </div>
-              <div className="flex flex-col gap-1.5 mt-3 text-xs text-zinc-500">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="size-3.5" />
-                    Activación:
-                  </span>
-                  <span className="text-zinc-300 font-medium">{formatDate(membership.start_date)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="size-3.5" />
-                    Vence:
-                  </span>
-                  <span className="text-zinc-300 font-medium">{formatDate(membership.end_date)}</span>
-                </div>
-              </div>
+          <>
+            {/* 2. Membresía */}
+            <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 delay-75 fill-mode-both">
+              <MembershipSummaryCard
+                status={effectiveStatus}
+                remainingDays={remainingDays}
+                totalDays={membership.total_days}
+                startDate={membership.start_date}
+                endDate={membership.end_date}
+              />
             </div>
-            
-            <div className="px-2 pb-2">
+
+            {/* Aviso de pago — banner minimalista de una línea */}
+            {paymentAlert && (
+              <Link href={ROUTES.CLIENTE_PAGOS}>
+                <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs ${
+                  paymentAlert.status === "pending"
+                    ? "border border-yellow-600/25 bg-yellow-500/8 text-yellow-400"
+                    : "border border-red-600/25 bg-red-500/8 text-red-400"
+                }`}>
+                  {paymentAlert.status === "pending"
+                    ? <Hourglass className="size-3.5 shrink-0" />
+                    : <AlertTriangle className="size-3.5 shrink-0" />}
+                  <span className="flex-1 font-medium">
+                    {paymentAlert.status === "pending"
+                      ? "Pago pendiente de aprobación"
+                      : "Pago rechazado — toca para ver el detalle"}
+                  </span>
+                  <ChevronRight className="size-3.5 shrink-0 opacity-50" />
+                </div>
+              </Link>
+            )}
+
+            {/* 3. CTA principal — el elemento más importante */}
+            {bothSessionsDone ? (
+              <div className="flex items-center gap-3 rounded-2xl border border-green-700/40 bg-zinc-900 px-4 py-3.5">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-green-500/15">
+                  <CheckCircle2 className="size-5 text-green-400" />
+                </div>
+                <span className="flex-1 text-base font-bold text-zinc-100">
+                  Completaste tus 2 ingresos de hoy
+                </span>
+              </div>
+            ) : (
+              <Link
+                href={ROUTES.CLIENTE_ASISTENCIA}
+                className="block animate-btn-heartbeat active:scale-[0.98]"
+              >
+                <Image
+                  src="/btn-registrar.png"
+                  alt="Registrar entrada"
+                  width={2172}
+                  height={724}
+                  className="w-full h-auto"
+                  priority
+                  unoptimized
+                />
+              </Link>
+            )}
+
+            {/* 4. Estado del día */}
+            <div>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                Estado de hoy
+              </p>
+              <TodayStatusCard
+                trainedToday={alreadyToday}
+                sessionsToday={sessionsToday}
+                lastCheckInAt={lastCheckInAt}
+              />
+            </div>
+
+            {/* 5. Mini resumen de progreso */}
+            {hasProgress && (
+              <div>
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  Tu progreso
+                </p>
+                <QuickProgressCard
+                  weightKg={latestProgress!.weight_kg}
+                  bmi={latestProgress!.bmi}
+                  weightDelta={weightDelta}
+                />
+              </div>
+            )}
+
+            {/* 6. Calendario */}
+            <Card className="bg-zinc-950/50 border-white/5">
               <DashboardCalendar
                 currentDate={now}
                 attendanceDates={attendanceDates}
@@ -148,8 +227,42 @@ export default async function ClienteDashboardPage() {
                 membershipStartDate={parsedMembershipStart}
                 daysPerWeek={daysPerWeek}
               />
-            </div>
-          </Card>
+            </Card>
+
+            {/* 7. Gamificación */}
+            <WorkoutStreakCard streak={streak} monthlyCount={monthlyCount} />
+            {monthlyGoal > 0 && <MonthlyGoalCard current={monthlyCount} goal={monthlyGoal} />}
+
+            {/* 8. Banner motivacional */}
+            <MotivationalBanner />
+
+            {/* 9. Últimos ingresos */}
+            {recentAttendance.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-3">
+                  Últimos ingresos
+                </h3>
+                <Card className="p-0 overflow-hidden">
+                  {recentAttendance.map((a, i) => (
+                    <div
+                      key={a.id}
+                      className={`flex items-center gap-3 px-4 py-3 ${
+                        i < recentAttendance.length - 1 ? "border-b border-white/5" : ""
+                      }`}
+                    >
+                      <div className="size-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                        <Clock className="size-4 text-green-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-zinc-200">{formatDate(a.check_in_date)}</p>
+                        <p className="text-xs text-zinc-500">{formatDatetime(a.checked_in_at)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </Card>
+              </div>
+            )}
+          </>
         ) : (
           <>
             <Card className="text-center py-8">
@@ -161,101 +274,17 @@ export default async function ClienteDashboardPage() {
                 Ver planes
               </Link>
             </Card>
-            <DashboardCalendar
-              currentDate={now}
-              attendanceDates={attendanceDates}
-              membershipStartDate={parsedMembershipStart}
-              daysPerWeek={6}
-            />
+            <Card className="bg-zinc-950/50 border-white/5">
+              <DashboardCalendar
+                currentDate={now}
+                attendanceDates={attendanceDates}
+                integrated={true}
+                membershipStartDate={parsedMembershipStart}
+                daysPerWeek={6}
+              />
+            </Card>
+            <MotivationalBanner />
           </>
-        )}
-
-        {/* Aviso de pago pendiente / rechazado */}
-        {paymentAlert && (
-          <Link href={ROUTES.CLIENTE_PAGOS}>
-            <Card
-              className={`flex items-start gap-3 p-3.5 ${
-                paymentAlert.status === "pending"
-                  ? "border-yellow-600/30 bg-yellow-500/5"
-                  : "border-red-600/30 bg-red-500/5"
-              }`}
-            >
-              {paymentAlert.status === "pending" ? (
-                <Hourglass className="size-5 shrink-0 text-yellow-400" />
-              ) : (
-                <AlertTriangle className="size-5 shrink-0 text-red-400" />
-              )}
-              <div className="text-sm">
-                <p className="font-semibold text-zinc-100">
-                  {paymentAlert.status === "pending"
-                    ? "Pago pendiente de aprobación"
-                    : "Pago rechazado"}
-                </p>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  {paymentAlert.status === "pending"
-                    ? "Tu comprobante está en revisión."
-                    : paymentAlert.note || "Toca para ver el detalle y volver a enviarlo."}
-                </p>
-              </div>
-            </Card>
-          </Link>
-        )}
-
-        {/* Mini resumen de progreso */}
-        {latestProgress && (latestProgress.weight_kg != null || latestProgress.bmi != null) && (
-          <Card className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <div className="size-10 rounded-xl bg-zinc-800 flex items-center justify-center">
-                <TrendingUp className="size-5 text-zinc-300" />
-              </div>
-              <div>
-                <p className="text-xs text-zinc-500">Tu progreso</p>
-                <p className="text-sm font-semibold text-zinc-100">
-                  {latestProgress.weight_kg != null && <span>{latestProgress.weight_kg} kg</span>}
-                  {latestProgress.weight_kg != null && latestProgress.bmi != null && (
-                    <span className="text-zinc-600"> · </span>
-                  )}
-                  {latestProgress.bmi != null && (
-                    <span>IMC {latestProgress.bmi.toFixed(1)}</span>
-                  )}
-                </p>
-              </div>
-            </div>
-            <Link href={ROUTES.CLIENTE_PROGRESO} className="text-xs font-medium text-red-400 hover:text-red-300">
-              Ver más
-            </Link>
-          </Card>
-        )}
-
-
-        {attendance.length > 0 && (
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-3">
-              Últimos ingresos
-            </h3>
-            <Card className="p-0 overflow-hidden">
-              {attendance.map((a, i) => (
-                <div
-                  key={a.id}
-                  className={`flex items-center gap-3 px-4 py-3 ${
-                    i < attendance.length - 1 ? "border-b border-white/5" : ""
-                  }`}
-                >
-                  <div className="size-8 rounded-full bg-green-500/10 flex items-center justify-center">
-                    <Clock className="size-4 text-green-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-zinc-200">
-                      {formatDate(a.check_in_date)}
-                    </p>
-                    <p className="text-xs text-zinc-500">
-                      {formatDatetime(a.checked_in_at)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </Card>
-          </div>
         )}
       </div>
     </div>

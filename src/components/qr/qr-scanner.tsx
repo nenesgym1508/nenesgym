@@ -1,10 +1,18 @@
 "use client"
 
 import { useEffect, useId, useRef, useState } from "react"
-import { QrCode, CheckCircle, XCircle, AlertCircle, Camera, Loader2 } from "lucide-react"
+import { QrCode, XCircle, AlertCircle, Camera, Loader2 } from "lucide-react"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 import { Card } from "@/components/ui/card"
+import { SuccessToast } from "@/components/ui/success-toast"
 
 type ScanStatus = "idle" | "scanning" | "loading" | "success" | "error" | "already" | "no_days"
+
+interface SuccessInfo {
+  subtitle: string
+  message: string
+}
 
 const STATUS_CONFIG = {
   idle: { color: "", message: "" },
@@ -22,8 +30,8 @@ export default function QrScanner() {
   const readerId = "qr-reader-" + useId().replace(/:/g, "")
   const [status, setStatus] = useState<ScanStatus>("idle")
   const [message, setMessage] = useState("")
-  const [remainingDays, setRemainingDays] = useState<number | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<SuccessInfo | null>(null)
 
   const startScanner = async () => {
     try {
@@ -73,9 +81,17 @@ export default function QrScanner() {
       const data = await res.json()
 
       if (data.ok) {
-        setStatus("success")
-        setMessage(data.message)
-        setRemainingDays(data.remaining_days ?? null)
+        const now = new Date()
+        const fecha = format(now, "d MMM yyyy", { locale: es })
+        const hora = format(now, "h:mm a", { locale: es })
+        const dias =
+          data.remaining_days != null ? ` · Te quedan ${data.remaining_days} días` : ""
+        setSuccess({
+          subtitle: `${fecha} · ${hora}`,
+          message: `Buen entrenamiento 💪${dias}`,
+        })
+        setStatus("idle")
+        setMessage("")
       } else {
         if (data.code === "ALREADY_TODAY") {
           setStatus("already")
@@ -97,7 +113,6 @@ export default function QrScanner() {
   const reset = () => {
     setStatus("idle")
     setMessage("")
-    setRemainingDays(null)
   }
 
   useEffect(() => {
@@ -107,31 +122,6 @@ export default function QrScanner() {
       }
     }
   }, [])
-
-  if (status === "success") {
-    return (
-      <Card className="flex flex-col items-center gap-4 py-12 text-center">
-        <div className="size-16 rounded-full bg-green-500/15 flex items-center justify-center">
-          <CheckCircle className="size-8 text-green-400" />
-        </div>
-        <div>
-          <p className="text-lg font-bold text-green-400">¡Bienvenido!</p>
-          <p className="text-sm text-zinc-400 mt-1">{message}</p>
-          {remainingDays !== null && (
-            <p className="text-xs text-zinc-500 mt-2">
-              Te quedan <strong className="text-zinc-200">{remainingDays}</strong> días
-            </p>
-          )}
-        </div>
-        <button
-          onClick={reset}
-          className="text-sm text-red-500 hover:text-red-400 mt-2"
-        >
-          Escanear de nuevo
-        </button>
-      </Card>
-    )
-  }
 
   if (status === "already" || status === "no_days" || status === "error") {
     const cfg = STATUS_CONFIG[status]
@@ -162,6 +152,14 @@ export default function QrScanner() {
 
   return (
     <div className="space-y-4">
+      <SuccessToast
+        open={success !== null}
+        title="Entrada registrada"
+        subtitle={success?.subtitle}
+        message={success?.message}
+        onClose={() => setSuccess(null)}
+      />
+
       {/* Visor de cámara */}
       <div className="relative overflow-hidden rounded-2xl bg-zinc-900 aspect-square max-w-sm mx-auto">
         <div ref={scannerRef} className="w-full h-full" />

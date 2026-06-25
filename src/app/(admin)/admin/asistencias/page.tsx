@@ -70,7 +70,7 @@ export default async function AdminAsistenciasPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-zinc-200">{att.client?.profile?.full_name ?? "Cliente"}</p>
-                    <p className="text-xs text-zinc-500">{formatDatetime(a.checked_in_at)} · {a.source === "qr" ? "QR" : "Manual"}</p>
+                    <p className="text-xs text-zinc-500">{formatDatetime(a.checked_in_at)} · {a.session === "am" ? "Mañana" : "Tarde"} · {a.source === "qr" ? "QR" : "Manual"}</p>
                   </div>
                 </div>
               )

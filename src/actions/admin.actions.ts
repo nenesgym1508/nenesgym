@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { computeEffectiveStatus } from "@/services/memberships.service"
-import { todayInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
+import { todayInBogota, nowInBogota, gymSession, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 import type { MembershipStatus } from "@/types/membership"
 
@@ -205,14 +205,22 @@ export async function manualCheckInAction(clientId: string) {
   if (status === "exhausted") return { error: "El cliente no tiene días disponibles" }
   if (status === "expired") return { error: "La membresía del cliente está vencida" }
 
+  // Franja del día: permite hasta 2 ingresos (mañana + tarde), 1 por franja.
+  const session = gymSession(nowInBogota())
+
   const { data: existing } = await admin
     .from("attendance")
     .select("id")
     .eq("client_id", clientId)
     .eq("check_in_date", today)
+    .eq("session", session)
     .limit(1)
     .maybeSingle()
-  if (existing) return { error: "El cliente ya registró su ingreso hoy" }
+  if (existing) {
+    return {
+      error: `El cliente ya registró su ingreso de la ${session === "am" ? "mañana" : "tarde"}`,
+    }
+  }
 
   const { error: insertError } = await admin.from("attendance").insert({
     gym_id: ctx.gymId,
@@ -220,6 +228,7 @@ export async function manualCheckInAction(clientId: string) {
     membership_id: membership.id,
     check_in_date: today,
     source: "manual",
+    session,
   })
   if (insertError) return { error: insertError.message }
 

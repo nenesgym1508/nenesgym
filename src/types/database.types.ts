@@ -23,6 +23,7 @@ export type Database = {
           gym_id: string
           id: string
           membership_id: string
+          session: string
           source: string
         }
         Insert: {
@@ -33,6 +34,7 @@ export type Database = {
           gym_id: string
           id?: string
           membership_id: string
+          session: string
           source?: string
         }
         Update: {
@@ -43,6 +45,7 @@ export type Database = {
           gym_id?: string
           id?: string
           membership_id?: string
+          session?: string
           source?: string
         }
         Relationships: [

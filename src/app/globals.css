@@ -158,6 +158,45 @@
   }
 }
 
+/* CTA primario — pulso de glow muy sutil */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 8px 24px -6px rgba(220, 38, 38, 0.45);
+  }
+  50% {
+    box-shadow: 0 10px 34px -4px rgba(220, 38, 38, 0.8);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-glow {
+    animation: none;
+  }
+}
+
+/* Botón Registrar entrada — palpitación de escala sutil */
+@keyframes btn-heartbeat {
+  0%, 100% {
+    filter: drop-shadow(0 0 0px rgba(220, 38, 38, 0));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 18px rgba(220, 38, 38, 0.9));
+    transform: scale(1.03);
+  }
+}
+.animate-btn-heartbeat {
+  animation: btn-heartbeat 1.6s ease-in-out infinite;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-btn-heartbeat { animation: none; }
+}
+
 /* ——————————————————————————————————————————
    Design Brief — NENE'S GYM
    Registro: Product (Familiaridad Ganada)
