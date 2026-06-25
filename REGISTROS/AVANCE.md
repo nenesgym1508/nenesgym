@@ -3,7 +3,7 @@
 > PWA de gestión de gimnasio (profesor/admin + clientes): membresías con cupo de días +
 > vencimiento mensual, pagos con comprobante, check-in por QR.
 
-**Última actualización:** 2026-06-24
+**Última actualización:** 2026-06-24 (noche)
 
 ## Datos del proyecto
 
@@ -42,6 +42,8 @@
 | 18 | Análisis de comprobantes con IA (Gemini): subida → extracción → validaciones → auto-aprobación, strikes, bloqueo, panel admin con imagen | ✅ Completado | 2026-06-24 |
 | 19 | Modelo de membresía base calendario: las faltas también descuentan días (no solo las asistencias) | ✅ Completado | 2026-06-24 |
 | 20 | Ajustes UI dashboard cliente (botón Entrada compacto en cabecera, saludo "¡Hola!" sin emoji) + métodos de pago reducidos a Efectivo y Nequi | ✅ Completado | 2026-06-24 |
+| 21 | UX Premium Dashboard — rediseño visual completo con gamificación, microinteracciones, imágenes de marca e identidad visual | ✅ Completado | 2026-06-24 |
+| 22 | Doble ingreso AM/PM — permite hasta 2 check-ins por día (mañana + tarde) sin consumir días extra de membresía | ✅ Completado | 2026-06-24 |
 
 ---
 
@@ -200,6 +202,69 @@ cada día hábil que pasa descuenta, asista o no.
 - **Saludo**: "Hola, [nombre] 👋" → "**¡Hola!**" + nombre, sin emoji.
 - **Métodos de pago** del formulario del cliente reducidos a **Efectivo** y **Nequi** (se ocultan
   Transferencia, Daviplata y Otro; el constante global se conserva para mostrar pagos antiguos).
+
+### 21. UX Premium Dashboard — ✅
+
+Rediseño visual completo del dashboard del cliente sin cambiar arquitectura ni backend.
+
+**Orden y estructura:**
+Saludo con avatar inicial → MembershipSummaryCard → alerta de pago (banner minimalista de 1 línea) → CTA "Registrar entrada" → Estado de hoy → Tu progreso → Calendario → Gamificación → Banner motivacional → Últimos ingresos.
+
+**Componentes nuevos** (`src/components/cliente/`):
+- `MembershipSummaryCard`: imagen de fondo branded (`public/gym-card-bg.png`), badge de estado, número grande de entrenamientos restantes, fechas de activación/vencimiento.
+- `TodayStatusCard`: ring vacío cuando no entrenado, ícono verde cuando sí, "Te esperamos." como subtítulo, chevron derecho.
+- `QuickProgressCard`: 3 columnas (ícono | peso + IMC | variación). Variación en rojo si ganó peso, verde si bajó.
+- `WorkoutStreakCard`: 2 columnas (Racha en días | Este mes en entrenamientos).
+- `MonthlyGoalCard`: barra de progreso roja, meta = `remainingDays` (días alcanzables reales, descuenta faltas).
+- `MotivationalBanner`: imagen branded (`public/gym-banner.png`) con bordes redondeados.
+- `ProgressBar`, `AttendanceLegend`, `SuccessToast`: componentes UI reutilizables.
+
+**Botón "Registrar entrada":**
+- Imagen PNG sin fondo (`public/btn-registrar.png`) dentro de un `<Link>`.
+- Animación `animate-btn-heartbeat`: `drop-shadow` rojo pulsante + scale 1.03 cada 1.6 s.
+- `unoptimized` en `<Image>` para evitar caché del optimizador de Next.js.
+
+**Animaciones CSS** (sin Framer Motion, solo `tw-animate-css` + keyframes en `globals.css`):
+- `animate-in fade-in slide-in-from-bottom-3` en entrada del saludo.
+- `animate-pulse-glow` (box-shadow) heredado del CTA CSS anterior.
+- `animate-btn-heartbeat` (drop-shadow + scale) para el botón imagen.
+- `(cliente)/template.tsx`: fade-in de 300ms en transiciones entre páginas.
+
+**Calendario** (`DashboardCalendar`): cabecera cambiada a "ASISTENCIA – MES AÑO". Leyenda con `AttendanceLegend`.
+
+**Alerta de pago**: reducida de card con 2 líneas a banner de 1 línea (`py-2 text-xs`).
+
+**Avatar**: primera letra del nombre del cliente en un círculo con borde rojo (`border-2 border-red-600`).
+
+**Meta mensual**: usa `remainingDays` en vez de `total_days` para reflejar solo los entrenamientos que aún se pueden completar.
+
+---
+
+### 22. Doble ingreso AM/PM — ✅
+
+Algunos clientes entrenan mañana (5–10 am) y tarde (5–10 pm). La app ahora permite **máximo 2 check-ins por día**, uno por franja, sin consumir días extra de membresía (el modelo base calendario no cambia).
+
+**Modelo de franja:**
+- Corte a las **14:00 hora del gym** (`America/Bogota`): antes = `am`, desde las 14 = `pm`.
+- El bloque cerrado del gym (10 am–5 pm) cae dentro del corte, por lo que no hay ambigüedad.
+- Un 2.º intento en la misma franja es rechazado (evita dobles escaneos accidentales).
+
+**Base de datos** (migración `allow_two_checkins_per_day` aplicada en Supabase):
+- Nueva columna `attendance.session TEXT NOT NULL CHECK (session IN ('am','pm'))`.
+- Backfill de filas existentes desde `checked_in_at` en la tz del gym.
+- Constraint anterior `UNIQUE (client_id, check_in_date)` → **`UNIQUE (client_id, check_in_date, session)`**.
+- RPC `process_check_in` reescrito: calcula `v_session`, inserta con franja, devuelve `ALREADY_TODAY` con mensaje diferenciado por franja ("Ya registraste tu ingreso de la mañana/tarde").
+
+**Código:**
+- `src/lib/dates/index.ts`: helper `gymSession(date)` → `"am" | "pm"` + constante `GYM_SESSION_CUTOFF_HOUR = 14`.
+- `src/actions/admin.actions.ts` (`manualCheckInAction`): valida por franja, inserta `session`, mensaje de error por franja.
+- `src/types/database.types.ts`: campo `session` añadido a `attendance` Row/Insert/Update.
+- **Dashboard**: `sessionsToday = todayRows.length`; CTA muestra "Completaste tus 2 ingresos de hoy" cuando `>= 2`; pulso solo cuando `=== 0`; `monthlyCount` usa `Set` de fechas distintas para no contar doble.
+- **`TodayStatusCard`**: prop `sessionsToday` muestra "· N de 2 ingresos".
+- **Admin Asistencias**: muestra "Mañana" / "Tarde" junto al source (QR/Manual).
+
+**Verificación en vivo (con rollback):**
+- 2.º AM → `BLOQUEADO` (constraint actúa). PM → `INSERTADO` (OK). 0 filas persistidas tras rollback.
 
 ---
 
