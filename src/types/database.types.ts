@@ -412,39 +412,57 @@ export type Database = {
       }
       progress_records: {
         Row: {
+          arm_cm: number | null
           bmi: number | null
+          chest_cm: number | null
           client_id: string
           created_at: string
+          created_by: string
           gym_id: string
           height_cm: number | null
           id: string
+          leg_cm: number | null
+          measured_date: string
           measurements: Json | null
           note: string | null
           recorded_at: string
+          waist_cm: number | null
           weight_kg: number | null
         }
         Insert: {
+          arm_cm?: number | null
           bmi?: number | null
+          chest_cm?: number | null
           client_id: string
           created_at?: string
+          created_by?: string
           gym_id: string
           height_cm?: number | null
           id?: string
+          leg_cm?: number | null
+          measured_date?: string
           measurements?: Json | null
           note?: string | null
           recorded_at?: string
+          waist_cm?: number | null
           weight_kg?: number | null
         }
         Update: {
+          arm_cm?: number | null
           bmi?: number | null
+          chest_cm?: number | null
           client_id?: string
           created_at?: string
+          created_by?: string
           gym_id?: string
           height_cm?: number | null
           id?: string
+          leg_cm?: number | null
+          measured_date?: string
           measurements?: Json | null
           note?: string | null
           recorded_at?: string
+          waist_cm?: number | null
           weight_kg?: number | null
         }
         Relationships: [
@@ -460,6 +478,391 @@ export type Database = {
             columns: ["gym_id"]
             isOneToOne: false
             referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      progress_goals: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string
+          end_date: string | null
+          goal_type: string
+          gym_id: string
+          id: string
+          start_date: string
+          status: string
+          target_attendance_days: number | null
+          target_weight_kg: number | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string
+          end_date?: string | null
+          goal_type: string
+          gym_id: string
+          id?: string
+          start_date?: string
+          status?: string
+          target_attendance_days?: number | null
+          target_weight_kg?: number | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          end_date?: string | null
+          goal_type?: string
+          gym_id?: string
+          id?: string
+          start_date?: string
+          status?: string
+          target_attendance_days?: number | null
+          target_weight_kg?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "progress_goals_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "progress_goals_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercises: {
+        Row: {
+          created_at: string
+          equipment: string | null
+          exercise_type: string | null
+          external_id: string | null
+          gym_id: string
+          id: string
+          instructions: string | null
+          is_active: boolean
+          media_url: string | null
+          muscle_group: string | null
+          name: string
+          secondary_muscle_groups: string[] | null
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          equipment?: string | null
+          exercise_type?: string | null
+          external_id?: string | null
+          gym_id: string
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          media_url?: string | null
+          muscle_group?: string | null
+          name: string
+          secondary_muscle_groups?: string[] | null
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          equipment?: string | null
+          exercise_type?: string | null
+          external_id?: string | null
+          gym_id?: string
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          media_url?: string | null
+          muscle_group?: string | null
+          name?: string
+          secondary_muscle_groups?: string[] | null
+          source?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercises_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_classes: {
+        Row: {
+          class_date: string
+          created_at: string
+          created_by: string | null
+          estimated_duration_minutes: number | null
+          gym_id: string
+          id: string
+          level: string | null
+          notes: string | null
+          objective: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          class_date: string
+          created_at?: string
+          created_by?: string | null
+          estimated_duration_minutes?: number | null
+          gym_id: string
+          id?: string
+          level?: string | null
+          notes?: string | null
+          objective?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          class_date?: string
+          created_at?: string
+          created_by?: string | null
+          estimated_duration_minutes?: number | null
+          gym_id?: string
+          id?: string
+          level?: string | null
+          notes?: string | null
+          objective?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_classes_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_blocks: {
+        Row: {
+          daily_class_id: string
+          id: string
+          position: number
+          title: string
+        }
+        Insert: {
+          daily_class_id: string
+          id?: string
+          position?: number
+          title: string
+        }
+        Update: {
+          daily_class_id?: string
+          id?: string
+          position?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_blocks_daily_class_id_fkey"
+            columns: ["daily_class_id"]
+            isOneToOne: false
+            referencedRelation: "daily_classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_block_exercises: {
+        Row: {
+          block_id: string
+          duration_seconds: number | null
+          exercise_id: string
+          id: string
+          notes: string | null
+          position: number
+          reps: number | null
+          rest_seconds: number | null
+          sets: number | null
+          suggested_weight: string | null
+        }
+        Insert: {
+          block_id: string
+          duration_seconds?: number | null
+          exercise_id: string
+          id?: string
+          notes?: string | null
+          position?: number
+          reps?: number | null
+          rest_seconds?: number | null
+          sets?: number | null
+          suggested_weight?: string | null
+        }
+        Update: {
+          block_id?: string
+          duration_seconds?: number | null
+          exercise_id?: string
+          id?: string
+          notes?: string | null
+          position?: number
+          reps?: number | null
+          rest_seconds?: number | null
+          sets?: number | null
+          suggested_weight?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_block_exercises_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "class_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_block_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_templates: {
+        Row: {
+          created_at: string
+          estimated_duration_minutes: number | null
+          gym_id: string
+          id: string
+          is_active: boolean
+          level: string | null
+          name: string
+          notes: string | null
+          objective: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_duration_minutes?: number | null
+          gym_id: string
+          id?: string
+          is_active?: boolean
+          level?: string | null
+          name: string
+          notes?: string | null
+          objective?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          estimated_duration_minutes?: number | null
+          gym_id?: string
+          id?: string
+          is_active?: boolean
+          level?: string | null
+          name?: string
+          notes?: string | null
+          objective?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_templates_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      template_blocks: {
+        Row: {
+          id: string
+          position: number
+          template_id: string
+          title: string
+        }
+        Insert: {
+          id?: string
+          position?: number
+          template_id: string
+          title: string
+        }
+        Update: {
+          id?: string
+          position?: number
+          template_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_blocks_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "class_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      template_block_exercises: {
+        Row: {
+          duration_seconds: number | null
+          exercise_id: string
+          id: string
+          notes: string | null
+          position: number
+          reps: number | null
+          rest_seconds: number | null
+          sets: number | null
+          suggested_weight: string | null
+          template_block_id: string
+        }
+        Insert: {
+          duration_seconds?: number | null
+          exercise_id: string
+          id?: string
+          notes?: string | null
+          position?: number
+          reps?: number | null
+          rest_seconds?: number | null
+          sets?: number | null
+          suggested_weight?: string | null
+          template_block_id: string
+        }
+        Update: {
+          duration_seconds?: number | null
+          exercise_id?: string
+          id?: string
+          notes?: string | null
+          position?: number
+          reps?: number | null
+          rest_seconds?: number | null
+          sets?: number | null
+          suggested_weight?: string | null
+          template_block_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_block_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "template_block_exercises_template_block_id_fkey"
+            columns: ["template_block_id"]
+            isOneToOne: false
+            referencedRelation: "template_blocks"
             referencedColumns: ["id"]
           },
         ]
