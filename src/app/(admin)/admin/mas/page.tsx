@@ -1,5 +1,6 @@
+import Link from "next/link"
 import { redirect } from "next/navigation"
-import { LogOut } from "lucide-react"
+import { LogOut, ClipboardList } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { getGymSettings, getAdminPlans } from "@/services/gym.service"
 import { logoutAction } from "@/actions/auth.actions"
@@ -38,6 +39,19 @@ export default async function AdminMasPage() {
         />
 
         <PlansManager plans={plans} />
+
+        <div>
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
+            Módulos
+          </h3>
+          <Link
+            href={ROUTES.ADMIN_ASISTENCIAS}
+            className="flex items-center gap-3 rounded-xl border border-white/8 bg-zinc-900/60 px-4 py-3 hover:bg-zinc-800/60 transition-colors"
+          >
+            <ClipboardList className="size-4 text-zinc-400 shrink-0" />
+            <span className="text-sm font-medium text-zinc-300">Registro de ingresos</span>
+          </Link>
+        </div>
 
         <div>
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">

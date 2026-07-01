@@ -10,7 +10,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -z-10 h-48 w-48 sm:h-80 sm:w-80 rounded-full bg-red-600/20 blur-[50px] sm:blur-[80px] pointer-events-none" />
 
         <Image
-          src="/logo-v3.png"
+          src="/logo-v3.webp"
           alt="NENE'S GYM"
           width={220}
           height={220}

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, CreditCard, QrCode, TrendingUp, User, Users, ClipboardList, MoreHorizontal } from "lucide-react"
+import { Home, CreditCard, QrCode, TrendingUp, User, Users, Dumbbell, MoreHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ROUTES } from "@/constants/routes"
 
@@ -23,7 +23,7 @@ const adminItems: NavItem[] = [
   { href: ROUTES.ADMIN_DASHBOARD, label: "Panel", icon: Home },
   { href: ROUTES.ADMIN_CLIENTES, label: "Clientes", icon: Users },
   { href: ROUTES.ADMIN_PAGOS, label: "Pagos", icon: CreditCard },
-  { href: ROUTES.ADMIN_ASISTENCIAS, label: "Ingresos", icon: ClipboardList },
+  { href: ROUTES.ADMIN_CLASES, label: "Clases", icon: Dumbbell },
   { href: ROUTES.ADMIN_MAS, label: "Más", icon: MoreHorizontal },
 ]
 

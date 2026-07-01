@@ -1,21 +1,30 @@
-import { CheckCircle2, ChevronRight, Clock } from "lucide-react"
+import Link from "next/link"
+import { CheckCircle2, ChevronRight, Clock, Hourglass, AlertTriangle } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { formatDatetime } from "@/lib/dates"
+import { ROUTES } from "@/constants/routes"
+
+interface PaymentAlert {
+  status: "pending" | "rejected"
+}
 
 interface TodayStatusCardProps {
   trainedToday: boolean
   sessionsToday?: number
   lastCheckInAt?: string | null
+  paymentAlert?: PaymentAlert | null
 }
 
 export function TodayStatusCard({
   trainedToday,
   sessionsToday = 0,
   lastCheckInAt,
+  paymentAlert,
 }: TodayStatusCardProps) {
   return (
-    <Card className={trainedToday ? "border-green-700/30 bg-green-500/5" : ""}>
-      <div className="flex items-center gap-3">
+    <Card className={`overflow-hidden p-0 ${trainedToday ? "border-green-700/30 bg-green-500/5" : ""}`}>
+      {/* Estado de ingreso del día */}
+      <div className="flex items-center gap-3 px-4 py-3.5">
         <div className="shrink-0">
           {trainedToday ? (
             <div className="flex size-10 items-center justify-center rounded-xl bg-green-500/15">
@@ -43,6 +52,27 @@ export function TodayStatusCard({
         </div>
         <ChevronRight className="size-4 shrink-0 text-zinc-600" />
       </div>
+
+      {/* Alerta de pago — fusionada en la misma card */}
+      {paymentAlert && (
+        <Link href={ROUTES.CLIENTE_PAGOS} className="block">
+          <div className={`flex items-center gap-2 border-t px-4 py-2.5 text-xs ${
+            paymentAlert.status === "pending"
+              ? "border-yellow-600/20 bg-yellow-500/8 text-yellow-400"
+              : "border-red-600/20 bg-red-500/8 text-red-400"
+          }`}>
+            {paymentAlert.status === "pending"
+              ? <Hourglass className="size-3.5 shrink-0" />
+              : <AlertTriangle className="size-3.5 shrink-0" />}
+            <span className="flex-1 font-medium">
+              {paymentAlert.status === "pending"
+                ? "Pago pendiente de aprobación"
+                : "Pago rechazado — toca para ver el detalle"}
+            </span>
+            <ChevronRight className="size-3.5 shrink-0 opacity-50" />
+          </div>
+        </Link>
+      )}
     </Card>
   )
 }

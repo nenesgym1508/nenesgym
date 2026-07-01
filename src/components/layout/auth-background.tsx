@@ -6,7 +6,7 @@ export function AuthBackground() {
   return (
     <div className="absolute inset-0">
       <Image
-        src="/hero.jpg"
+        src="/hero.webp"
         alt=""
         fill
         priority

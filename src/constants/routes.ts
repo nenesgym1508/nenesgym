@@ -18,6 +18,20 @@ export const ROUTES = {
   ADMIN_ASISTENCIAS: '/admin/asistencias',
   ADMIN_PERFIL: '/admin/perfil',
   ADMIN_MAS: '/admin/mas',
+
+  // Admin — Clases
+  ADMIN_CLASES: '/admin/clases',
+  ADMIN_CLASES_EJERCICIOS: '/admin/clases/ejercicios',
+  ADMIN_CLASES_PLANTILLAS: '/admin/clases/plantillas',
+  ADMIN_CLASES_NUEVA: '/admin/clases/nueva',
 } as const
+
+export function adminClienteDetalle(id: string) {
+  return `/admin/clientes/${id}` as const
+}
+
+export function adminClaseDetalle(id: string) {
+  return `/admin/clases/${id}` as const
+}
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES]

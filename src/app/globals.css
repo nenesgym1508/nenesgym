@@ -189,12 +189,10 @@
     transform: scale(1.03);
   }
 }
+
 .animate-btn-heartbeat {
   animation: btn-heartbeat 1.6s ease-in-out infinite;
   transform-origin: center;
-}
-@media (prefers-reduced-motion: reduce) {
-  .animate-btn-heartbeat { animation: none; }
 }
 
 /* ——————————————————————————————————————————

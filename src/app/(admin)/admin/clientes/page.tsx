@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { Users } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { getAllClientsWithMembership, computeEffectiveStatus } from "@/services/memberships.service"
@@ -12,7 +13,7 @@ import { AutoAprobacionToggle } from "@/components/admin/auto-aprobacion-toggle"
 import { DesbloquearToggle } from "@/components/admin/desbloquear-toggle"
 import { formatDate, todayInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
 import { GYM_ID } from "@/constants/plans"
-import { ROUTES } from "@/constants/routes"
+import { ROUTES, adminClienteDetalle } from "@/constants/routes"
 import type { MembershipStatus } from "@/types/membership"
 
 export const dynamic = "force-dynamic"
@@ -118,6 +119,12 @@ export default async function AdminClientesPage() {
                         clientName={ct.profile?.full_name ?? "Cliente"}
                         plans={planOptions}
                       />
+                      <Link
+                        href={adminClienteDetalle(c.id)}
+                        className="flex items-center rounded-lg border border-white/10 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 transition-colors"
+                      >
+                        Ver
+                      </Link>
                     </div>
                   </div>
                   {latestMem && (

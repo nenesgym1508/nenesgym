@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { QrCode, CheckCircle2, Clock, AlertTriangle, Hourglass, ChevronRight } from "lucide-react"
+import { CheckCircle2, Clock } from "lucide-react"
 import { getCurrentClientData } from "@/services/clients.service"
 import { getActiveMembership, computeEffectiveStatus } from "@/services/memberships.service"
 import { getClientAttendance, getMonthlyAttendance } from "@/services/attendance.service"
@@ -14,7 +14,6 @@ import { MembershipSummaryCard } from "@/components/cliente/membership-summary-c
 import { TodayStatusCard } from "@/components/cliente/today-status-card"
 import { QuickProgressCard } from "@/components/cliente/quick-progress-card"
 import { WorkoutStreakCard } from "@/components/cliente/workout-streak-card"
-import { MonthlyGoalCard } from "@/components/cliente/monthly-goal-card"
 import { MotivationalBanner } from "@/components/cliente/motivational-banner"
 import {
   formatDate,
@@ -85,8 +84,6 @@ export default async function ClienteDashboardPage() {
 
   const streak = computeStreak(streakDates, daysPerWeek, nowInBogota())
   const monthlyCount = new Set(monthlyAttendanceData.map(a => a.check_in_date)).size
-  // La meta alcanzable real = días restantes (ya descuenta las faltas transcurridas).
-  const monthlyGoal = remainingDays
 
   const latestPayment = payments[0]
   const paymentAlert =
@@ -144,27 +141,6 @@ export default async function ClienteDashboardPage() {
               />
             </div>
 
-            {/* Aviso de pago — banner minimalista de una línea */}
-            {paymentAlert && (
-              <Link href={ROUTES.CLIENTE_PAGOS}>
-                <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs ${
-                  paymentAlert.status === "pending"
-                    ? "border border-yellow-600/25 bg-yellow-500/8 text-yellow-400"
-                    : "border border-red-600/25 bg-red-500/8 text-red-400"
-                }`}>
-                  {paymentAlert.status === "pending"
-                    ? <Hourglass className="size-3.5 shrink-0" />
-                    : <AlertTriangle className="size-3.5 shrink-0" />}
-                  <span className="flex-1 font-medium">
-                    {paymentAlert.status === "pending"
-                      ? "Pago pendiente de aprobación"
-                      : "Pago rechazado — toca para ver el detalle"}
-                  </span>
-                  <ChevronRight className="size-3.5 shrink-0 opacity-50" />
-                </div>
-              </Link>
-            )}
-
             {/* 3+4. CTA + Estado del día — bloque unificado */}
             <div className="flex flex-col gap-2">
               {bothSessionsDone ? (
@@ -179,16 +155,15 @@ export default async function ClienteDashboardPage() {
               ) : (
                 <Link
                   href={ROUTES.CLIENTE_ASISTENCIA}
-                  className="block animate-btn-heartbeat active:scale-[0.98]"
+                  className="block animate-btn-heartbeat"
                 >
                   <Image
-                    src="/btn-registrar.png"
+                    src="/btn-registrar.webp"
                     alt="Registrar entrada"
                     width={2172}
                     height={724}
                     className="w-full h-auto"
                     priority
-                    unoptimized
                   />
                 </Link>
               )}
@@ -196,6 +171,7 @@ export default async function ClienteDashboardPage() {
                 trainedToday={alreadyToday}
                 sessionsToday={sessionsToday}
                 lastCheckInAt={lastCheckInAt}
+                paymentAlert={paymentAlert}
               />
             </div>
 
@@ -226,7 +202,6 @@ export default async function ClienteDashboardPage() {
 
             {/* 7. Gamificación */}
             <WorkoutStreakCard streak={streak} monthlyCount={monthlyCount} />
-            {monthlyGoal > 0 && <MonthlyGoalCard current={monthlyCount} goal={monthlyGoal} />}
 
             {/* 8. Banner motivacional */}
             <MotivationalBanner />

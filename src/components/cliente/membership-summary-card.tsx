@@ -24,12 +24,11 @@ export function MembershipSummaryCard({
     <Card className="relative overflow-hidden border-red-900/30 bg-zinc-950">
       {/* Imagen de fondo */}
       <Image
-        src="/gym-card-bg.png"
+        src="/gym-card-bg.webp"
         alt=""
         fill
         className="pointer-events-none object-cover object-right opacity-60 select-none"
         priority
-        unoptimized
       />
       {/* Overlay para legibilidad del texto */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/70 to-transparent" />

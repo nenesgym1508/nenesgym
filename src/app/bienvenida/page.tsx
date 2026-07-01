@@ -33,7 +33,7 @@ export default async function BienvenidaPage() {
       {/* Hero */}
       <div className="relative flex flex-1 flex-col items-center justify-center px-6 pt-16 text-center">
         <Image
-          src="/logo-v3.png"
+          src="/logo-v3.webp"
           alt="NENE'S GYM"
           width={224}
           height={224}
