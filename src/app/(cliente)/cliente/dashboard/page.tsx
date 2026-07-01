@@ -88,7 +88,7 @@ export default async function ClienteDashboardPage() {
   const latestPayment = payments[0]
   const paymentAlert =
     latestPayment && (latestPayment.status === "pending" || latestPayment.status === "rejected")
-      ? latestPayment
+      ? { status: latestPayment.status }
       : null
 
   const latestProgress = progress?.latest ?? null
