@@ -352,16 +352,23 @@ export async function POST(req: NextRequest) {
       ? (gym?.daviplata_number ?? null)
       : null
 
-    const nombreCoincide: boolean | null = titularEsperado
+    // Si la IA no pudo leer el campo en el comprobante, es "no verificable"
+    // (null), no una discrepancia real (false) — evita bloquear por una
+    // lectura incompleta en vez de un dato que realmente no coincide.
+    const nombreCoincide: boolean | null = titularEsperado && datos.nombreDestinatario
       ? nombresCoinciden(datos.nombreDestinatario, titularEsperado)
       : null
 
-    const numeroCoincide: boolean | null = numeroEsperado
+    const numeroCoincide: boolean | null = numeroEsperado && datos.numeroDestino
       ? numerosCoinciden(datos.numeroDestino, numeroEsperado)
       : null
 
+    // amountExpected llega en centavos (amount_cents del plan); montoDetectado
+    // por la IA viene en pesos — convertir antes de comparar.
     const coincideMonto: boolean | null =
-      Number(amountExpected) > 0 ? datos.montoDetectado === Number(amountExpected) : null
+      Number(amountExpected) > 0
+        ? datos.montoDetectado === Math.round(Number(amountExpected) / 100)
+        : null
 
     const titularFlexible = clientRow.auto_aprobacion === true
 

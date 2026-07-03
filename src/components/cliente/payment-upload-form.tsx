@@ -6,7 +6,7 @@ import {
   AlertTriangle, ChevronRight, ShieldCheck, Copy, Check, X,
 } from "lucide-react"
 import { uploadPaymentAction } from "@/actions/payments.actions"
-import { formatCOP, computePlanDiscount } from "@/lib/utils"
+import { formatCOP, formatPesos, computePlanDiscount } from "@/lib/utils"
 import { PAYMENT_METHOD_LABELS } from "@/constants/plans"
 import type { Plan } from "@/types/payment"
 
@@ -611,13 +611,13 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
               <div className="rounded-xl border border-yellow-800/40 bg-yellow-950/10 px-4 py-3">
                 <p className="text-xs font-bold text-yellow-400 mb-0.5">⚠️ Monto diferente al registrado</p>
                 <p className="text-xs text-zinc-500">
-                  Esperado {formatCOP(amountCents)}, comprobante muestra {formatCOP(datosIA.monto)}.
+                  Esperado {formatCOP(amountCents)}, comprobante muestra {formatPesos(datosIA.monto)}.
                 </p>
               </div>
             )}
             {!datosIA.imagen_repetida && !datosIA.referencia_repetida && !sinMonto && datosIA.coincide_monto && (
               <div className="rounded-xl border border-green-800/40 bg-green-950/10 px-4 py-2.5">
-                <p className="text-xs font-bold text-green-400">✓ Monto verificado: {formatCOP(datosIA.monto)}</p>
+                <p className="text-xs font-bold text-green-400">✓ Monto verificado: {formatPesos(datosIA.monto)}</p>
               </div>
             )}
 
@@ -653,7 +653,7 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
               <div className="space-y-2">
                 <div>
                   <p className="text-[10px] text-zinc-600">Monto detectado</p>
-                  <p className="text-sm font-bold text-zinc-300">{sinMonto ? "—" : formatCOP(datosIA.monto)}</p>
+                  <p className="text-sm font-bold text-zinc-300">{sinMonto ? "—" : formatPesos(datosIA.monto)}</p>
                 </div>
                 {datosIA.referencia && (
                   <div>

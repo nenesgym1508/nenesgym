@@ -15,6 +15,17 @@ export function formatCOP(cents: number): string {
   }).format(cents / 100)
 }
 
+// Para montos que ya vienen en pesos (no en centavos), como el monto
+// detectado por la IA en un comprobante — no dividir entre 100.
+export function formatPesos(pesos: number): string {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(pesos)
+}
+
 export function computePlanDiscount(planPriceCents: number, planDays: number, singleDayPriceCents: number): number {
   if (planDays <= 1) return 0
   const fullPrice = planDays * singleDayPriceCents
