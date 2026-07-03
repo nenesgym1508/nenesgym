@@ -195,6 +195,16 @@
   transform-origin: center;
 }
 
+@keyframes btn-heartbeat-mobile {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.03); }
+}
+@media (max-width: 767px) {
+  .animate-btn-heartbeat {
+    animation-name: btn-heartbeat-mobile;
+  }
+}
+
 /* ——————————————————————————————————————————
    Design Brief — NENE'S GYM
    Registro: Product (Familiaridad Ganada)

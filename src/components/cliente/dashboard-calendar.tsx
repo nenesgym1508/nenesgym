@@ -1,4 +1,3 @@
-"use client"
 
 import { Card } from "@/components/ui/card"
 import { AttendanceLegend } from "@/components/ui/attendance-legend"
@@ -66,7 +65,7 @@ export function DashboardCalendar({ currentDate, attendanceDates, integrated = f
           const isFreeDay = daysPerWeek === 5 ? (isSun || isSat) : isSun
           const isMissed = inSameMonth && isPast && !isAttended && !isFreeDay && !isBeforeActivation
 
-          let dayClasses = "relative text-[12px] font-medium transition-all flex items-center justify-center w-7 h-7 rounded-full "
+          let dayClasses = "relative text-[12px] font-medium transition-[background-color,color,border-color,box-shadow,transform] flex items-center justify-center w-7 h-7 rounded-full "
 
           if (isCurrentDay) {
             dayClasses += "bg-red-600 text-white shadow-[0_0_18px_rgba(220,38,38,0.7)] font-bold scale-110"

@@ -7,8 +7,9 @@ import { getAvailablePlans } from "@/services/payments.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
 import { MembershipBadge } from "@/components/ui/badge"
-import { GymQrModal } from "@/components/admin/gym-qr-modal"
-import { ActivatePlanModal } from "@/components/admin/activate-plan-modal"
+import dynamicImport from "next/dynamic"
+const GymQrModal = dynamicImport(() => import("@/components/admin/gym-qr-modal").then(m => m.GymQrModal))
+const ActivatePlanModal = dynamicImport(() => import("@/components/admin/activate-plan-modal").then(m => m.ActivatePlanModal))
 import { AutoAprobacionToggle } from "@/components/admin/auto-aprobacion-toggle"
 import { DesbloquearToggle } from "@/components/admin/desbloquear-toggle"
 import { formatDate, todayInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"

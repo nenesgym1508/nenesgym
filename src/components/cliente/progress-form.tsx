@@ -82,7 +82,7 @@ export function ProgressForm({ todayRecord }: ProgressFormProps) {
       {/* Trigger */}
       <button
         onClick={() => setOpen(true)}
-        className="group flex w-full items-center justify-center gap-2.5 rounded-2xl border border-dashed border-white/12 bg-white/[0.02] py-4 text-sm font-medium text-zinc-500 transition-all hover:border-red-600/40 hover:bg-red-950/20 hover:text-zinc-300"
+        className="group flex w-full items-center justify-center gap-2.5 rounded-2xl border border-dashed border-white/12 bg-white/[0.02] py-4 text-sm font-medium text-zinc-500 transition-colors hover:border-red-600/40 hover:bg-red-950/20 hover:text-zinc-300"
       >
         <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-800 transition-colors group-hover:bg-red-600/20">
           {isEdit ? (
@@ -97,7 +97,7 @@ export function ProgressForm({ todayRecord }: ProgressFormProps) {
       {/* Modal */}
       {open && (
         <div
-          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 md:backdrop-blur-sm"
           onClick={handleClose}
         >
           <div

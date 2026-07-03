@@ -43,6 +43,12 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
     return records.filter((r) => new Date(r.measured_date ?? r.recorded_at) >= cutoff)
   }, [records, filter])
 
+  const metricCol = BODY_METRIC_COLUMN[activeMetric]
+  const { metricRecords, metricValues } = useMemo(() => {
+    const recs = filteredRecords.filter((r) => r[metricCol] != null).slice().reverse()
+    return { metricRecords: recs, metricValues: recs.map((r) => r[metricCol] as number) }
+  }, [filteredRecords, metricCol])
+
   if (records.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/8 bg-zinc-900/50 py-10 text-center">
@@ -68,13 +74,7 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
   const bmiCategory = latest.bmi != null ? getBmiCategory(latest.bmi) : null
   const bmiInfo = bmiCategory ? BMI_CATEGORIES[bmiCategory] : null
 
-  const metricCol = BODY_METRIC_COLUMN[activeMetric]
-  const metricRecords = filteredRecords
-    .filter((r) => r[metricCol] != null)
-    .slice()
-    .reverse()
 
-  const metricValues = metricRecords.map((r) => r[metricCol] as number)
 
   return (
     <div className="space-y-4">
@@ -214,13 +214,15 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
           Historial
         </p>
         <div className="overflow-hidden rounded-2xl border border-white/8 bg-zinc-900/60">
-          {records.map((r, i) => (
-            <div
-              key={r.id}
-              className={`px-4 py-3.5 ${
-                i < records.length - 1 ? "border-b border-white/5" : ""
-              }`}
-            >
+          {(() => {
+            const visibleRecords = records.slice(0, 20)
+            return visibleRecords.map((r, i) => (
+              <div
+                key={r.id}
+                className={`px-4 py-3.5 ${
+                  i < visibleRecords.length - 1 ? "border-b border-white/5" : ""
+                }`}
+              >
               <div className="flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-zinc-200">
                   {formatDate(r.measured_date ?? r.recorded_at)}
@@ -271,7 +273,8 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
                 <p className="mt-1 text-[11px] italic text-zinc-600">{r.note}</p>
               )}
             </div>
-          ))}
+          ))
+          })()}
         </div>
       </div>
     </div>

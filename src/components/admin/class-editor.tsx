@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   ChevronLeft, ChevronUp, ChevronDown, Plus, Trash2, BookmarkPlus,
@@ -291,7 +291,7 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
   }
 
   const totalExercises = cls.blocks.reduce((sum, b) => sum + b.exercises.length, 0)
-  const balance = classBalance(cls)
+  const balance = useMemo(() => classBalance(cls), [cls.blocks])
 
   return (
     <div className="pb-36">
@@ -451,7 +451,7 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
       {/* Duplicar para otra fecha */}
       {dupDateModalOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 md:backdrop-blur-sm"
           onClick={() => setDupDateModalOpen(false)}
         >
           <div
@@ -484,7 +484,7 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
       {/* Save as Template Modal */}
       {templateModalOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 md:backdrop-blur-sm"
           onClick={() => setTemplateModalOpen(false)}
         >
           <div
@@ -745,21 +745,23 @@ function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCreateNew
   const [filterType, setFilterType] = useState("")
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  const filtered = exercises.filter((ex) => {
+  const filtered = useMemo(() => exercises.filter((ex) => {
     if (filterGroup && ex.muscle_group !== filterGroup) return false
     if (filterEquipment && ex.equipment !== filterEquipment) return false
     if (filterType && ex.exercise_type !== filterType) return false
     if (search.trim() && !ex.name.toLowerCase().includes(search.trim().toLowerCase())) return false
     return true
-  })
+  }), [exercises, filterGroup, filterEquipment, filterType, search])
 
-  const muscleGroups = [...new Set(exercises.filter((e) => e.muscle_group).map((e) => e.muscle_group!))]
-  const equipments = [...new Set(exercises.filter((e) => e.equipment).map((e) => e.equipment!))]
-  const types = [...new Set(exercises.filter((e) => e.exercise_type).map((e) => e.exercise_type!))]
+  const { muscleGroups, equipments, types } = useMemo(() => ({
+    muscleGroups: [...new Set(exercises.filter((e) => e.muscle_group).map((e) => e.muscle_group!))],
+    equipments:   [...new Set(exercises.filter((e) => e.equipment).map((e) => e.equipment!))],
+    types:        [...new Set(exercises.filter((e) => e.exercise_type).map((e) => e.exercise_type!))],
+  }), [exercises])
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 md:backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -816,8 +818,7 @@ function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCreateNew
                 <div key={ex.id} className="border-b border-white/5">
                   <div className={`flex items-center gap-3 px-4 py-3 ${alreadyIn ? "opacity-40" : ""}`}>
                     {ex.media_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={ex.media_url} alt="" className="size-9 rounded-md object-cover bg-zinc-800 shrink-0" />
+                      <img src={ex.media_url} alt="" loading="lazy" width={36} height={36} className="size-9 rounded-md object-cover bg-zinc-800 shrink-0" />
                     ) : (
                       <div className="size-9 rounded-md bg-zinc-800 shrink-0" />
                     )}

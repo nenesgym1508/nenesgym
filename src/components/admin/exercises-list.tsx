@@ -229,6 +229,9 @@ function ExerciseRow({ ex, isLast, togglingId, onEdit, onToggle, variant }: Exer
         <img
           src={ex.media_url}
           alt=""
+          loading="lazy"
+          width={40}
+          height={40}
           className="h-10 w-10 shrink-0 rounded-lg object-cover bg-zinc-800"
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none" }}
         />

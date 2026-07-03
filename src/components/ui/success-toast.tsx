@@ -34,7 +34,7 @@ export function SuccessToast({
       role="status"
       aria-live="polite"
     >
-      <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 w-full max-w-sm rounded-2xl border border-green-500/30 bg-zinc-900/95 p-5 shadow-[0_8px_40px_rgba(0,0,0,0.5)] backdrop-blur">
+      <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 w-full max-w-sm rounded-2xl border border-green-500/30 bg-zinc-900/95 p-5 shadow-[0_8px_40px_rgba(0,0,0,0.5)] md:backdrop-blur">
         <div className="flex items-center gap-4">
           <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-green-500/15">
             <CheckCircle2 className="size-8 text-green-400" />

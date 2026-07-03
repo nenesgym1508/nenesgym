@@ -281,7 +281,7 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
             return (
               <React.Fragment key={label}>
                 <div className="flex flex-col items-center gap-1">
-                  <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-all ${
+                  <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-colors ${
                     done ? "bg-red-600 text-white"
                     : active ? "border-2 border-red-600 text-red-400 bg-transparent"
                     : "bg-zinc-800 text-zinc-600"
@@ -321,7 +321,7 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
                       key={plan.id}
                       type="button"
                       onClick={() => setSelectedPlan(selectedPlan?.id === plan.id ? null : plan)}
-                      className={`relative w-full flex items-center justify-between rounded-xl border p-4 text-left transition-all ${
+                      className={`relative w-full flex items-center justify-between rounded-xl border p-4 text-left transition-[border-color,background-color,box-shadow] ${
                         selectedPlan?.id === plan.id
                           ? "border-red-500 bg-red-950/20 shadow-[0_0_12px_rgba(239,68,68,0.12)]"
                           : "border-white/10 bg-white/[0.02] hover:border-white/20"
@@ -387,7 +387,7 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
           <button
             onClick={() => needsReceipt ? setPaso("imagen") : handleCash()}
             disabled={amountCents <= 0}
-            className={`w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all ${
+            className={`w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-colors ${
               amountCents > 0
                 ? "bg-red-600 hover:bg-red-700 text-white"
                 : "bg-zinc-800 text-zinc-600 cursor-not-allowed"
@@ -679,7 +679,7 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
               <button
                 onClick={handleConfirmar}
                 disabled={!puede}
-                className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
+                className={`flex-1 py-3 rounded-xl text-sm font-bold transition-colors ${
                   puede
                     ? "bg-red-600 hover:bg-red-700 text-white"
                     : "bg-zinc-800 text-zinc-600 cursor-not-allowed"

@@ -228,7 +228,7 @@ export default function NuevaClasePage() {
       </div>
 
       {/* Footer sticky */}
-      <div className="fixed bottom-16 left-0 right-0 border-t border-white/8 bg-zinc-950/90 backdrop-blur-md p-4">
+      <div className="fixed bottom-16 left-0 right-0 border-t border-white/8 bg-zinc-950/90 md:backdrop-blur-md p-4">
         <button
           onClick={handleCreate}
           disabled={loading}

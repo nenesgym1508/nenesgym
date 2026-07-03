@@ -10,7 +10,8 @@ import { getClientPayments } from "@/services/payments.service"
 import { getAvailablePlans } from "@/services/payments.service"
 import { Card } from "@/components/ui/card"
 import { MembershipBadge, PaymentBadge } from "@/components/ui/badge"
-import { ActivatePlanModal } from "@/components/admin/activate-plan-modal"
+import dynamicImport from "next/dynamic"
+const ActivatePlanModal = dynamicImport(() => import("@/components/admin/activate-plan-modal").then(m => m.ActivatePlanModal))
 import { AutoAprobacionToggle } from "@/components/admin/auto-aprobacion-toggle"
 import { DesbloquearToggle } from "@/components/admin/desbloquear-toggle"
 import { ROUTES } from "@/constants/routes"
@@ -89,7 +90,7 @@ export default async function AdminClienteDetallePage({
   return (
     <div>
       {/* Header */}
-      <div className="sticky top-0 z-10 border-b border-white/5 bg-background/95 backdrop-blur px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-10 border-b border-white/5 bg-background/95 md:backdrop-blur px-4 py-3 flex items-center gap-3">
         <Link
           href={ROUTES.ADMIN_CLIENTES}
           className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 hover:bg-zinc-700 transition-colors"

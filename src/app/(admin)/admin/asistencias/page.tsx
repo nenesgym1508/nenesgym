@@ -5,8 +5,9 @@ import { getTodayAttendance } from "@/services/attendance.service"
 import { getAllClients } from "@/services/clients.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
-import { GymQrModal } from "@/components/admin/gym-qr-modal"
-import { ManualCheckInModal } from "@/components/admin/manual-checkin-modal"
+import dynamic from "next/dynamic"
+const GymQrModal = dynamic(() => import("@/components/admin/gym-qr-modal").then(m => m.GymQrModal))
+const ManualCheckInModal = dynamic(() => import("@/components/admin/manual-checkin-modal").then(m => m.ManualCheckInModal))
 import { formatDatetime } from "@/lib/dates"
 import { GYM_ID } from "@/constants/plans"
 import { ROUTES } from "@/constants/routes"

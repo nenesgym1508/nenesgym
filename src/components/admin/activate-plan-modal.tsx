@@ -130,7 +130,7 @@ export function ActivatePlanModal({ clientId, clientName, plans }: ActivatePlanM
                           <button
                             key={p.id}
                             onClick={() => setPlanId(p.id)}
-                            className={`w-full flex items-center justify-between rounded-xl border p-3.5 text-left transition-all ${
+                            className={`w-full flex items-center justify-between rounded-xl border p-3.5 text-left transition-[border-color,background-color,color,box-shadow] ${
                               planId === p.id
                                 ? "border-red-500 bg-red-950/20 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.15)]"
                                 : "border-white/10 bg-white/[0.02] text-zinc-300 hover:border-white/20"
