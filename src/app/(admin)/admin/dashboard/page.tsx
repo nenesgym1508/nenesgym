@@ -33,30 +33,42 @@ export default async function AdminDashboardPage() {
     getAllClients(),
   ])
 
+  const hasPending = pendingPayments.length > 0
+  const initial = (profile?.full_name ?? "A").charAt(0).toUpperCase()
+
   const stats = [
-    { label: "Clientes", value: allClients.length, icon: Users, href: ROUTES.ADMIN_CLIENTES, color: "text-blue-400", bg: "bg-blue-500/10" },
-    { label: "Pagos pendientes", value: pendingPayments.length, icon: CreditCard, href: ROUTES.ADMIN_PAGOS, color: pendingPayments.length > 0 ? "text-yellow-400" : "text-zinc-400", bg: pendingPayments.length > 0 ? "bg-yellow-500/10" : "bg-zinc-800" },
-    { label: "Ingresos hoy", value: todayAttendance.length, icon: CheckSquare, href: ROUTES.ADMIN_ASISTENCIAS, color: "text-green-400", bg: "bg-green-500/10" },
+    { label: "Clientes", value: allClients.length, icon: Users, href: ROUTES.ADMIN_CLIENTES, urgent: false },
+    { label: "Pagos pendientes", value: pendingPayments.length, icon: CreditCard, href: ROUTES.ADMIN_PAGOS, urgent: hasPending },
+    { label: "Ingresos hoy", value: todayAttendance.length, icon: CheckSquare, href: ROUTES.ADMIN_ASISTENCIAS, urgent: false },
   ]
 
   return (
     <div>
       <PageHeader title="Panel Admin" showLogout />
       <div className="p-4 space-y-5">
-        <div>
-          <p className="text-zinc-400 text-sm">Bienvenido,</p>
-          <h2 className="text-xl font-bold">{profile?.full_name ?? "Admin"}</h2>
+        <div className="flex items-center gap-3">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-white/8 text-lg font-bold text-zinc-100">
+            {initial}
+          </div>
+          <div className="min-w-0">
+            <p className="text-zinc-500 text-xs">Bienvenido,</p>
+            <h2 className="text-lg font-bold text-zinc-100 truncate">{profile?.full_name ?? "Admin"}</h2>
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
-          {stats.map(({ label, value, icon: Icon, href, color, bg }) => (
+          {stats.map(({ label, value, icon: Icon, href, urgent }) => (
             <Link key={href} href={href}>
-              <Card className="flex flex-col items-center gap-2 py-4 hover:border-white/20 transition-colors">
-                <div className={`size-9 rounded-xl ${bg} flex items-center justify-center`}>
-                  <Icon className={`size-5 ${color}`} />
+              <Card
+                className={`flex flex-col items-center gap-2 py-4 transition-colors hover:border-white/20 ${
+                  urgent ? "border-red-600/30 bg-red-950/10" : ""
+                }`}
+              >
+                <div className={`flex size-9 items-center justify-center rounded-full ${urgent ? "bg-red-600" : "bg-white/8"}`}>
+                  <Icon className="size-5 text-white" />
                 </div>
                 <span className="text-2xl font-black text-zinc-100">{value}</span>
-                <span className="text-[10px] text-zinc-500 text-center leading-tight">{label}</span>
+                <span className="text-[10px] text-zinc-500 text-center leading-tight uppercase tracking-wide">{label}</span>
               </Card>
             </Link>
           ))}
@@ -76,7 +88,11 @@ export default async function AdminDashboardPage() {
               {pendingPayments.slice(0, 3).map((p, i) => {
                 const pay = p as typeof p & { client?: { profile?: { full_name?: string | null } }; plan?: { name: string } | null }
                 return (
-                  <div key={p.id} className={`flex items-center gap-3 px-4 py-3 ${i < Math.min(pendingPayments.length, 3) - 1 ? "border-b border-white/5" : ""}`}>
+                  <Link
+                    key={p.id}
+                    href={ROUTES.ADMIN_PAGOS}
+                    className={`flex items-center gap-3 px-4 py-3 hover:bg-zinc-800/50 transition-colors ${i < Math.min(pendingPayments.length, 3) - 1 ? "border-b border-white/5" : ""}`}
+                  >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-zinc-200 truncate">
                         {pay.client?.profile?.full_name ?? "Cliente"}
@@ -89,7 +105,7 @@ export default async function AdminDashboardPage() {
                       <p className="text-sm font-semibold text-zinc-200">{formatCOP(p.amount_cents)}</p>
                       <PaymentBadge status={p.status} />
                     </div>
-                  </div>
+                  </Link>
                 )
               })}
             </Card>
@@ -98,16 +114,25 @@ export default async function AdminDashboardPage() {
 
         {todayAttendance.length > 0 && (
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-3">
-              Ingresos de hoy ({todayAttendance.length})
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+                Ingresos de hoy ({todayAttendance.length})
+              </h3>
+              <Link href={ROUTES.ADMIN_ASISTENCIAS} className="text-xs text-red-500 hover:text-red-400">
+                Ver todos
+              </Link>
+            </div>
             <Card className="p-0 overflow-hidden">
               {todayAttendance.slice(0, 5).map((a, i) => {
                 const att = a as typeof a & { client?: { profile?: { full_name?: string | null } } }
                 return (
-                  <div key={a.id} className={`flex items-center gap-3 px-4 py-3 ${i < Math.min(todayAttendance.length, 5) - 1 ? "border-b border-white/5" : ""}`}>
-                    <div className="size-8 rounded-full bg-green-500/10 flex items-center justify-center">
-                      <Clock className="size-4 text-green-400" />
+                  <Link
+                    key={a.id}
+                    href={ROUTES.ADMIN_ASISTENCIAS}
+                    className={`flex items-center gap-3 px-4 py-3 hover:bg-zinc-800/50 transition-colors ${i < Math.min(todayAttendance.length, 5) - 1 ? "border-b border-white/5" : ""}`}
+                  >
+                    <div className="flex size-8 items-center justify-center rounded-full bg-white/8">
+                      <Clock className="size-4 text-white" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-zinc-200">
@@ -115,7 +140,7 @@ export default async function AdminDashboardPage() {
                       </p>
                       <p className="text-xs text-zinc-500">{formatDatetime(a.checked_in_at)}</p>
                     </div>
-                  </div>
+                  </Link>
                 )
               })}
             </Card>
