@@ -5,18 +5,11 @@ export async function getCurrentClientData() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single()
+  const [{ data: profile }, { data: client }] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", user.id).single(),
+    supabase.from("clients").select("*").eq("profile_id", user.id).single(),
+  ])
   if (!profile) return null
-
-  const { data: client } = await supabase
-    .from("clients")
-    .select("*")
-    .eq("profile_id", user.id)
-    .single()
 
   return { user, profile, client }
 }
