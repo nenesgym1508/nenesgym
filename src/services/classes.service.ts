@@ -64,7 +64,7 @@ export async function getDailyClassWithBlocks(id: string): Promise<DailyClassWit
   for (const block of blocks ?? []) {
     const { data: blockExercises } = await supabase
       .from("class_block_exercises")
-      .select("*, exercise:exercises(id, name, muscle_group, exercise_type)")
+      .select("*, exercise:exercises(id, name, muscle_group, exercise_type, equipment, secondary_muscle_groups, media_url, instructions)")
       .eq("block_id", block.id)
       .order("position")
 

@@ -4,11 +4,13 @@ import { useState, useTransition, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   ChevronLeft, ChevronUp, ChevronDown, Plus, Trash2, BookmarkPlus,
-  Copy, Eye, EyeOff, Loader2, X, Check, Info, CalendarPlus, Layers,
+  Copy, Eye, Loader2, X, Check, Info, CalendarPlus, Layers, Dumbbell,
+  Archive, Send,
 } from "lucide-react"
 import Link from "next/link"
 import {
   updateClassAction,
+  deleteClassAction,
   addBlockAction,
   updateBlockTitleAction,
   deleteBlockAction,
@@ -22,6 +24,7 @@ import {
 } from "@/actions/classes.actions"
 import { saveClassAsTemplateAction } from "@/actions/templates.actions"
 import { ExerciseForm } from "@/components/admin/exercise-form"
+import { ActionMenu } from "@/components/ui/action-menu"
 import { ROUTES } from "@/constants/routes"
 import {
   CLASS_OBJECTIVE_LABELS,
@@ -96,6 +99,8 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
   const [dupDate, setDupDate] = useState(addDays(initialClass.class_date, 1))
   const [savingTemplate, setSavingTemplate] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
+  const [archiving, setArchiving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [scaffolding, setScaffolding] = useState(false)
   const [blockTitleEdit, setBlockTitleEdit] = useState<string | null>(null)
   const [blockTitleValue, setBlockTitleValue] = useState("")
@@ -108,6 +113,22 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
     const result = await updateClassAction(cls.id, { status: newStatus })
     setStatusUpdating(false)
     if (!result.error) setCls((prev) => ({ ...prev, status: newStatus as typeof prev.status }))
+  }
+
+  const handleArchive = async () => {
+    if (!window.confirm("¿Archivar esta clase? Dejará de aparecer en el calendario activo.")) return
+    setArchiving(true)
+    const result = await updateClassAction(cls.id, { status: "archived" })
+    setArchiving(false)
+    if (!result.error) router.push(ROUTES.ADMIN_CLASES)
+  }
+
+  const handleDelete = async () => {
+    if (!window.confirm("¿Eliminar esta clase de forma permanente? Esta acción no se puede deshacer.")) return
+    setDeleting(true)
+    const result = await deleteClassAction(cls.id)
+    setDeleting(false)
+    if (!result.error) router.push(ROUTES.ADMIN_CLASES)
   }
 
   // ── Bloques ───────────────────────────────────────────────────────────────
@@ -197,7 +218,16 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
         rest_seconds: 60,
         suggested_weight: null,
         notes: null,
-        exercise: { id: exercise.id, name: exercise.name, muscle_group: exercise.muscle_group, exercise_type: exercise.exercise_type },
+        exercise: {
+          id: exercise.id,
+          name: exercise.name,
+          muscle_group: exercise.muscle_group,
+          exercise_type: exercise.exercise_type,
+          equipment: exercise.equipment,
+          secondary_muscle_groups: exercise.secondary_muscle_groups,
+          media_url: exercise.media_url,
+          instructions: exercise.instructions,
+        },
       }
       setCls((prev) => ({
         ...prev,
@@ -240,21 +270,23 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
     })
   }
 
-  const handleUpdateExerciseField = async (
+  const handleUpdateExerciseField = (
     exId: string,
     blockId: string,
     field: string,
     value: string | number | null
   ) => {
-    await updateBlockExerciseAction(exId, cls.id, { [field]: value ?? undefined })
-    setCls((prev) => ({
-      ...prev,
-      blocks: prev.blocks.map((b) =>
-        b.id === blockId
-          ? { ...b, exercises: b.exercises.map((e) => (e.id === exId ? { ...e, [field]: value } : e)) }
-          : b
-      ),
-    }))
+    startTransition(async () => {
+      await updateBlockExerciseAction(exId, cls.id, { [field]: value ?? undefined })
+      setCls((prev) => ({
+        ...prev,
+        blocks: prev.blocks.map((b) =>
+          b.id === blockId
+            ? { ...b, exercises: b.exercises.map((e) => (e.id === exId ? { ...e, [field]: value } : e)) }
+            : b
+        ),
+      }))
+    })
   }
 
   // ── Picker / crear ejercicio ──────────────────────────────────────────────
@@ -308,54 +340,68 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
             {totalExercises > 0 ? ` · ${totalExercises} ejercicios` : ""}
           </p>
         </div>
+        <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-zinc-600 shrink-0">
+          {isPending ? (
+            <><Loader2 className="size-3 animate-spin" /> Guardando…</>
+          ) : (
+            <><Check className="size-3" /> Guardado</>
+          )}
+        </div>
         <button
           onClick={handleStatusToggle}
           disabled={statusUpdating}
-          className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors shrink-0 disabled:opacity-60 ${
             cls.status === "published"
               ? "bg-green-600/15 text-green-400 hover:bg-red-600/10 hover:text-red-400"
-              : "bg-zinc-800 text-zinc-400 hover:bg-green-600/15 hover:text-green-400"
+              : "bg-red-600 text-white hover:bg-red-700"
           }`}
-          aria-label={cls.status === "published" ? "Despublicar" : "Publicar"}
+          aria-label={cls.status === "published" ? "Volver a borrador" : "Publicar clase"}
         >
           {statusUpdating ? (
             <Loader2 className="size-3.5 animate-spin" />
           ) : cls.status === "published" ? (
             <><Eye className="size-3.5" /> Publicada</>
           ) : (
-            <><EyeOff className="size-3.5" /> Borrador</>
+            <><Send className="size-3.5" /> Publicar</>
           )}
         </button>
+        <ActionMenu
+          items={[
+            {
+              label: "Guardar como plantilla",
+              icon: <BookmarkPlus className="size-4" />,
+              onClick: () => setTemplateModalOpen(true),
+            },
+            {
+              label: "Duplicar para mañana",
+              icon: <Copy className="size-4" />,
+              onClick: () => runDuplicate(addDays(cls.class_date, 1)),
+              disabled: duplicating,
+            },
+            {
+              label: "Duplicar para otra fecha",
+              icon: <CalendarPlus className="size-4" />,
+              onClick: () => { setDupDate(addDays(cls.class_date, 1)); setDupDateModalOpen(true) },
+              disabled: duplicating,
+            },
+            {
+              label: "Archivar",
+              icon: <Archive className="size-4" />,
+              onClick: handleArchive,
+              disabled: archiving,
+            },
+            {
+              label: "Eliminar",
+              icon: <Trash2 className="size-4" />,
+              onClick: handleDelete,
+              destructive: true,
+              disabled: deleting,
+            },
+          ]}
+        />
       </header>
 
       <div className="p-4 space-y-4">
-        {/* Acciones rápidas */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setTemplateModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-400 hover:bg-zinc-800 transition-colors"
-          >
-            <BookmarkPlus className="size-3.5" />
-            Guardar como plantilla
-          </button>
-          <button
-            onClick={() => runDuplicate(addDays(cls.class_date, 1))}
-            disabled={duplicating}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-400 hover:bg-zinc-800 transition-colors"
-          >
-            {duplicating ? <Loader2 className="size-3.5 animate-spin" /> : <Copy className="size-3.5" />}
-            Duplicar para mañana
-          </button>
-          <button
-            onClick={() => { setDupDate(addDays(cls.class_date, 1)); setDupDateModalOpen(true) }}
-            disabled={duplicating}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-400 hover:bg-zinc-800 transition-colors"
-          >
-            <CalendarPlus className="size-3.5" />
-            Otra fecha
-          </button>
-        </div>
-
         {/* Enfoque de la clase (balance muscular) */}
         {balance.length > 0 && (
           <div className="rounded-2xl border border-white/8 bg-zinc-900/60 p-4">
@@ -426,6 +472,17 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
         >
           <Plus className="size-4" />
           Añadir bloque
+        </button>
+      </div>
+
+      {/* Barra inferior: confirmar y salir del editor */}
+      <div className="fixed bottom-16 left-0 right-0 border-t border-white/8 bg-zinc-950/90 md:backdrop-blur-md p-4">
+        <button
+          onClick={() => router.push(ROUTES.ADMIN_CLASES)}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-800 py-3 text-sm font-semibold text-zinc-100 hover:bg-zinc-700 transition-colors"
+        >
+          <Check className="size-4" />
+          Listo
         </button>
       </div>
 
@@ -520,7 +577,7 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
 
 // ─── Block Card ───────────────────────────────────────────────────────────────
 
-interface BlockCardProps {
+export interface BlockCardProps {
   block: ClassBlock
   isFirst: boolean
   isLast: boolean
@@ -540,7 +597,7 @@ interface BlockCardProps {
   onUpdateExercise: (exId: string, field: string, val: string | number | null) => void
 }
 
-function BlockCard({
+export function BlockCard({
   block, isFirst, isLast, isPending,
   editingTitle, editTitleValue,
   onStartEditTitle, onChangeTitleValue, onSaveTitle, onCancelTitle,
@@ -630,7 +687,7 @@ function BlockCard({
 
 // ─── Exercise Row ─────────────────────────────────────────────────────────────
 
-interface ExerciseRowProps {
+export interface ExerciseRowProps {
   ex: BlockExercise
   isFirst: boolean
   isLast: boolean
@@ -641,24 +698,81 @@ interface ExerciseRowProps {
   onUpdate: (field: string, val: string | number | null) => void
 }
 
-function ExerciseRow({ ex, isFirst, isLast, isPending, onMoveUp, onMoveDown, onRemove, onUpdate }: ExerciseRowProps) {
+export function ExerciseRow({ ex, isFirst, isLast, isPending, onMoveUp, onMoveDown, onRemove, onUpdate }: ExerciseRowProps) {
+  const [expanded, setExpanded] = useState(false)
+
+  const muscleLabel = ex.exercise.muscle_group
+    ? MUSCLE_GROUP_LABELS[ex.exercise.muscle_group as keyof typeof MUSCLE_GROUP_LABELS] ?? ex.exercise.muscle_group
+    : null
+  const equipmentLabel = ex.exercise.equipment
+    ? EQUIPMENT_LABELS[ex.exercise.equipment as keyof typeof EQUIPMENT_LABELS] ?? ex.exercise.equipment
+    : null
+
+  const summaryParts: string[] = []
+  if (ex.sets != null && ex.reps != null) summaryParts.push(`${ex.sets} x ${ex.reps}`)
+  else if (ex.sets != null) summaryParts.push(`${ex.sets} series`)
+  else if (ex.reps != null) summaryParts.push(`${ex.reps} reps`)
+  if (ex.duration_seconds != null) summaryParts.push(`${ex.duration_seconds}s`)
+  if (ex.rest_seconds != null) summaryParts.push(`Descanso ${ex.rest_seconds}s`)
+  if (ex.suggested_weight) summaryParts.push(ex.suggested_weight)
+
   return (
     <div className="px-3 py-2.5">
-      <div className="flex items-start gap-2">
-        <div className="flex flex-col gap-0.5 shrink-0 pt-0.5">
-          <button onClick={onMoveUp} disabled={isFirst || isPending} className="flex h-4 w-4 items-center justify-center text-zinc-700 hover:text-zinc-400 disabled:opacity-20">
-            <ChevronUp className="size-3" />
-          </button>
-          <button onClick={onMoveDown} disabled={isLast || isPending} className="flex h-4 w-4 items-center justify-center text-zinc-700 hover:text-zinc-400 disabled:opacity-20">
-            <ChevronDown className="size-3" />
-          </button>
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-zinc-200 leading-snug">{ex.exercise.name}</p>
-          {ex.exercise.muscle_group && (
-            <p className="text-[10px] text-zinc-600">{MUSCLE_GROUP_LABELS[ex.exercise.muscle_group as keyof typeof MUSCLE_GROUP_LABELS] ?? ex.exercise.muscle_group}</p>
+      <div className="flex items-center gap-2.5">
+        {ex.exercise.media_url ? (
+          <img
+            src={ex.exercise.media_url}
+            alt=""
+            loading="lazy"
+            width={36}
+            height={36}
+            className="size-9 shrink-0 rounded-md object-cover bg-zinc-800"
+            onError={(e) => { e.currentTarget.style.display = "none" }}
+          />
+        ) : (
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-600">
+            <Dumbbell className="size-4" />
+          </div>
+        )}
+
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex-1 min-w-0 text-left"
+        >
+          <p className="text-sm font-medium text-zinc-200 leading-snug truncate">{ex.exercise.name}</p>
+          <p className="text-[11px] text-zinc-500 truncate">
+            {[muscleLabel, equipmentLabel].filter(Boolean).join(" · ") || "Sin datos"}
+          </p>
+          {summaryParts.length > 0 && (
+            <p className="text-[11px] text-zinc-400 truncate">{summaryParts.join(" · ")}</p>
           )}
-          <div className="mt-2 grid grid-cols-4 gap-1.5">
+        </button>
+
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="shrink-0 text-zinc-600 hover:text-zinc-300 transition-colors"
+          aria-label={expanded ? "Cerrar edición" : "Editar"}
+        >
+          {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="mt-2.5 pl-[46px]">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex gap-1">
+              <button onClick={onMoveUp} disabled={isFirst || isPending} className="flex h-6 w-6 items-center justify-center rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-20">
+                <ChevronUp className="size-3.5" />
+              </button>
+              <button onClick={onMoveDown} disabled={isLast || isPending} className="flex h-6 w-6 items-center justify-center rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-20">
+                <ChevronDown className="size-3.5" />
+              </button>
+            </div>
+            <button onClick={onRemove} disabled={isPending} className="flex items-center gap-1 text-xs text-zinc-600 hover:text-red-400 transition-colors">
+              <X className="size-3.5" /> Quitar
+            </button>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5">
             <NumField label="Series" value={ex.sets} onChange={(v) => onUpdate("sets", v)} />
             <NumField label="Reps" value={ex.reps} onChange={(v) => onUpdate("reps", v)} />
             <NumField label="Seg" value={ex.duration_seconds} onChange={(v) => onUpdate("duration_seconds", v)} />
@@ -669,15 +783,12 @@ function ExerciseRow({ ex, isFirst, isLast, isPending, onMoveUp, onMoveDown, onR
             <TextField label="Nota" value={ex.notes} placeholder="Opcional" onChange={(v) => onUpdate("notes", v)} />
           </div>
         </div>
-        <button onClick={onRemove} disabled={isPending} className="shrink-0 pt-0.5 text-zinc-700 hover:text-red-400 transition-colors">
-          <X className="size-3.5" />
-        </button>
-      </div>
+      )}
     </div>
   )
 }
 
-function NumField({
+export function NumField({
   label,
   value,
   onChange,
@@ -701,7 +812,7 @@ function NumField({
   )
 }
 
-function TextField({
+export function TextField({
   label,
   value,
   placeholder,
@@ -730,7 +841,7 @@ function TextField({
 
 // ─── Exercise Picker ──────────────────────────────────────────────────────────
 
-interface ExercisePickerProps {
+export interface ExercisePickerProps {
   exercises: Exercise[]
   existingIds: string[]
   onSelect: (exercise: Exercise) => void
@@ -738,7 +849,7 @@ interface ExercisePickerProps {
   onCreateNew: () => void
 }
 
-function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCreateNew }: ExercisePickerProps) {
+export function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCreateNew }: ExercisePickerProps) {
   const [search, setSearch] = useState("")
   const [filterGroup, setFilterGroup] = useState("")
   const [filterEquipment, setFilterEquipment] = useState("")
@@ -766,7 +877,7 @@ function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCreateNew
     >
       <div
         className="w-full max-w-lg rounded-t-3xl border border-white/10 bg-zinc-900 flex flex-col"
-        style={{ maxHeight: "80vh" }}
+        style={{ height: "80vh", maxHeight: "80vh" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
@@ -818,9 +929,19 @@ function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCreateNew
                 <div key={ex.id} className="border-b border-white/5">
                   <div className={`flex items-center gap-3 px-4 py-3 ${alreadyIn ? "opacity-40" : ""}`}>
                     {ex.media_url ? (
-                      <img src={ex.media_url} alt="" loading="lazy" width={36} height={36} className="size-9 rounded-md object-cover bg-zinc-800 shrink-0" />
+                      <img
+                        src={ex.media_url}
+                        alt=""
+                        loading="lazy"
+                        width={36}
+                        height={36}
+                        className="size-9 rounded-md object-cover bg-zinc-800 shrink-0"
+                        onError={(e) => { e.currentTarget.style.display = "none" }}
+                      />
                     ) : (
-                      <div className="size-9 rounded-md bg-zinc-800 shrink-0" />
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-600">
+                        <Dumbbell className="size-4" />
+                      </div>
                     )}
                     <button
                       onClick={() => !alreadyIn && onSelect(ex)}

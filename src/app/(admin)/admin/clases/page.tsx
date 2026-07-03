@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { Plus, Dumbbell, BookOpen, ChevronRight, CheckCircle2, AlertCircle } from "lucide-react"
+import { Plus, Dumbbell, BookOpen, ChevronRight, CheckCircle2, AlertCircle, Wand2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { getDailyClassByDate, getWeekMuscleBalance, CLASS_OBJECTIVE_LABELS } from "@/services/classes.service"
 import { PageHeader } from "@/components/layout/page-header"
@@ -89,19 +89,17 @@ export default async function AdminClasesPage() {
             <span className="text-sm font-medium text-zinc-300">Plantillas</span>
           </Link>
         </div>
+        <Link
+          href={ROUTES.ADMIN_CLASES_NUEVA}
+          className="flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+        >
+          <Plus className="size-4" />
+          Nueva clase
+        </Link>
 
         {/* Hoy */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Hoy</p>
-            <Link
-              href={`${ROUTES.ADMIN_CLASES_NUEVA}?date=${today}`}
-              className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 transition-colors"
-            >
-              <Plus className="size-3.5" />
-              Nueva
-            </Link>
-          </div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Hoy</p>
           {todayClass ? (
             <Link href={adminClaseDetalle(todayClass.id)}>
               <Card className="hover:bg-zinc-800/60 transition-colors cursor-pointer">
@@ -163,15 +161,25 @@ export default async function AdminClasesPage() {
               </Card>
             </Link>
           ) : (
-            <Link href={`${ROUTES.ADMIN_CLASES_NUEVA}?date=${tomorrow}`}>
-              <Card className="hover:bg-red-950/20 transition-colors cursor-pointer border-dashed border-red-600/20">
-                <div className="flex items-center gap-3">
-                  <Plus className="size-4 text-red-500" />
-                  <p className="text-sm font-medium text-red-400">Preparar clase de mañana</p>
-                  <ChevronRight className="size-4 text-zinc-600 ml-auto" />
-                </div>
-              </Card>
-            </Link>
+            <Card className="border-dashed border-red-600/20">
+              <p className="text-sm text-zinc-400 mb-3">No hay clase preparada para mañana.</p>
+              <div className="flex gap-2">
+                <Link
+                  href={`${ROUTES.ADMIN_CLASES_NUEVA}?date=${tomorrow}`}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-red-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+                >
+                  <Plus className="size-4" />
+                  Preparar clase
+                </Link>
+                <Link
+                  href={`${ROUTES.ADMIN_CLASES_NUEVA}?date=${tomorrow}&modo=generar`}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-zinc-800 px-3 py-2.5 text-sm font-semibold text-zinc-300 hover:bg-zinc-700 transition-colors"
+                >
+                  <Wand2 className="size-4" />
+                  Generar
+                </Link>
+              </div>
+            </Card>
           )}
         </div>
 
@@ -222,18 +230,18 @@ export default async function AdminClasesPage() {
 
         {/* Balance semanal */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Balance semanal</p>
-          <Card>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mb-2">Balance semanal</p>
+          <Card className="p-3">
             {balanceMessage ? (
-              <p className="text-sm text-zinc-500 text-center py-2">{balanceMessage}</p>
+              <p className="text-xs text-zinc-500 text-center py-1">{balanceMessage}</p>
             ) : (
               <>
-                <div className="space-y-1.5">
-                  {balanceRows.map((r) => (
-                    <div key={r.group} className="flex items-center justify-between text-sm">
-                      <span className="text-zinc-300">{MUSCLE_GROUP_LABELS[r.group]}</span>
+                <div className="space-y-1">
+                  {balanceRows.slice(0, 4).map((r) => (
+                    <div key={r.group} className="flex items-center justify-between text-xs">
+                      <span className="text-zinc-400">{MUSCLE_GROUP_LABELS[r.group]}</span>
                       <span
-                        className={`text-xs font-semibold ${
+                        className={`text-[11px] font-semibold ${
                           r.level === "Alto" ? "text-green-400" : r.level === "Medio" ? "text-yellow-400" : "text-zinc-500"
                         }`}
                       >
@@ -242,7 +250,7 @@ export default async function AdminClasesPage() {
                     </div>
                   ))}
                 </div>
-                <div className="mt-3 border-t border-white/5 pt-2.5 space-y-1">
+                <div className="mt-2 border-t border-white/5 pt-2 space-y-0.5">
                   {topGroup && (
                     <p className="text-[11px] text-zinc-500">
                       Esta semana has trabajado bastante {MUSCLE_GROUP_LABELS[topGroup.group].toLowerCase()}.

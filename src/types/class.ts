@@ -1,3 +1,5 @@
+import type { MuscleGroup, Equipment } from "@/types/exercise"
+
 export type ClassObjective =
   | "fuerza" | "hipertrofia" | "cardio" | "tecnica" | "movilidad" | "full_body" | "general"
 
@@ -38,6 +40,10 @@ export interface BlockExercise {
     name: string
     muscle_group: string | null
     exercise_type: string | null
+    equipment: Equipment | null
+    secondary_muscle_groups: MuscleGroup[] | null
+    media_url: string | null
+    instructions: string | null
   }
 }
 

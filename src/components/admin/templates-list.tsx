@@ -2,9 +2,11 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Plus, Copy, Power, Loader2, ChevronRight, BookOpen, X } from "lucide-react"
 import { toggleTemplateAction, createClassFromTemplateAction } from "@/actions/templates.actions"
 import { CLASS_OBJECTIVE_LABELS } from "@/types/class"
+import { adminPlantillaDetalle } from "@/constants/routes"
 import type { ClassTemplate } from "@/services/templates.service"
 
 interface TemplatesListProps {
@@ -67,17 +69,23 @@ export function TemplatesList({ initialTemplates, userId }: TemplatesListProps) 
               !tpl.is_active ? "opacity-50" : ""
             } ${i < templates.length - 1 ? "border-b border-white/5" : ""}`}
           >
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-zinc-200 truncate">{tpl.name}</p>
-              <div className="mt-0.5 flex items-center gap-2 text-xs text-zinc-500">
-                {tpl.objective && (
-                  <span>{CLASS_OBJECTIVE_LABELS[tpl.objective as keyof typeof CLASS_OBJECTIVE_LABELS] ?? tpl.objective}</span>
-                )}
-                {tpl.estimated_duration_minutes && (
-                  <span>{tpl.estimated_duration_minutes} min</span>
-                )}
+            <Link href={adminPlantillaDetalle(tpl.id)} className="flex-1 min-w-0 flex items-center gap-1 hover:opacity-80 transition-opacity">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-zinc-200 truncate">{tpl.name}</p>
+                <div className="mt-0.5 flex items-center gap-2 text-xs text-zinc-500">
+                  {tpl.exercise_count != null && (
+                    <span>{tpl.exercise_count} ejercicio{tpl.exercise_count === 1 ? "" : "s"}</span>
+                  )}
+                  {tpl.objective && (
+                    <span>{CLASS_OBJECTIVE_LABELS[tpl.objective as keyof typeof CLASS_OBJECTIVE_LABELS] ?? tpl.objective}</span>
+                  )}
+                  {tpl.estimated_duration_minutes && (
+                    <span>{tpl.estimated_duration_minutes} min</span>
+                  )}
+                </div>
               </div>
-            </div>
+              <ChevronRight className="size-4 text-zinc-600 shrink-0" />
+            </Link>
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => {

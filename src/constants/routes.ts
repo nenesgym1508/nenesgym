@@ -34,4 +34,8 @@ export function adminClaseDetalle(id: string) {
   return `/admin/clases/${id}` as const
 }
 
+export function adminPlantillaDetalle(id: string) {
+  return `/admin/clases/plantillas/${id}` as const
+}
+
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES]

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { GYM_ID } from "@/constants/plans"
+import type { MuscleGroup, Equipment } from "@/types/exercise"
 
 export interface ClassTemplate {
   id: string
@@ -12,6 +13,7 @@ export interface ClassTemplate {
   is_active: boolean
   created_at: string
   updated_at: string
+  exercise_count?: number
 }
 
 export interface TemplateBlock {
@@ -37,6 +39,11 @@ export interface TemplateBlockExercise {
     id: string
     name: string
     muscle_group: string | null
+    exercise_type: string | null
+    equipment: Equipment | null
+    secondary_muscle_groups: MuscleGroup[] | null
+    media_url: string | null
+    instructions: string | null
   }
 }
 
@@ -48,7 +55,22 @@ export async function getTemplates(): Promise<ClassTemplate[]> {
     .eq("gym_id", GYM_ID)
     .eq("is_active", true)
     .order("name")
-  return (data ?? []) as ClassTemplate[]
+
+  const templates = (data ?? []) as ClassTemplate[]
+  if (templates.length === 0) return templates
+
+  const { data: blocks } = await supabase
+    .from("template_blocks")
+    .select("template_id, template_block_exercises(id)")
+    .in("template_id", templates.map((t) => t.id))
+
+  const counts = new Map<string, number>()
+  for (const b of (blocks ?? []) as { template_id: string; template_block_exercises: { id: string }[] | null }[]) {
+    const n = b.template_block_exercises?.length ?? 0
+    counts.set(b.template_id, (counts.get(b.template_id) ?? 0) + n)
+  }
+
+  return templates.map((t) => ({ ...t, exercise_count: counts.get(t.id) ?? 0 }))
 }
 
 export async function getTemplateWithBlocks(id: string): Promise<(ClassTemplate & { blocks: TemplateBlock[] }) | null> {
@@ -72,7 +94,7 @@ export async function getTemplateWithBlocks(id: string): Promise<(ClassTemplate 
   for (const block of blocks ?? []) {
     const { data: exercises } = await supabase
       .from("template_block_exercises")
-      .select("*, exercise:exercises(id, name, muscle_group)")
+      .select("*, exercise:exercises(id, name, muscle_group, exercise_type, equipment, secondary_muscle_groups, media_url, instructions)")
       .eq("template_block_id", block.id)
       .order("position")
     blocksWithExercises.push({ ...block, exercises: (exercises ?? []) as TemplateBlockExercise[] })

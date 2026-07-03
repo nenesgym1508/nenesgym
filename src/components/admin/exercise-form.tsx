@@ -32,6 +32,7 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
   const [equipment, setEquipment] = useState<Equipment | "">(exercise?.equipment ?? "")
   const [exerciseType, setExerciseType] = useState<ExerciseType | "">(exercise?.exercise_type ?? "")
   const [instructions, setInstructions] = useState(exercise?.instructions ?? "")
+  const [mediaUrl, setMediaUrl] = useState(exercise?.media_url ?? "")
 
   const toggleSecondary = (g: MuscleGroup) =>
     setSecondaryGroups((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
@@ -49,6 +50,7 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
       equipment: equipment || undefined,
       exercise_type: exerciseType || undefined,
       instructions: instructions || undefined,
+      media_url: mediaUrl.trim() || undefined,
     }
 
     if (isEdit) {
@@ -63,6 +65,7 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
         equipment: (equipment || null) as Equipment | null,
         exercise_type: (exerciseType || null) as ExerciseType | null,
         instructions: instructions || null,
+        media_url: mediaUrl.trim() || null,
         updated_at: new Date().toISOString(),
       })
     } else {
@@ -107,6 +110,45 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
+
+          <div className="space-y-1.5">
+            <label htmlFor="ex-media-url" className="text-xs font-medium text-zinc-400">
+              URL de imagen (opcional)
+            </label>
+            <div className="flex items-center gap-3">
+              {mediaUrl.trim() ? (
+                <img
+                  src={mediaUrl.trim()}
+                  alt=""
+                  className="size-12 shrink-0 rounded-md object-cover bg-zinc-800"
+                  onError={(e) => { e.currentTarget.style.visibility = "hidden" }}
+                />
+              ) : (
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-600 text-[10px] text-center">
+                  Sin imagen
+                </div>
+              )}
+              <div className="flex-1 flex gap-2">
+                <input
+                  id="ex-media-url"
+                  type="url"
+                  placeholder="https://..."
+                  value={mediaUrl}
+                  onChange={(e) => setMediaUrl(e.target.value)}
+                  className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20"
+                />
+                {mediaUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setMediaUrl("")}
+                    className="rounded-lg bg-zinc-800 px-2.5 text-xs font-medium text-zinc-400 hover:text-zinc-200"
+                  >
+                    Quitar
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
 
           <SelectField
             label="Músculo principal"
