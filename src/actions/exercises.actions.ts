@@ -82,3 +82,60 @@ export async function toggleExerciseAction(id: string, isActive: boolean) {
   revalidatePath(ROUTES.ADMIN_CLASES_EJERCICIOS)
   return { success: true }
 }
+
+export async function uploadExerciseImageAction(
+  formData: FormData
+): Promise<{ success: true; url: string } | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "No autenticado" }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+
+  if (profile?.role !== "admin") return { error: "Sin permisos" }
+
+  const file = formData.get("file") as File
+  if (!file || file.size === 0) return { error: "No se seleccionó ningún archivo" }
+
+  const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]
+  const MAX_FILE_SIZE = 4 * 1024 * 1024 // 4 MB
+
+  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    return { error: "Tipo de archivo no permitido. Solo se admiten imágenes JPG, PNG y WEBP." }
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    return { error: "La imagen no puede superar los 4 MB de tamaño." }
+  }
+
+  const mimeToExt: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp"
+  }
+  const ext = mimeToExt[file.type] ?? "jpg"
+  const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`
+  const path = `${GYM_ID}/${fileName}`
+
+  const { error: uploadError } = await supabase.storage
+    .from("exercises")
+    .upload(path, file, { contentType: file.type, upsert: false })
+
+  if (uploadError) {
+    return { error: "Error al subir la imagen: " + uploadError.message }
+  }
+
+  const { data: urlData } = supabase.storage
+    .from("exercises")
+    .getPublicUrl(path)
+
+  if (!urlData?.publicUrl) {
+    return { error: "No se pudo obtener la URL pública de la imagen." }
+  }
+
+  return { success: true, url: urlData.publicUrl }
+}

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, CreditCard, QrCode, TrendingUp, User, Users, Dumbbell, MoreHorizontal } from "lucide-react"
+import { Home, CreditCard, QrCode, TrendingUp, User, Users, Dumbbell, ClipboardList, MoreHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ROUTES } from "@/constants/routes"
 
@@ -15,8 +15,8 @@ const clienteLeft: NavItem[] = [
 ]
 const clienteCenter: NavItem = { href: ROUTES.CLIENTE_ASISTENCIA, label: "Entrada", icon: QrCode }
 const clienteRight: NavItem[] = [
+  { href: ROUTES.CLIENTE_RUTINAS, label: "Rutinas", icon: ClipboardList },
   { href: ROUTES.CLIENTE_PROGRESO, label: "Progreso", icon: TrendingUp },
-  { href: ROUTES.CLIENTE_PERFIL, label: "Perfil", icon: User },
 ]
 
 const adminItems: NavItem[] = [
@@ -24,6 +24,7 @@ const adminItems: NavItem[] = [
   { href: ROUTES.ADMIN_CLIENTES, label: "Clientes", icon: Users },
   { href: ROUTES.ADMIN_PAGOS, label: "Pagos", icon: CreditCard },
   { href: ROUTES.ADMIN_CLASES, label: "Clases", icon: Dumbbell },
+  { href: ROUTES.ADMIN_RUTINAS, label: "Rutinas", icon: ClipboardList },
   { href: ROUTES.ADMIN_MAS, label: "Más", icon: MoreHorizontal },
 ]
 
@@ -72,13 +73,16 @@ export function BottomNav({ role }: BottomNavProps) {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/15 bg-zinc-950 shadow-[0_-1px_0_rgba(255,255,255,0.08)]">
-      <div className="relative flex h-16">
-        {clienteLeft.map((item) => (
-          <FlatTab key={item.href} item={item} active={isActive(item.href)} />
-        ))}
+      <div className="relative flex h-16 w-full items-center justify-between">
+        {/* Lado izquierdo */}
+        <div className="flex flex-1 justify-around items-center h-full">
+          {clienteLeft.map((item) => (
+            <FlatTab key={item.href} item={item} active={isActive(item.href)} />
+          ))}
+        </div>
 
         {/* Hueco para el FAB central */}
-        <div className="flex flex-1 flex-col items-center justify-end pb-1.5">
+        <div className="flex flex-col items-center justify-end pb-1.5 h-full w-[72px] shrink-0">
           <span
             className={cn(
               "text-[10px] font-medium",
@@ -89,9 +93,12 @@ export function BottomNav({ role }: BottomNavProps) {
           </span>
         </div>
 
-        {clienteRight.map((item) => (
-          <FlatTab key={item.href} item={item} active={isActive(item.href)} />
-        ))}
+        {/* Lado derecho */}
+        <div className="flex flex-1 justify-around items-center h-full">
+          {clienteRight.map((item) => (
+            <FlatTab key={item.href} item={item} active={isActive(item.href)} />
+          ))}
+        </div>
 
         {/* FAB Entrada — acción central y más repetida */}
         <Link

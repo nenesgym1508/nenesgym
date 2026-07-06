@@ -24,6 +24,14 @@ export const ROUTES = {
   ADMIN_CLASES_EJERCICIOS: '/admin/clases/ejercicios',
   ADMIN_CLASES_PLANTILLAS: '/admin/clases/plantillas',
   ADMIN_CLASES_NUEVA: '/admin/clases/nueva',
+
+  // Admin — Rutinas
+  ADMIN_RUTINAS: '/admin/rutinas',
+  ADMIN_RUTINAS_PLANTILLAS: '/admin/rutinas/plantillas',
+  ADMIN_RUTINAS_NUEVA: '/admin/rutinas/nueva',
+
+  // Cliente — Rutinas
+  CLIENTE_RUTINAS: '/cliente/rutinas',
 } as const
 
 export function adminClienteDetalle(id: string) {
@@ -38,4 +46,17 @@ export function adminPlantillaDetalle(id: string) {
   return `/admin/clases/plantillas/${id}` as const
 }
 
+export function adminRutinaDetalle(id: string) {
+  return `/admin/rutinas/${id}` as const
+}
+
+export function adminRutinaPlantillaDetalle(id: string) {
+  return `/admin/rutinas/plantillas/${id}` as const
+}
+
+export function clienteRutinaDetalle(id: string) {
+  return `/cliente/rutinas/${id}` as const
+}
+
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES]
+

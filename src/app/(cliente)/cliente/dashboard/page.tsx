@@ -7,14 +7,17 @@ import { getActiveMembership, computeEffectiveStatus } from "@/services/membersh
 import { getClientAttendance, getMonthlyAttendance } from "@/services/attendance.service"
 import { getClientPayments } from "@/services/payments.service"
 import { getProgressSummary } from "@/services/progress.service"
+import { getActiveRoutineForClient, getRoutineSessionForDate } from "@/services/routines.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
 import { DashboardCalendar } from "@/components/cliente/dashboard-calendar"
 import { MembershipSummaryCard } from "@/components/cliente/membership-summary-card"
 import { TodayStatusCard } from "@/components/cliente/today-status-card"
+import { TodayRoutineCard } from "@/components/cliente/today-routine-card"
 import { QuickProgressCard } from "@/components/cliente/quick-progress-card"
 import { WorkoutStreakCard } from "@/components/cliente/workout-streak-card"
 import { MotivationalBanner } from "@/components/cliente/motivational-banner"
+import { DashboardHeader } from "@/components/cliente/dashboard-header"
 import {
   formatDate,
   formatDatetime,
@@ -33,28 +36,30 @@ export default async function ClienteDashboardPage() {
   const clientData = await getCurrentClientData()
   if (!clientData) redirect(ROUTES.LOGIN)
 
-  const { profile, client } = clientData
+  const { user, profile, client } = clientData
   const now = new Date()
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth() + 1
 
-  const [membership, attendance, monthlyAttendanceData, payments, progress] = await Promise.all([
+  const [membership, attendance, payments, progress] = await Promise.all([
     client ? getActiveMembership(client.id) : Promise.resolve(null),
     client ? getClientAttendance(client.id, 90) : Promise.resolve([]),
-    client ? getMonthlyAttendance(client.id, currentYear, currentMonth) : Promise.resolve([]),
     client ? getClientPayments(client.id) : Promise.resolve([]),
     client ? getProgressSummary(client.id) : Promise.resolve(null),
   ])
 
-  const attendanceDates = monthlyAttendanceData.map(a => {
+  // Fetch routines info
+  const activeRoutine = client ? await getActiveRoutineForClient(client.id) : null
+  const todayStr = todayInBogota()
+  const routineSession = activeRoutine ? await getRoutineSessionForDate(activeRoutine.id, todayStr) : null
+  const isRoutineDoneToday = !!routineSession
+
+  const attendanceDates = attendance.map(a => {
     const [year, month, day] = a.check_in_date.split('T')[0].split('-').map(Number)
     return new Date(year, month - 1, day)
   })
 
-  const streakDates = attendance.map(a => {
-    const [year, month, day] = a.check_in_date.split('T')[0].split('-').map(Number)
-    return new Date(year, month - 1, day)
-  })
+  const streakDates = [...attendanceDates]
 
   const today = todayInBogota()
   const daysPerWeek = membership
@@ -83,7 +88,16 @@ export default async function ClienteDashboardPage() {
   const lastCheckInAt = attendance[0]?.checked_in_at ?? null
 
   const streak = computeStreak(streakDates, daysPerWeek, nowInBogota())
-  const monthlyCount = new Set(monthlyAttendanceData.map(a => a.check_in_date)).size
+  const currentMonthStr = String(currentMonth).padStart(2, '0')
+  const currentYearStr = String(currentYear)
+  const monthlyCount = new Set(
+    attendance
+      .filter(a => {
+        const [y, m] = a.check_in_date.split('T')[0].split('-')
+        return y === currentYearStr && m === currentMonthStr
+      })
+      .map(a => a.check_in_date)
+  ).size
 
   const latestPayment = payments[0]
   const paymentAlert =
@@ -113,7 +127,13 @@ export default async function ClienteDashboardPage() {
 
   return (
     <div>
-      <PageHeader title="NENE'S GYM" showLogout showInstall />
+      <DashboardHeader
+        profile={{
+          full_name: profile.full_name,
+          phone: profile.phone,
+          email: profile.email ?? user.email ?? ""
+        }}
+      />
       <div className="p-4 space-y-4">
         {/* 1. Saludo + avatar */}
         <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 fill-mode-both flex items-start justify-between gap-3">
@@ -173,7 +193,14 @@ export default async function ClienteDashboardPage() {
                 lastCheckInAt={lastCheckInAt}
                 paymentAlert={paymentAlert}
               />
+              <TodayRoutineCard
+                hasRoutine={!!activeRoutine}
+                routineId={activeRoutine?.id}
+                routineTitle={activeRoutine?.title}
+                isDoneToday={isRoutineDoneToday}
+              />
             </div>
+
 
             {/* 5. Mini resumen de progreso */}
             {hasProgress && (

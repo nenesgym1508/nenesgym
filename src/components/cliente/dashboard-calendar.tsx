@@ -1,8 +1,26 @@
+"use client"
 
+import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { AttendanceLegend } from "@/components/ui/attendance-legend"
-import { ChevronRight } from "lucide-react"
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, isToday, isBefore, isSunday, isSaturday, startOfDay } from "date-fns"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { 
+  format, 
+  startOfMonth, 
+  endOfMonth, 
+  startOfWeek, 
+  endOfWeek, 
+  eachDayOfInterval, 
+  isSameMonth, 
+  isSameDay, 
+  isToday, 
+  isBefore, 
+  isSunday, 
+  isSaturday, 
+  startOfDay,
+  addMonths,
+  subMonths
+} from "date-fns"
 import { es } from "date-fns/locale"
 
 interface DashboardCalendarProps {
@@ -13,8 +31,16 @@ interface DashboardCalendarProps {
   daysPerWeek?: number // 5 o 6 días a la semana
 }
 
-export function DashboardCalendar({ currentDate, attendanceDates, integrated = false, membershipStartDate, daysPerWeek = 6 }: DashboardCalendarProps) {
-  const monthStart = startOfMonth(currentDate)
+export function DashboardCalendar({ 
+  currentDate, 
+  attendanceDates, 
+  integrated = false, 
+  membershipStartDate, 
+  daysPerWeek = 6 
+}: DashboardCalendarProps) {
+  const [activeDate, setActiveDate] = useState<Date>(currentDate)
+
+  const monthStart = startOfMonth(activeDate)
   const monthEnd = endOfMonth(monthStart)
   const startDate = startOfWeek(monthStart, { weekStartsOn: 1 }) // Monday as start of week
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 })
@@ -32,14 +58,45 @@ export function DashboardCalendar({ currentDate, attendanceDates, integrated = f
   const Container = integrated ? "div" : Card
   const containerClasses = integrated ? "pt-2" : "p-4 bg-zinc-950/50 border-white/5"
 
+  const handlePrevMonth = () => {
+    setActiveDate(prev => subMonths(prev, 1))
+  }
+
+  const handleNextMonth = () => {
+    // Only allow navigating forward if the active month is before the current month
+    if (isBefore(monthStart, startOfMonth(today))) {
+      setActiveDate(prev => addMonths(prev, 1))
+    }
+  }
+
+  const showNextButton = isBefore(monthStart, startOfMonth(today))
+
   return (
     <Container className={containerClasses}>
       <div className="flex justify-between items-center mb-5">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-          Asistencia – {format(currentDate, "MMMM yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())}
+        <button 
+          onClick={handlePrevMonth}
+          className="p-1.5 hover:bg-white/5 rounded-full transition-colors text-zinc-400 hover:text-zinc-200"
+          aria-label="Mes anterior"
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+        
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 select-none">
+          Asistencia – {format(activeDate, "MMMM yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())}
         </h3>
-        <button className="p-1 hover:bg-white/5 rounded-full transition-colors">
-          <ChevronRight className="size-4 text-zinc-400" />
+
+        <button 
+          onClick={handleNextMonth}
+          disabled={!showNextButton}
+          className={`p-1.5 rounded-full transition-colors ${
+            showNextButton 
+              ? "hover:bg-white/5 text-zinc-400 hover:text-zinc-200" 
+              : "opacity-20 cursor-not-allowed text-zinc-600"
+          }`}
+          aria-label="Mes siguiente"
+        >
+          <ChevronRight className="size-4" />
         </button>
       </div>
 

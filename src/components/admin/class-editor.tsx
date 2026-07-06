@@ -40,6 +40,8 @@ import {
   type MuscleGroup,
 } from "@/types/exercise"
 import type { ClassTemplate } from "@/services/templates.service"
+import type { RoutineBlock, RoutineExercise } from "@/types/routine"
+import type { RoutineTemplateBlock, RoutineTemplateBlockExercise } from "@/services/routine-templates.service"
 
 interface ClassEditorProps {
   initialClass: DailyClassWithBlocks
@@ -578,28 +580,30 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
 // ─── Block Card ───────────────────────────────────────────────────────────────
 
 export interface BlockCardProps {
-  block: ClassBlock
+  block: ClassBlock | RoutineBlock | RoutineTemplateBlock
   isFirst: boolean
   isLast: boolean
   isPending: boolean
-  editingTitle: boolean
-  editTitleValue: string
-  onStartEditTitle: () => void
-  onChangeTitleValue: (v: string) => void
-  onSaveTitle: () => void
-  onCancelTitle: () => void
-  onMoveUp: () => void
-  onMoveDown: () => void
-  onDelete: () => void
-  onOpenPicker: () => void
-  onMoveExercise: (exId: string, dir: "up" | "down") => void
-  onRemoveExercise: (exId: string) => void
-  onUpdateExercise: (exId: string, field: string, val: string | number | null) => void
+  editingTitle?: boolean
+  editTitleValue?: string
+  readOnly?: boolean
+  onStartEditTitle?: () => void
+  onChangeTitleValue?: (v: string) => void
+  onSaveTitle?: () => void
+  onCancelTitle?: () => void
+  onMoveUp?: () => void
+  onMoveDown?: () => void
+  onDelete?: () => void
+  onOpenPicker?: () => void
+  onMoveExercise?: (exId: string, dir: "up" | "down") => void
+  onRemoveExercise?: (exId: string) => void
+  onUpdateExercise?: (exId: string, field: string, val: string | number | null) => void
 }
 
 export function BlockCard({
   block, isFirst, isLast, isPending,
-  editingTitle, editTitleValue,
+  editingTitle = false, editTitleValue = "",
+  readOnly = false,
   onStartEditTitle, onChangeTitleValue, onSaveTitle, onCancelTitle,
   onMoveUp, onMoveDown, onDelete, onOpenPicker,
   onMoveExercise, onRemoveExercise, onUpdateExercise,
@@ -608,31 +612,33 @@ export function BlockCard({
     <div className="overflow-hidden rounded-2xl border border-white/8 bg-zinc-900/60">
       {/* Block header */}
       <div className="flex items-center gap-2 border-b border-white/8 px-3 py-2.5">
-        <div className="flex flex-col gap-0.5 shrink-0">
-          <button
-            onClick={onMoveUp}
-            disabled={isFirst || isPending}
-            className="flex h-5 w-5 items-center justify-center rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-30"
-          >
-            <ChevronUp className="size-3.5" />
-          </button>
-          <button
-            onClick={onMoveDown}
-            disabled={isLast || isPending}
-            className="flex h-5 w-5 items-center justify-center rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-30"
-          >
-            <ChevronDown className="size-3.5" />
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="flex flex-col gap-0.5 shrink-0">
+            <button
+              onClick={onMoveUp}
+              disabled={isFirst || isPending}
+              className="flex h-5 w-5 items-center justify-center rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-30"
+            >
+              <ChevronUp className="size-3.5" />
+            </button>
+            <button
+              onClick={onMoveDown}
+              disabled={isLast || isPending}
+              className="flex h-5 w-5 items-center justify-center rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-30"
+            >
+              <ChevronDown className="size-3.5" />
+            </button>
+          </div>
+        )}
 
-        {editingTitle ? (
+        {editingTitle && !readOnly ? (
           <div className="flex flex-1 items-center gap-1.5">
             <input
               autoFocus
               type="text"
               value={editTitleValue}
-              onChange={(e) => onChangeTitleValue(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") onSaveTitle(); if (e.key === "Escape") onCancelTitle() }}
+              onChange={(e) => onChangeTitleValue?.(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") onSaveTitle?.(); if (e.key === "Escape") onCancelTitle?.() }}
               className="flex-1 rounded-md border border-red-600/50 bg-zinc-800 px-2 py-1 text-sm text-zinc-100 outline-none"
             />
             <button onClick={onSaveTitle} className="text-green-400 hover:text-green-300"><Check className="size-3.5" /></button>
@@ -641,46 +647,52 @@ export function BlockCard({
         ) : (
           <button
             onClick={onStartEditTitle}
-            className="flex-1 text-left text-sm font-semibold text-zinc-200 hover:text-red-400 transition-colors"
+            disabled={readOnly}
+            className="flex-1 text-left text-sm font-semibold text-zinc-200 hover:text-red-400 transition-colors disabled:hover:text-zinc-200"
           >
             {block.title}
           </button>
         )}
 
-        <button
-          onClick={onDelete}
-          disabled={isPending}
-          className="flex h-6 w-6 items-center justify-center rounded text-zinc-600 hover:text-red-400 transition-colors shrink-0"
-        >
-          <Trash2 className="size-3.5" />
-        </button>
+        {!readOnly && (
+          <button
+            onClick={onDelete}
+            disabled={isPending}
+            className="flex h-6 w-6 items-center justify-center rounded text-zinc-600 hover:text-red-400 transition-colors shrink-0"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Exercises */}
       <div className="divide-y divide-white/5">
-        {block.exercises.map((ex, exIdx) => (
+        {block.exercises.map((ex: any, exIdx: number) => (
           <ExerciseRow
             key={ex.id}
             ex={ex}
             isFirst={exIdx === 0}
             isLast={exIdx === block.exercises.length - 1}
             isPending={isPending}
-            onMoveUp={() => onMoveExercise(ex.id, "up")}
-            onMoveDown={() => onMoveExercise(ex.id, "down")}
-            onRemove={() => onRemoveExercise(ex.id)}
-            onUpdate={(field, val) => onUpdateExercise(ex.id, field, val)}
+            readOnly={readOnly}
+            onMoveUp={() => onMoveExercise?.(ex.id, "up")}
+            onMoveDown={() => onMoveExercise?.(ex.id, "down")}
+            onRemove={() => onRemoveExercise?.(ex.id)}
+            onUpdate={(field, val) => onUpdateExercise?.(ex.id, field, val)}
           />
         ))}
       </div>
 
       {/* Add exercise */}
-      <button
-        onClick={onOpenPicker}
-        className="flex w-full items-center justify-center gap-1.5 border-t border-white/5 py-2.5 text-xs text-zinc-500 hover:text-red-400 hover:bg-zinc-800/40 transition-colors"
-      >
-        <Plus className="size-3.5" />
-        Añadir ejercicio
-      </button>
+      {!readOnly && (
+        <button
+          onClick={onOpenPicker}
+          className="flex w-full items-center justify-center gap-1.5 border-t border-white/5 py-2.5 text-xs text-zinc-500 hover:text-red-400 hover:bg-zinc-800/40 transition-colors"
+        >
+          <Plus className="size-3.5" />
+          Añadir ejercicio
+        </button>
+      )}
     </div>
   )
 }
@@ -688,17 +700,18 @@ export function BlockCard({
 // ─── Exercise Row ─────────────────────────────────────────────────────────────
 
 export interface ExerciseRowProps {
-  ex: BlockExercise
+  ex: BlockExercise | RoutineExercise | RoutineTemplateBlockExercise
   isFirst: boolean
   isLast: boolean
   isPending: boolean
-  onMoveUp: () => void
-  onMoveDown: () => void
-  onRemove: () => void
-  onUpdate: (field: string, val: string | number | null) => void
+  readOnly?: boolean
+  onMoveUp?: () => void
+  onMoveDown?: () => void
+  onRemove?: () => void
+  onUpdate?: (field: string, val: string | number | null) => void
 }
 
-export function ExerciseRow({ ex, isFirst, isLast, isPending, onMoveUp, onMoveDown, onRemove, onUpdate }: ExerciseRowProps) {
+export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, onMoveUp, onMoveDown, onRemove, onUpdate }: ExerciseRowProps) {
   const [expanded, setExpanded] = useState(false)
 
   const muscleLabel = ex.exercise.muscle_group
@@ -736,7 +749,8 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, onMoveUp, onMoveDo
         )}
 
         <button
-          onClick={() => setExpanded((v) => !v)}
+          onClick={() => { if (!readOnly) setExpanded((v) => !v) }}
+          disabled={readOnly}
           className="flex-1 min-w-0 text-left"
         >
           <p className="text-sm font-medium text-zinc-200 leading-snug truncate">{ex.exercise.name}</p>
@@ -748,16 +762,18 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, onMoveUp, onMoveDo
           )}
         </button>
 
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="shrink-0 text-zinc-600 hover:text-zinc-300 transition-colors"
-          aria-label={expanded ? "Cerrar edición" : "Editar"}
-        >
-          {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="shrink-0 text-zinc-600 hover:text-zinc-300 transition-colors"
+            aria-label={expanded ? "Cerrar edición" : "Editar"}
+          >
+            {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+          </button>
+        )}
       </div>
 
-      {expanded && (
+      {expanded && !readOnly && (
         <div className="mt-2.5 pl-[46px]">
           <div className="flex items-center justify-between mb-2">
             <div className="flex gap-1">
@@ -773,20 +789,22 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, onMoveUp, onMoveDo
             </button>
           </div>
           <div className="grid grid-cols-4 gap-1.5">
-            <NumField label="Series" value={ex.sets} onChange={(v) => onUpdate("sets", v)} />
-            <NumField label="Reps" value={ex.reps} onChange={(v) => onUpdate("reps", v)} />
-            <NumField label="Seg" value={ex.duration_seconds} onChange={(v) => onUpdate("duration_seconds", v)} />
-            <NumField label="Desc" value={ex.rest_seconds} onChange={(v) => onUpdate("rest_seconds", v)} />
+            <NumField label="Series" value={ex.sets} onChange={(v) => onUpdate?.("sets", v)} />
+            <NumField label="Reps" value={ex.reps} onChange={(v) => onUpdate?.("reps", v)} />
+            <NumField label="Seg" value={ex.duration_seconds} onChange={(v) => onUpdate?.("duration_seconds", v)} />
+            <NumField label="Desc" value={ex.rest_seconds} onChange={(v) => onUpdate?.("rest_seconds", v)} />
           </div>
           <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-            <TextField label="Peso sugerido" value={ex.suggested_weight} placeholder="20 kg" onChange={(v) => onUpdate("suggested_weight", v)} />
-            <TextField label="Nota" value={ex.notes} placeholder="Opcional" onChange={(v) => onUpdate("notes", v)} />
+            <TextField label="Peso sugerido" value={ex.suggested_weight} placeholder="20 kg" onChange={(v) => onUpdate?.("suggested_weight", v)} />
+            <TextField label="Nota" value={ex.notes} placeholder="Opcional" onChange={(v) => onUpdate?.("notes", v)} />
           </div>
         </div>
       )}
     </div>
   )
 }
+
+
 
 export function NumField({
   label,
@@ -846,7 +864,7 @@ export interface ExercisePickerProps {
   existingIds: string[]
   onSelect: (exercise: Exercise) => void
   onClose: () => void
-  onCreateNew: () => void
+  onCreateNew?: () => void
 }
 
 export function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCreateNew }: ExercisePickerProps) {
@@ -895,12 +913,14 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCr
               onChange={(e) => setSearch(e.target.value)}
               className="flex-1 rounded-lg border border-white/10 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-red-600/50"
             />
-            <button
-              onClick={onCreateNew}
-              className="flex items-center gap-1 rounded-lg bg-red-600 px-2.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors shrink-0"
-            >
-              <Plus className="size-3.5" /> Crear
-            </button>
+            {onCreateNew && (
+              <button
+                onClick={onCreateNew}
+                className="flex items-center gap-1 rounded-lg bg-red-600 px-2.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors shrink-0"
+              >
+                <Plus className="size-3.5" /> Crear
+              </button>
+            )}
           </div>
 
           <FilterRow label="Músculo" value={filterGroup} setValue={setFilterGroup} options={muscleGroups} labels={MUSCLE_GROUP_LABELS} />

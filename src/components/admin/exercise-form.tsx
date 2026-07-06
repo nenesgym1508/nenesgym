@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Loader2, X } from "lucide-react"
-import { createExerciseAction, updateExerciseAction } from "@/actions/exercises.actions"
+import { createExerciseAction, updateExerciseAction, uploadExerciseImageAction } from "@/actions/exercises.actions"
 import { Input, Textarea } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +25,26 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
   const isEdit = !!exercise
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    setError(null)
+    const formData = new FormData()
+    formData.append("file", file)
+
+    const res = await uploadExerciseImageAction(formData)
+    setUploading(false)
+
+    if ("error" in res) {
+      setError(res.error)
+    } else {
+      setMediaUrl(res.url)
+    }
+  }
 
   const [name, setName] = useState(exercise?.name ?? "")
   const [muscleGroup, setMuscleGroup] = useState<MuscleGroup | "">(exercise?.muscle_group ?? "")
@@ -112,36 +132,45 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
           />
 
           <div className="space-y-1.5">
-            <label htmlFor="ex-media-url" className="text-xs font-medium text-zinc-400">
-              URL de imagen (opcional)
+            <label className="text-xs font-medium text-zinc-400">
+              Subir imagen (opcional)
             </label>
             <div className="flex items-center gap-3">
               {mediaUrl.trim() ? (
                 <img
                   src={mediaUrl.trim()}
                   alt=""
-                  className="size-12 shrink-0 rounded-md object-cover bg-zinc-800"
+                  className="size-12 shrink-0 rounded-md object-cover bg-zinc-800 border border-white/10"
                   onError={(e) => { e.currentTarget.style.visibility = "hidden" }}
                 />
               ) : (
-                <div className="flex size-12 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-600 text-[10px] text-center">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-500 text-[10px] text-center border border-dashed border-white/10">
                   Sin imagen
                 </div>
               )}
               <div className="flex-1 flex gap-2">
                 <input
-                  id="ex-media-url"
-                  type="url"
-                  placeholder="https://..."
-                  value={mediaUrl}
-                  onChange={(e) => setMediaUrl(e.target.value)}
-                  className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20"
+                  id="ex-file-upload"
+                  type="file"
+                  accept="image/png, image/jpeg, image/webp"
+                  onChange={handleFileChange}
+                  className="hidden"
                 />
+                <label
+                  htmlFor="ex-file-upload"
+                  className="flex-1 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-zinc-300 font-semibold cursor-pointer hover:bg-white/10 hover:text-zinc-100 transition-all text-center"
+                >
+                  {uploading ? (
+                    <><Loader2 className="size-3.5 animate-spin mr-2" /> Subiendo...</>
+                  ) : (
+                    "Seleccionar foto"
+                  )}
+                </label>
                 {mediaUrl && (
                   <button
                     type="button"
                     onClick={() => setMediaUrl("")}
-                    className="rounded-lg bg-zinc-800 px-2.5 text-xs font-medium text-zinc-400 hover:text-zinc-200"
+                    className="rounded-lg bg-zinc-800 px-3 text-xs font-medium text-red-400 hover:bg-zinc-700/50 hover:text-red-300 transition-colors"
                   >
                     Quitar
                   </button>

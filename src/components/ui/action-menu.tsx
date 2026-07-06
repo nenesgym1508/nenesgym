@@ -12,14 +12,22 @@ export interface ActionMenuItem {
   disabled?: boolean
 }
 
-export function ActionMenu({ items, label = "Más acciones" }: { items: ActionMenuItem[]; label?: string }) {
+export function ActionMenu({
+  items,
+  label = "Más acciones",
+  triggerIcon = <MoreVertical className="size-4" />
+}: {
+  items: ActionMenuItem[]
+  label?: string
+  triggerIcon?: React.ReactNode
+}) {
   return (
     <Menu.Root>
       <Menu.Trigger
         aria-label={label}
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
       >
-        <MoreVertical className="size-4" />
+        {triggerIcon}
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner sideOffset={6} align="end" className="z-[110] outline-none">
