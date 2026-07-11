@@ -15,9 +15,10 @@ type ProgressInput = z.infer<typeof progressRecordSchema>
 
 interface ProgressFormProps {
   todayRecord?: ProgressRecord | null
+  latestHeightCm?: number | null
 }
 
-export function ProgressForm({ todayRecord }: ProgressFormProps) {
+export function ProgressForm({ todayRecord, latestHeightCm }: ProgressFormProps) {
   const [open, setOpen] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -44,7 +45,9 @@ export function ProgressForm({ todayRecord }: ProgressFormProps) {
           leg_cm: todayRecord.leg_cm ?? undefined,
           note: todayRecord.note ?? undefined,
         }
-      : undefined,
+      : latestHeightCm != null
+        ? { height_cm: latestHeightCm }
+        : undefined,
   })
 
   const onSubmit = async (data: ProgressInput) => {

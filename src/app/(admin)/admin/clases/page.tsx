@@ -69,7 +69,7 @@ export default async function AdminClasesPage() {
 
   return (
     <div>
-      <PageHeader title="Clases" showLogout />
+      <PageHeader title="Clases" backHref={ROUTES.ADMIN_ENTRENAMIENTO} />
       <div className="p-4 space-y-4">
 
         {/* Accesos rápidos */}

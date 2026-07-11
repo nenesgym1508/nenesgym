@@ -9,6 +9,7 @@ export interface RoutineTemplate {
   name: string
   description: string | null
   goal: RoutineGoal | null
+  custom_goal: string | null
   level: RoutineLevel | null
   days_per_week: number | null
   notes: string | null
@@ -119,51 +120,27 @@ export async function getRoutineTemplates(): Promise<RoutineTemplate[]> {
 
 export async function getRoutineTemplateWithDays(id: string): Promise<(RoutineTemplate & { days: RoutineTemplateDay[] }) | null> {
   const supabase = await createClient()
-  const { data: tpl } = await supabase
-    .from("routine_templates")
-    .select("*")
-    .eq("id", id)
-    .eq("gym_id", GYM_ID)
-    .single()
+
+  const [{ data: tpl }, { data: days }] = await Promise.all([
+    supabase.from("routine_templates").select("*").eq("id", id).eq("gym_id", GYM_ID).single(),
+    supabase
+      .from("routine_template_days")
+      .select(
+        "*, blocks:routine_template_blocks(*, exercises:routine_template_block_exercises(*, exercise:exercises(id, name, muscle_group, exercise_type, equipment, secondary_muscle_groups, media_url, instructions)))"
+      )
+      .eq("template_id", id)
+      .order("position")
+      .order("position", { referencedTable: "blocks" })
+      .order("position", { referencedTable: "blocks.exercises" }),
+  ])
 
   if (!tpl) return null
 
-  const { data: days } = await supabase
-    .from("routine_template_days")
-    .select("*")
-    .eq("template_id", id)
-    .order("position")
-
-  const daysWithBlocks: RoutineTemplateDay[] = []
-
-  for (const day of days ?? []) {
-    const { data: blocks } = await supabase
-      .from("routine_template_blocks")
-      .select("*")
-      .eq("template_day_id", day.id)
-      .order("position")
-
-    const blocksWithExercises: RoutineTemplateBlock[] = []
-
-    for (const block of blocks ?? []) {
-      const { data: exercises } = await supabase
-        .from("routine_template_block_exercises")
-        .select("*, exercise:exercises(id, name, muscle_group, exercise_type, equipment, secondary_muscle_groups, media_url, instructions)")
-        .eq("template_block_id", block.id)
-        .order("position")
-
-      blocksWithExercises.push({
-        ...block,
-        exercises: (exercises ?? []) as RoutineTemplateBlockExercise[],
-      })
-    }
-
-    daysWithBlocks.push({
-      ...day,
-      weekday: day.weekday as Weekday | null,
-      blocks: blocksWithExercises,
-    })
-  }
+  const daysWithBlocks: RoutineTemplateDay[] = (days ?? []).map((day) => ({
+    ...day,
+    weekday: day.weekday as Weekday | null,
+    blocks: (day.blocks ?? []) as RoutineTemplateBlock[],
+  }))
 
   return {
     ...(tpl as RoutineTemplate),

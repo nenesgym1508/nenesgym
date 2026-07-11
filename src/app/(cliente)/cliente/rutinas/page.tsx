@@ -1,11 +1,12 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { ChevronRight, Plus, ClipboardList } from "lucide-react"
+import { ChevronRight, Plus, ClipboardList, Dumbbell } from "lucide-react"
 import { getCurrentClientData } from "@/services/clients.service"
 import { getClientRoutines, getAssignedRoutine } from "@/services/routines.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
 import { ROUTES } from "@/constants/routes"
+import { formatRoutineGoal } from "@/types/routine"
 
 export const dynamic = "force-dynamic"
 
@@ -39,7 +40,7 @@ export default async function ClienteRoutinesHubPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-zinc-200 truncate">{assignedRoutine.title}</p>
                   <p className="text-xs text-zinc-500 mt-1">
-                    {assignedRoutine.goal ? `Objetivo: ${assignedRoutine.goal}` : "Rutina de entrenamiento"}
+                    {assignedRoutine.goal ? `Objetivo: ${formatRoutineGoal(assignedRoutine.goal, assignedRoutine.custom_goal)}` : "Rutina de entrenamiento"}
                   </p>
                 </div>
                 <ChevronRight className="size-4 text-zinc-600 shrink-0 ml-2" />
@@ -59,6 +60,15 @@ export default async function ClienteRoutinesHubPage() {
         >
           <Plus className="size-4" />
           Crear mi propia rutina
+        </Link>
+
+        {/* Botón Administrar ejercicios */}
+        <Link
+          href={ROUTES.CLIENTE_RUTINAS_EJERCICIOS}
+          className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm font-semibold text-zinc-200 hover:bg-zinc-800 transition-colors"
+        >
+          <Dumbbell className="size-4" />
+          Administrar ejercicios
         </Link>
 
         {/* Mis rutinas creadas */}
@@ -83,7 +93,7 @@ export default async function ClienteRoutinesHubPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-zinc-200 truncate">{r.title}</p>
                     <p className="text-xs text-zinc-500 mt-0.5">
-                      {r.goal ? `Objetivo: ${r.goal}` : "Personalizada"} · {r.days_per_week ? `${r.days_per_week} días/sem` : "Sin días"}
+                      {r.goal ? `Objetivo: ${formatRoutineGoal(r.goal, r.custom_goal)}` : "Personalizada"} · {r.days_per_week ? `${r.days_per_week} días/sem` : "Sin días"}
                     </p>
                   </div>
                   <ChevronRight className="size-4 text-zinc-600 shrink-0 ml-2" />

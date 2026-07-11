@@ -1,9 +1,33 @@
 import type { MuscleGroup, Equipment } from "@/types/exercise"
 import { CLASS_OBJECTIVE_LABELS, CLASS_LEVEL_LABELS, type ClassObjective, type ClassLevel } from "@/types/class"
 
-export type RoutineGoal = ClassObjective
+// Vocabulario en lenguaje humano para el selector de objetivo del cliente
+// (chips en "Nueva rutina" y en "Editar datos" cuando la rutina es propia).
+// "otro" es un valor controlado más — el texto real que escribe el cliente
+// se guarda aparte en la columna `custom_goal` (ver ClientRoutine), no aquí.
+export type ClientRoutineGoal = "ganar_musculo" | "bajar_peso" | "mejorar_resistencia" | "tonificar" | "mantenerse_activo" | "otro"
+export const CLIENT_ROUTINE_GOAL_LABELS: Record<ClientRoutineGoal, string> = {
+  ganar_musculo: "Ganar músculo",
+  bajar_peso: "Bajar grasa",
+  mejorar_resistencia: "Mejorar resistencia",
+  tonificar: "Tonificar",
+  mantenerse_activo: "Mantenerme activo",
+  otro: "Otro",
+}
+
+// Vocabulario técnico heredado de Clases — usado en los flujos del admin
+// (crear/editar rutina, plantillas), donde el trainer sí conoce estos términos.
+export const ADMIN_ROUTINE_GOAL_LABELS = CLASS_OBJECTIVE_LABELS
+
+export type RoutineGoal = ClassObjective | ClientRoutineGoal
 export type RoutineLevel = ClassLevel
-export const ROUTINE_GOAL_LABELS = CLASS_OBJECTIVE_LABELS
+
+// Mapa combinado (ambos vocabularios) — solo para mostrar/traducir un valor
+// ya guardado sin importar si vino del flujo admin o del flujo cliente.
+export const ROUTINE_GOAL_LABELS: Record<RoutineGoal, string> = {
+  ...CLASS_OBJECTIVE_LABELS,
+  ...CLIENT_ROUTINE_GOAL_LABELS,
+}
 export const ROUTINE_LEVEL_LABELS = CLASS_LEVEL_LABELS
 
 export type RoutineStatus = "draft" | "active" | "paused" | "completed" | "archived"
@@ -35,13 +59,22 @@ export interface RoutineDay { id: string; routine_id: string; title: string; wee
 export interface ClientRoutine {
   id: string; gym_id: string; client_id: string | null
   created_by: string | null; created_by_role: RoutineCreatedByRole | null
-  title: string; description: string | null; goal: RoutineGoal | null; level: RoutineLevel | null
+  title: string; description: string | null; goal: RoutineGoal | null; custom_goal: string | null
+  level: RoutineLevel | null
   days_per_week: number | null; status: RoutineStatus
   source_type: RoutineSourceType | null; source_id: string | null
   start_date: string | null; end_date: string | null; notes: string | null
   created_at: string; updated_at: string
 }
 export interface ClientRoutineWithDays extends ClientRoutine { days: RoutineDay[] }
+
+// Texto a mostrar para el objetivo de una rutina: si es "otro", usa el texto
+// personalizado que escribió el cliente en vez de la etiqueta genérica "Otro".
+export function formatRoutineGoal(goal: string | null, customGoal?: string | null): string | null {
+  if (!goal) return null
+  if (goal === "otro" && customGoal) return customGoal
+  return ROUTINE_GOAL_LABELS[goal as RoutineGoal] ?? goal
+}
 
 export interface RoutineSession {
   id: string; gym_id: string; client_id: string; routine_id: string

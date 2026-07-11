@@ -24,7 +24,7 @@ import { ExerciseForm } from "@/components/admin/exercise-form"
 import { BlockCard, ExercisePicker } from "@/components/admin/class-editor"
 import { ActionMenu } from "@/components/ui/action-menu"
 import { ROUTES } from "@/constants/routes"
-import { ROUTINE_GOAL_LABELS, ROUTINE_LEVEL_LABELS, type RoutineGoal, type RoutineLevel, type Weekday } from "@/types/routine"
+import { ADMIN_ROUTINE_GOAL_LABELS, ROUTINE_LEVEL_LABELS, formatRoutineGoal, type RoutineGoal, type RoutineLevel, type Weekday } from "@/types/routine"
 import type { Exercise } from "@/types/exercise"
 import type { RoutineTemplate, RoutineTemplateDay } from "@/services/routine-templates.service"
 
@@ -44,6 +44,8 @@ export function RoutineTemplateEditor({ initialTemplate, exercises }: RoutineTem
   // Modales
   const [pickerBlockId, setPickerBlockId] = useState<string | null>(null)
   const [createForBlockId, setCreateForBlockId] = useState<string | null>(null)
+  const [blockTitleEdit, setBlockTitleEdit] = useState<string | null>(null)
+  const [blockTitleValue, setBlockTitleValue] = useState("")
   const [editMetaOpen, setEditMetaOpen] = useState(false)
 
   // Meta inputs
@@ -103,7 +105,13 @@ export function RoutineTemplateEditor({ initialTemplate, exercises }: RoutineTem
           title,
           weekday: null,
           position: pos,
-          blocks: []
+          blocks: (res.blocks ?? []).map((b) => ({
+            id: b.id,
+            template_day_id: res.id,
+            title: b.title,
+            position: b.position,
+            exercises: []
+          }))
         }
         setTpl((prev) => ({ ...prev, days: [...prev.days, newDay] }))
         setActiveDayId(res.id)
@@ -339,7 +347,7 @@ export function RoutineTemplateEditor({ initialTemplate, exercises }: RoutineTem
           <div className="flex flex-wrap gap-2 text-[11px] text-zinc-500">
             {tpl.goal && (
               <span className="rounded-full bg-zinc-800 px-2 py-0.5 border border-white/5">
-                Objetivo: {tpl.goal}
+                Objetivo: {formatRoutineGoal(tpl.goal, tpl.custom_goal)}
               </span>
             )}
             {tpl.level && (
@@ -390,10 +398,19 @@ export function RoutineTemplateEditor({ initialTemplate, exercises }: RoutineTem
                     isPending={isPending}
                     onOpenPicker={() => setPickerBlockId(block.id)}
                     onDelete={() => handleDeleteBlock(block.id)}
+                    editingTitle={blockTitleEdit === block.id}
+                    editTitleValue={blockTitleValue}
                     onStartEditTitle={() => {
-                      const newTitle = prompt("Nuevo título del bloque:", block.title)
-                      if (newTitle) handleSaveBlockTitle(block.id, newTitle)
+                      setBlockTitleEdit(block.id)
+                      setBlockTitleValue(block.title)
                     }}
+                    onChangeTitleValue={setBlockTitleValue}
+                    onSaveTitle={() => {
+                      const title = blockTitleValue.trim()
+                      if (title) handleSaveBlockTitle(block.id, title)
+                      setBlockTitleEdit(null)
+                    }}
+                    onCancelTitle={() => setBlockTitleEdit(null)}
                     onMoveExercise={(exId, dir) => {
                       const exIndex = block.exercises.findIndex((ex) => ex.id === exId)
                       if (exIndex === -1) return
@@ -535,13 +552,9 @@ export function RoutineTemplateEditor({ initialTemplate, exercises }: RoutineTem
                     className="w-full rounded-lg border border-white/10 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-red-600/50"
                   >
                     <option value="">Ninguno</option>
-                    <option value="fuerza">Fuerza</option>
-                    <option value="hipertrofia">Hipertrofia</option>
-                    <option value="cardio">Cardio</option>
-                    <option value="tecnica">Técnica</option>
-                    <option value="movilidad">Movilidad</option>
-                    <option value="full_body">Full Body</option>
-                    <option value="general">General</option>
+                    {Object.entries(ADMIN_ROUTINE_GOAL_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
                   </select>
                 </div>
                 <div>

@@ -4,16 +4,17 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import {
   ChevronLeft, Plus, X, Check, Loader2, Dumbbell,
-  Copy, ClipboardCopy, Archive, Trash2, Calendar
+  Copy, ClipboardCopy, Archive, Trash2, Calendar, Play
 } from "lucide-react"
 import Link from "next/link"
 import { ROUTES } from "@/constants/routes"
 import { ActionMenu } from "@/components/ui/action-menu"
+import { ChipSelect } from "@/components/ui/chip-select"
 import { MarkDoneTodayBar } from "@/components/cliente/mark-done-today-bar"
 import { DayTabBar } from "@/components/admin/day-tab-bar"
-import { BlockCard } from "@/components/admin/class-editor"
-import { ExercisePicker } from "@/components/admin/class-editor"
+import { BlockCard, ExercisePicker } from "@/components/admin/class-editor"
 import { ExerciseForm } from "@/components/admin/exercise-form"
+import { ClientExerciseForm } from "@/components/cliente/client-exercise-form"
 import {
   updateRoutineMetaAction,
   deleteRoutineAction,
@@ -33,7 +34,21 @@ import {
   updateRoutineBlockExerciseAction,
   saveRoutineAsTemplateAction
 } from "@/actions/routines.actions"
-import { ROUTINE_STATUS_LABELS, type ClientRoutineWithDays, type RoutineDay, type RoutineBlock, type RoutineStatus, type RoutineGoal, type RoutineLevel, type Weekday } from "@/types/routine"
+import {
+  ROUTINE_STATUS_LABELS,
+  ROUTINE_LEVEL_LABELS,
+  ADMIN_ROUTINE_GOAL_LABELS,
+  CLIENT_ROUTINE_GOAL_LABELS,
+  formatRoutineGoal,
+  type ClientRoutineWithDays,
+  type RoutineDay,
+  type RoutineBlock,
+  type RoutineStatus,
+  type RoutineGoal,
+  type ClientRoutineGoal,
+  type RoutineLevel,
+  type Weekday
+} from "@/types/routine"
 import type { Exercise } from "@/types/exercise"
 
 interface RoutineEditorProps {
@@ -43,6 +58,7 @@ interface RoutineEditorProps {
   clients?: { id: string; profile: { full_name: string | null } | null }[]
   isDoneToday?: boolean
   todayStr?: string
+  myExerciseIds?: string[]
 }
 
 export function RoutineEditor({
@@ -51,7 +67,8 @@ export function RoutineEditor({
   variant = "admin",
   clients = [],
   isDoneToday,
-  todayStr
+  todayStr,
+  myExerciseIds
 }: RoutineEditorProps) {
   const router = useRouter()
   const [routine, setRoutine] = useState(initialRoutine)
@@ -64,6 +81,8 @@ export function RoutineEditor({
   const [pickerBlockId, setPickerBlockId] = useState<string | null>(null)
   const [createForBlockId, setCreateForBlockId] = useState<string | null>(null)
   const [templateModalOpen, setTemplateModalOpen] = useState(false)
+  const [blockTitleEdit, setBlockTitleEdit] = useState<string | null>(null)
+  const [blockTitleValue, setBlockTitleValue] = useState("")
   const [templateName, setTemplateName] = useState("")
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [selectedClientId, setSelectedClientId] = useState(routine.client_id ?? "")
@@ -73,6 +92,7 @@ export function RoutineEditor({
   const [metaTitle, setMetaTitle] = useState(routine.title)
   const [metaDescription, setMetaDescription] = useState(routine.description ?? "")
   const [metaGoal, setMetaGoal] = useState<RoutineGoal | "">(routine.goal ?? "")
+  const [metaCustomGoal, setMetaCustomGoal] = useState(routine.custom_goal ?? "")
   const [metaLevel, setMetaLevel] = useState<RoutineLevel | "">(routine.level ?? "")
   const [metaDays, setMetaDays] = useState(routine.days_per_week?.toString() ?? "")
   const [metaNotes, setMetaNotes] = useState(routine.notes ?? "")
@@ -82,10 +102,12 @@ export function RoutineEditor({
   // Handlers para metadatos
   const handleSaveMeta = () => {
     startTransition(async () => {
+      const customGoal = metaGoal === "otro" ? metaCustomGoal.trim() || null : null
       const res = await updateRoutineMetaAction(routine.id, {
         title: metaTitle,
         description: metaDescription || null,
         goal: metaGoal ? (metaGoal as RoutineGoal) : null,
+        custom_goal: customGoal,
         level: metaLevel ? (metaLevel as RoutineLevel) : null,
         days_per_week: metaDays ? parseInt(metaDays) : null,
         notes: metaNotes || null
@@ -96,6 +118,7 @@ export function RoutineEditor({
           title: metaTitle,
           description: metaDescription || null,
           goal: metaGoal ? (metaGoal as RoutineGoal) : null,
+          custom_goal: customGoal,
           level: metaLevel ? (metaLevel as RoutineLevel) : null,
           days_per_week: metaDays ? parseInt(metaDays) : null,
           notes: metaNotes || null
@@ -118,7 +141,13 @@ export function RoutineEditor({
           title,
           weekday: null,
           position: pos,
-          blocks: []
+          blocks: (res.blocks ?? []).map((b) => ({
+            id: b.id,
+            routine_day_id: res.id,
+            title: b.title,
+            position: b.position,
+            exercises: []
+          }))
         }
         setRoutine((prev) => ({ ...prev, days: [...prev.days, newDay] }))
         setActiveDayId(res.id)
@@ -214,21 +243,25 @@ export function RoutineEditor({
   }
 
   // Handlers para ejercicios
-  const handleAddExercise = (blockId: string, ex: Exercise) => {
+  const handleAddExercise = (
+    blockId: string,
+    ex: Exercise,
+    overrides?: { sets: number; reps: number; rest_seconds: number }
+  ) => {
     startTransition(async () => {
       const block = activeDay?.blocks.find((b) => b.id === blockId)
       const pos = block?.exercises.length ?? 0
-      const res = await addExerciseToRoutineBlockAction(blockId, routine.id, ex.id, pos)
+      const res = await addExerciseToRoutineBlockAction(blockId, routine.id, ex.id, pos, overrides)
       if (res.success && res.id) {
         const newEx = {
           id: res.id,
           block_id: blockId,
           exercise_id: ex.id,
           position: pos,
-          sets: 3,
-          reps: 10,
+          sets: overrides?.sets ?? 3,
+          reps: overrides?.reps ?? 10,
           duration_seconds: null,
-          rest_seconds: null,
+          rest_seconds: overrides?.rest_seconds ?? null,
           suggested_weight: null,
           notes: null,
           exercise: ex
@@ -270,6 +303,29 @@ export function RoutineEditor({
           )
         }))
       }
+    })
+  }
+
+  const handleMoveExercise = (blockId: string, exId: string, dir: "up" | "down") => {
+    const block = activeDay?.blocks.find((b) => b.id === blockId)
+    if (!block) return
+    const exIndex = block.exercises.findIndex((ex) => ex.id === exId)
+    if (exIndex === -1) return
+    const newExList = [...block.exercises]
+    const targetIdx = dir === "up" ? exIndex - 1 : exIndex + 1
+    if (targetIdx < 0 || targetIdx >= newExList.length) return
+    const [moved] = newExList.splice(exIndex, 1)
+    newExList.splice(targetIdx, 0, moved!)
+    startTransition(async () => {
+      await moveRoutineBlockExerciseAction(blockId, routine.id, newExList.map((x) => x.id))
+      setRoutine((prev) => ({
+        ...prev,
+        days: prev.days.map((d) =>
+          d.id === activeDayId
+            ? { ...d, blocks: d.blocks.map((b) => (b.id === blockId ? { ...b, exercises: newExList } : b)) }
+            : d
+        )
+      }))
     })
   }
 
@@ -383,48 +439,168 @@ export function RoutineEditor({
     })
   }
 
+  const stateActions = []
+  if (variant === "admin") {
+    if (routine.status === "active") {
+      stateActions.push(
+        {
+          label: "Pausar rutina",
+          icon: <Play className="size-4 rotate-90" />,
+          onClick: () => {
+            if (confirm("¿Seguro que quieres pausar esta rutina?")) {
+              startTransition(async () => {
+                const res = await updateRoutineMetaAction(routine.id, { status: "paused" })
+                if (!res.error) setRoutine((prev) => ({ ...prev, status: "paused" }))
+              })
+            }
+          }
+        },
+        {
+          label: "Finalizar rutina",
+          icon: <Check className="size-4" />,
+          onClick: () => {
+            if (confirm("¿Seguro que quieres dar por finalizada esta rutina?")) {
+              startTransition(async () => {
+                const res = await updateRoutineMetaAction(routine.id, { status: "completed" })
+                if (!res.error) setRoutine((prev) => ({ ...prev, status: "completed" }))
+              })
+            }
+          }
+        },
+        {
+          label: "Archivar rutina",
+          icon: <Archive className="size-4" />,
+          onClick: () => {
+            if (confirm("¿Seguro de archivar esta rutina?")) {
+              startTransition(async () => {
+                const res = await updateRoutineMetaAction(routine.id, { status: "archived" })
+                if (!res.error) router.push(ROUTES.ADMIN_RUTINAS)
+              })
+            }
+          }
+        }
+      )
+    } else if (routine.status === "paused") {
+      stateActions.push(
+        {
+          label: "Reactivar rutina",
+          icon: <Play className="size-4" />,
+          onClick: () => {
+            if (confirm("¿Seguro que quieres reactivar esta rutina?")) {
+              startTransition(async () => {
+                const res = await updateRoutineMetaAction(routine.id, { status: "active" })
+                if (!res.error) setRoutine((prev) => ({ ...prev, status: "active" }))
+              })
+            }
+          }
+        },
+        {
+          label: "Finalizar rutina",
+          icon: <Check className="size-4" />,
+          onClick: () => {
+            if (confirm("¿Seguro que quieres dar por finalizada esta rutina?")) {
+              startTransition(async () => {
+                const res = await updateRoutineMetaAction(routine.id, { status: "completed" })
+                if (!res.error) setRoutine((prev) => ({ ...prev, status: "completed" }))
+              })
+            }
+          }
+        },
+        {
+          label: "Archivar rutina",
+          icon: <Archive className="size-4" />,
+          onClick: () => {
+            if (confirm("¿Seguro de archivar esta rutina?")) {
+              startTransition(async () => {
+                const res = await updateRoutineMetaAction(routine.id, { status: "archived" })
+                if (!res.error) router.push(ROUTES.ADMIN_RUTINAS)
+              })
+            }
+          }
+        }
+      )
+    } else if (routine.status === "completed") {
+      stateActions.push(
+        {
+          label: "Archivar rutina",
+          icon: <Archive className="size-4" />,
+          onClick: () => {
+            if (confirm("¿Seguro de archivar esta rutina?")) {
+              startTransition(async () => {
+                const res = await updateRoutineMetaAction(routine.id, { status: "archived" })
+                if (!res.error) router.push(ROUTES.ADMIN_RUTINAS)
+              })
+            }
+          }
+        },
+        {
+          label: "Duplicar rutina",
+          icon: <Copy className="size-4" />,
+          onClick: () => {
+            if (confirm("¿Seguro de duplicar esta rutina?")) {
+              startTransition(async () => {
+                const res = await duplicateRoutineAction(routine.id)
+                if (res.success && res.id) {
+                  router.push(ROUTES.ADMIN_RUTINAS + `/${res.id}`)
+                }
+              })
+            }
+          }
+        }
+      )
+    } else if (routine.status === "draft" || routine.status === "archived") {
+      stateActions.push(
+        {
+          label: "Reactivar/Publicar rutina",
+          icon: <Play className="size-4" />,
+          onClick: () => {
+            if (confirm("¿Seguro que quieres activar esta rutina?")) {
+              startTransition(async () => {
+                const res = await updateRoutineMetaAction(routine.id, { status: "active" })
+                if (!res.error) setRoutine((prev) => ({ ...prev, status: "active" }))
+              })
+            }
+          }
+        }
+      )
+      if (routine.status === "archived") {
+        stateActions.push({
+          label: "Duplicar rutina",
+          icon: <Copy className="size-4" />,
+          onClick: () => {
+            if (confirm("¿Seguro de duplicar esta rutina?")) {
+              startTransition(async () => {
+                const res = await duplicateRoutineAction(routine.id)
+                if (res.success && res.id) {
+                  router.push(ROUTES.ADMIN_RUTINAS + `/${res.id}`)
+                }
+              })
+            }
+          }
+        })
+      }
+    }
+  }
+
   const menuActions = [
     ...(variant === "admin"
       ? [
+          ...stateActions,
+          {
+            label: "Cambiar cliente",
+            icon: <Calendar className="size-4" />,
+            onClick: () => {
+              if (confirm("¿Estás seguro de que deseas cambiar el cliente asignado a esta rutina? Esto afectará el historial del cliente.")) {
+                setAssignModalOpen(true)
+              }
+            }
+          },
           {
             label: "Guardar como plantilla",
             icon: <ClipboardCopy className="size-4" />,
             onClick: () => {
               setTemplateName(routine.title)
               setTemplateModalOpen(true)
-            }
-          },
-          {
-            label: "Asignar a cliente",
-            icon: <Calendar className="size-4" />,
-            onClick: () => setAssignModalOpen(true)
-          },
-          {
-            label: "Duplicar rutina",
-            icon: <Copy className="size-4" />,
-            onClick: () => {
-              if (confirm("¿Seguro de duplicar esta rutina?")) {
-                startTransition(async () => {
-                  const res = await duplicateRoutineAction(routine.id)
-                  if (res.success && res.id) {
-                    router.push(ROUTES.ADMIN_RUTINAS + `/${res.id}`)
-                  }
-                })
-              }
-            }
-          },
-          {
-            label: "Archivar rutina",
-            icon: <Archive className="size-4" />,
-            onClick: () => {
-              if (confirm("¿Seguro de archivar esta rutina?")) {
-                startTransition(async () => {
-                  const res = await updateRoutineMetaAction(routine.id, { status: "archived" })
-                  if (!res.error) {
-                    router.push(ROUTES.ADMIN_RUTINAS)
-                  }
-                })
-              }
             }
           },
           {
@@ -504,12 +680,12 @@ export function RoutineEditor({
           <div className="flex flex-wrap gap-2 text-[11px] text-zinc-500">
             {routine.goal && (
               <span className="rounded-full bg-zinc-800 px-2 py-0.5 border border-white/5">
-                Objetivo: {routine.goal}
+                Objetivo: {formatRoutineGoal(routine.goal, routine.custom_goal)}
               </span>
             )}
             {routine.level && (
               <span className="rounded-full bg-zinc-800 px-2 py-0.5 border border-white/5">
-                Nivel: {routine.level}
+                Nivel: {ROUTINE_LEVEL_LABELS[routine.level] ?? routine.level}
               </span>
             )}
             {routine.days_per_week && (
@@ -531,7 +707,7 @@ export function RoutineEditor({
           onMoveDay={handleMoveDay}
         />
 
-        {/* Bloques del día activo */}
+        {/* Contenido del día activo */}
         {activeDay ? (
           <div className="space-y-4">
             {activeDay.blocks.length === 0 ? (
@@ -558,39 +734,20 @@ export function RoutineEditor({
                     onMoveDown={() => handleMoveBlock(block.id, "down")}
                     onOpenPicker={() => setPickerBlockId(block.id)}
                     onDelete={() => handleDeleteBlock(block.id)}
+                    editingTitle={blockTitleEdit === block.id}
+                    editTitleValue={blockTitleValue}
                     onStartEditTitle={() => {
-                      const newTitle = prompt("Nuevo título del bloque:", block.title)
-                      if (newTitle) handleSaveBlockTitle(block.id, newTitle)
+                      setBlockTitleEdit(block.id)
+                      setBlockTitleValue(block.title)
                     }}
-                    onMoveExercise={(exId, dir) => {
-                      const exIndex = block.exercises.findIndex((ex) => ex.id === exId)
-                      if (exIndex === -1) return
-                      const newExList = [...block.exercises]
-                      const targetIdx = dir === "up" ? exIndex - 1 : exIndex + 1
-                      if (targetIdx < 0 || targetIdx >= newExList.length) return
-                      const [moved] = newExList.splice(exIndex, 1)
-                      newExList.splice(targetIdx, 0, moved!)
-                      startTransition(async () => {
-                        await moveRoutineBlockExerciseAction(
-                          block.id,
-                          routine.id,
-                          newExList.map((x) => x.id)
-                        )
-                        setRoutine((prev) => ({
-                          ...prev,
-                          days: prev.days.map((d) =>
-                            d.id === activeDayId
-                              ? {
-                                  ...d,
-                                  blocks: d.blocks.map((b) =>
-                                    b.id === block.id ? { ...b, exercises: newExList } : b
-                                  )
-                                }
-                              : d
-                          )
-                        }))
-                      })
+                    onChangeTitleValue={setBlockTitleValue}
+                    onSaveTitle={() => {
+                      const title = blockTitleValue.trim()
+                      if (title) handleSaveBlockTitle(block.id, title)
+                      setBlockTitleEdit(null)
                     }}
+                    onCancelTitle={() => setBlockTitleEdit(null)}
+                    onMoveExercise={(exId, dir) => handleMoveExercise(block.id, exId, dir)}
                     onRemoveExercise={(exId) => handleRemoveExercise(exId, block.id)}
                     onUpdateExercise={(exId, field, val) =>
                       handleUpdateExerciseField(exId, block.id, field, val)
@@ -636,28 +793,39 @@ export function RoutineEditor({
         <ExercisePicker
           exercises={exercises}
           existingIds={
-            activeDay?.blocks
-              .find((b) => b.id === pickerBlockId)
-              ?.exercises.map((e) => e.exercise_id) ?? []
+            activeDay?.blocks.find((b) => b.id === pickerBlockId)?.exercises.map((e) => e.exercise_id) ?? []
           }
-          onSelect={(ex) => {
-            handleAddExercise(pickerBlockId, ex)
+          onSelect={(ex, overrides) => {
+            handleAddExercise(pickerBlockId, ex, overrides)
             setPickerBlockId(null)
           }}
           onClose={() => setPickerBlockId(null)}
-          onCreateNew={variant === "admin" ? () => setCreateForBlockId(pickerBlockId) : undefined}
+          onCreateNew={() => setCreateForBlockId(pickerBlockId)}
+          quickConfigDefaults={variant === "client-own" ? { sets: 3, reps: 12, rest_seconds: 60 } : undefined}
+          myExerciseIds={variant === "client-own" ? myExerciseIds : undefined}
+          simplifiedUsage={variant === "client-own"}
         />
       )}
 
       {/* Crear ejercicio desde picker */}
       {createForBlockId && (
-        <ExerciseForm
-          onSuccess={(newEx) => {
-            handleAddExercise(createForBlockId, newEx)
-            setCreateForBlockId(null)
-          }}
-          onClose={() => setCreateForBlockId(null)}
-        />
+        variant === "admin" ? (
+          <ExerciseForm
+            onSuccess={(newEx) => {
+              handleAddExercise(createForBlockId, newEx)
+              setCreateForBlockId(null)
+            }}
+            onClose={() => setCreateForBlockId(null)}
+          />
+        ) : (
+          <ClientExerciseForm
+            onSuccess={(newEx) => {
+              handleAddExercise(createForBlockId, newEx)
+              setCreateForBlockId(null)
+            }}
+            onClose={() => setCreateForBlockId(null)}
+          />
+        )
       )}
 
       {/* Modal guardar plantilla */}
@@ -786,22 +954,38 @@ export function RoutineEditor({
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div>
+                <div className={variant === "client-own" ? "col-span-2" : undefined}>
                   <label className="text-xs text-zinc-500">Objetivo</label>
-                  <select
-                    value={metaGoal}
-                    onChange={(e) => setMetaGoal(e.target.value as RoutineGoal)}
-                    className="w-full rounded-lg border border-white/10 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-red-600/50"
-                  >
-                    <option value="">Ninguno</option>
-                    <option value="fuerza">Fuerza</option>
-                    <option value="hipertrofia">Hipertrofia</option>
-                    <option value="cardio">Cardio</option>
-                    <option value="tecnica">Técnica</option>
-                    <option value="movilidad">Movilidad</option>
-                    <option value="full_body">Full Body</option>
-                    <option value="general">General</option>
-                  </select>
+                  {variant === "client-own" ? (
+                    <div className="mt-1 space-y-2">
+                      <ChipSelect
+                        options={Object.entries(CLIENT_ROUTINE_GOAL_LABELS).map(([k, v]) => ({ value: k as ClientRoutineGoal, label: v }))}
+                        value={metaGoal as ClientRoutineGoal | ""}
+                        onChange={(v) => setMetaGoal(v)}
+                      />
+                      {metaGoal === "otro" && (
+                        <input
+                          type="text"
+                          maxLength={60}
+                          placeholder="Escribe tu objetivo..."
+                          value={metaCustomGoal}
+                          onChange={(e) => setMetaCustomGoal(e.target.value)}
+                          className="w-full rounded-lg border border-white/10 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-red-600/50"
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <select
+                      value={metaGoal}
+                      onChange={(e) => setMetaGoal(e.target.value as RoutineGoal)}
+                      className="w-full rounded-lg border border-white/10 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-red-600/50"
+                    >
+                      <option value="">Ninguno</option>
+                      {Object.entries(ADMIN_ROUTINE_GOAL_LABELS).map(([k, v]) => (
+                        <option key={k} value={k}>{v}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs text-zinc-500">Nivel</label>
@@ -839,7 +1023,7 @@ export function RoutineEditor({
             </div>
             <button
               onClick={handleSaveMeta}
-              disabled={isPending || !metaTitle.trim()}
+              disabled={isPending || !metaTitle.trim() || (metaGoal === "otro" && !metaCustomGoal.trim())}
               className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
             >
               {isPending ? (

@@ -119,7 +119,7 @@ export default async function ClienteProgresoPage() {
       <div className="p-4 space-y-4">
 
         {/* CTA */}
-        <ProgressForm todayRecord={todayRecord} />
+        <ProgressForm todayRecord={todayRecord} latestHeightCm={latest?.height_cm} />
 
         {/* Objetivo */}
         <GoalCard goal={goal} />

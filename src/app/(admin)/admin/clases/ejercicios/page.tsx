@@ -14,7 +14,7 @@ export default async function AdminEjerciciosPage() {
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
   if (profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
 
-  const exercises = await getExercises({ includeInactive: true })
+  const exercises = await getExercises({ includeInactive: true, visibility: "gym" })
 
   return (
     <div>

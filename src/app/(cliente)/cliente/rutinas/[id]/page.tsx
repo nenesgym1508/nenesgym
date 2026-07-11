@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { getCurrentClientData } from "@/services/clients.service"
 import { getRoutineWithDays, getRoutineSessionForDate } from "@/services/routines.service"
-import { getExercises } from "@/services/exercises.service"
+import { getExercises, getMyExerciseIds } from "@/services/exercises.service"
 import { RoutineDetailView } from "@/components/cliente/routine-detail-view"
 import { RoutineEditor } from "@/components/admin/routine-editor"
 import { todayInBogota } from "@/lib/dates"
@@ -23,7 +23,7 @@ export default async function ClienteRoutineDetailPage({
 
   const [routine, exercises] = await Promise.all([
     getRoutineWithDays(id),
-    getExercises()
+    getExercises({ includeInactive: true })
   ])
 
   if (!routine) {
@@ -40,6 +40,7 @@ export default async function ClienteRoutineDetailPage({
   const isDoneToday = !!session
 
   const isOwnRoutine = routine.created_by_role === "client"
+  const myExerciseIds = isOwnRoutine ? await getMyExerciseIds(client.id) : undefined
 
   return (
     <div className="relative min-h-screen">
@@ -50,6 +51,7 @@ export default async function ClienteRoutineDetailPage({
           variant="client-own"
           isDoneToday={isDoneToday}
           todayStr={todayStr}
+          myExerciseIds={myExerciseIds}
         />
       ) : (
         <RoutineDetailView 

@@ -5,19 +5,20 @@ import type {
   ClientRoutineWithDays,
   RoutineDay,
   RoutineBlock,
-  RoutineExercise,
   RoutineSession,
   RoutineStatus,
   Weekday,
 } from "@/types/routine"
 
-export async function getAdminRoutines(options?: { status?: RoutineStatus; clientId?: string }): Promise<ClientRoutine[]> {
+export async function getAdminRoutines(
+  options?: { status?: RoutineStatus; clientId?: string }
+): Promise<(ClientRoutine & { client: { id: string; profile: { full_name: string | null } | null } | null })[]> {
   const supabase = await createClient()
   let query = supabase
     .from("client_routines")
-    .select("*")
+    .select("*, client:clients(id, profile:profiles(full_name))")
     .eq("gym_id", GYM_ID)
-    .order("created_at", { ascending: false })
+    .order("updated_at", { ascending: false })
 
   if (options?.status) {
     query = query.eq("status", options.status)
@@ -27,67 +28,32 @@ export async function getAdminRoutines(options?: { status?: RoutineStatus; clien
   }
 
   const { data } = await query
-  return (data ?? []) as ClientRoutine[]
-}
-
-export async function getActiveRoutinesWithClient(): Promise<(ClientRoutine & { client: { id: string; profile: { full_name: string | null } | null } | null })[]> {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from("client_routines")
-    .select("*, client:clients(id, profile:profiles(full_name))")
-    .eq("gym_id", GYM_ID)
-    .eq("status", "active")
-    .order("updated_at", { ascending: false })
-
   return (data ?? []) as any[]
 }
 
 export async function getRoutineWithDays(id: string): Promise<ClientRoutineWithDays | null> {
   const supabase = await createClient()
-  const { data: routine } = await supabase
-    .from("client_routines")
-    .select("*")
-    .eq("id", id)
-    .single()
+
+  const [{ data: routine }, { data: days }] = await Promise.all([
+    supabase.from("client_routines").select("*").eq("id", id).single(),
+    supabase
+      .from("client_routine_days")
+      .select(
+        "*, blocks:client_routine_blocks(*, exercises:client_routine_exercises(*, exercise:exercises(id, name, muscle_group, exercise_type, equipment, secondary_muscle_groups, media_url, instructions)))"
+      )
+      .eq("routine_id", id)
+      .order("position")
+      .order("position", { referencedTable: "blocks" })
+      .order("position", { referencedTable: "blocks.exercises" }),
+  ])
 
   if (!routine) return null
 
-  const { data: days } = await supabase
-    .from("client_routine_days")
-    .select("*")
-    .eq("routine_id", id)
-    .order("position")
-
-  const daysWithBlocks: RoutineDay[] = []
-
-  for (const day of days ?? []) {
-    const { data: blocks } = await supabase
-      .from("client_routine_blocks")
-      .select("*")
-      .eq("routine_day_id", day.id)
-      .order("position")
-
-    const blocksWithExercises: RoutineBlock[] = []
-
-    for (const block of blocks ?? []) {
-      const { data: exercises } = await supabase
-        .from("client_routine_exercises")
-        .select("*, exercise:exercises(id, name, muscle_group, exercise_type, equipment, secondary_muscle_groups, media_url, instructions)")
-        .eq("block_id", block.id)
-        .order("position")
-
-      blocksWithExercises.push({
-        ...block,
-        exercises: (exercises ?? []) as RoutineExercise[],
-      })
-    }
-
-    daysWithBlocks.push({
-      ...day,
-      weekday: day.weekday as Weekday | null,
-      blocks: blocksWithExercises,
-    })
-  }
+  const daysWithBlocks: RoutineDay[] = (days ?? []).map((day) => ({
+    ...day,
+    weekday: day.weekday as Weekday | null,
+    blocks: (day.blocks ?? []) as RoutineBlock[],
+  }))
 
   return {
     ...(routine as ClientRoutine),

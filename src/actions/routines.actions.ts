@@ -8,9 +8,7 @@ import type { RoutineGoal, RoutineLevel, RoutineStatus, RoutineSourceType, Routi
 
 const STANDARD_BLOCK_TITLES = [
   "Calentamiento",
-  "Trabajo principal",
-  "Complementarios",
-  "Estiramiento"
+  "Trabajo principal"
 ]
 
 interface CreateRoutineInput {
@@ -18,6 +16,7 @@ interface CreateRoutineInput {
   title: string
   description?: string
   goal?: RoutineGoal
+  custom_goal?: string
   level?: RoutineLevel
   days_per_week?: number
   start_date?: string
@@ -38,6 +37,7 @@ export async function createRoutineAction(data: CreateRoutineInput) {
       title: data.title.trim(),
       description: data.description ?? null,
       goal: data.goal ?? null,
+      custom_goal: data.custom_goal ?? null,
       level: data.level ?? null,
       days_per_week: data.days_per_week ?? null,
       status: "active",
@@ -128,6 +128,7 @@ export async function duplicateRoutineAction(id: string) {
       title: `${source.title} (Copia)`,
       description: source.description,
       goal: source.goal,
+      custom_goal: source.custom_goal,
       level: source.level,
       days_per_week: source.days_per_week,
       status: "draft",
@@ -234,17 +235,20 @@ export async function addRoutineDayAction(routineId: string, title: string, week
   if (error) return { error: error.message }
 
   // Scaffold blocks for the new day
-  await supabase.from("client_routine_blocks").insert(
-    STANDARD_BLOCK_TITLES.map((tTitle, i) => ({
-      routine_day_id: data.id,
-      title: tTitle,
-      position: i
-    }))
-  )
+  const { data: blocksData } = await supabase
+    .from("client_routine_blocks")
+    .insert(
+      STANDARD_BLOCK_TITLES.map((tTitle, i) => ({
+        routine_day_id: data.id,
+        title: tTitle,
+        position: i
+      }))
+    )
+    .select("id, title, position")
 
   revalidatePath(adminRutinaDetalle(routineId))
   revalidatePath(clienteRutinaDetalle(routineId))
-  return { success: true, id: data.id }
+  return { success: true, id: data.id, blocks: blocksData ?? [] }
 }
 
 export async function updateRoutineDayAction(dayId: string, routineId: string, title: string, weekday: Weekday | null) {
@@ -333,7 +337,13 @@ export async function moveRoutineBlockAction(dayId: string, routineId: string, o
 }
 
 // ── Ejercicios en bloque ──────────────────────────────────
-export async function addExerciseToRoutineBlockAction(blockId: string, routineId: string, exerciseId: string, position: number) {
+export async function addExerciseToRoutineBlockAction(
+  blockId: string,
+  routineId: string,
+  exerciseId: string,
+  position: number,
+  overrides?: { sets: number; reps: number; rest_seconds: number }
+) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("client_routine_exercises")
@@ -341,8 +351,9 @@ export async function addExerciseToRoutineBlockAction(blockId: string, routineId
       block_id: blockId,
       exercise_id: exerciseId,
       position,
-      sets: 3,
-      reps: 10
+      sets: overrides?.sets ?? 3,
+      reps: overrides?.reps ?? 10,
+      rest_seconds: overrides?.rest_seconds ?? null
     })
     .select("id")
     .single()
@@ -397,6 +408,7 @@ export async function moveRoutineBlockExerciseAction(blockId: string, routineId:
 export async function createClientRoutineAction(data: {
   title: string
   goal?: RoutineGoal
+  custom_goal?: string
   level?: RoutineLevel
   days_per_week?: number
   description?: string
@@ -405,6 +417,11 @@ export async function createClientRoutineAction(data: {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "No autenticado" }
+
+  const customGoal = data.goal === "otro" ? data.custom_goal?.trim() || null : null
+  if (data.goal === "otro" && (!customGoal || customGoal.length > 60)) {
+    return { error: "Escribe un objetivo de hasta 60 caracteres" }
+  }
 
   const { data: client } = await supabase
     .from("clients")
@@ -422,6 +439,7 @@ export async function createClientRoutineAction(data: {
       title: data.title.trim(),
       description: data.description ?? null,
       goal: data.goal ?? null,
+      custom_goal: customGoal,
       level: data.level ?? null,
       days_per_week: data.days_per_week ?? null,
       status: "active",
@@ -435,26 +453,29 @@ export async function createClientRoutineAction(data: {
 
   if (error) return { error: error.message }
 
-  // Scaffold standard day "Día 1"
-  const { data: dayData, error: dayError } = await supabase
-    .from("client_routine_days")
-    .insert({
-      routine_id: newRoutine.id,
-      title: "Día 1",
-      weekday: null,
-      position: 0
-    })
-    .select("id")
-    .single()
+  // Crear N días (según days_per_week), cada uno con los 4 bloques estándar.
+  const totalDays = data.days_per_week ?? 1
+  for (let i = 1; i <= totalDays; i++) {
+    const { data: dayData } = await supabase
+      .from("client_routine_days")
+      .insert({
+        routine_id: newRoutine.id,
+        title: `Día ${i}`,
+        weekday: null,
+        position: i - 1
+      })
+      .select("id")
+      .single()
 
-  if (!dayError && dayData) {
-    await supabase.from("client_routine_blocks").insert(
-      STANDARD_BLOCK_TITLES.map((title, i) => ({
-        routine_day_id: dayData.id,
-        title,
-        position: i
-      }))
-    )
+    if (dayData) {
+      await supabase.from("client_routine_blocks").insert(
+        STANDARD_BLOCK_TITLES.map((title, idx) => ({
+          routine_day_id: dayData.id,
+          title,
+          position: idx
+        }))
+      )
+    }
   }
 
   revalidatePath(ROUTES.CLIENTE_RUTINAS)
@@ -572,6 +593,7 @@ export async function createRoutineFromTemplateAction(templateId: string, client
       title: rt.name,
       description: rt.description,
       goal: rt.goal,
+      custom_goal: rt.custom_goal,
       level: rt.level,
       days_per_week: rt.days_per_week,
       status: "active",
@@ -667,6 +689,7 @@ export async function saveRoutineAsTemplateAction(routineId: string, templateNam
       name: templateName.trim(),
       description: source.description,
       goal: source.goal,
+      custom_goal: source.custom_goal,
       level: source.level,
       days_per_week: source.days_per_week,
       notes: source.notes,
@@ -793,6 +816,7 @@ interface ClientRoutineInput {
   title: string
   description?: string | null
   goal?: RoutineGoal | null
+  custom_goal?: string | null
   level?: RoutineLevel | null
   start_date?: string | null
   end_date?: string | null

@@ -2,32 +2,40 @@
 
 import { useState } from "react"
 import { Loader2, X } from "lucide-react"
-import { createExerciseAction, updateExerciseAction, uploadExerciseImageAction } from "@/actions/exercises.actions"
+import { createMyExerciseAction, updateMyExerciseAction, uploadExerciseImageAction } from "@/actions/exercises.actions"
 import { Input, Textarea } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
   MUSCLE_GROUP_LABELS,
   EQUIPMENT_LABELS,
-  EXERCISE_TYPE_LABELS,
   USAGE_TAG_LABELS,
   type Exercise,
   type MuscleGroup,
   type Equipment,
-  type ExerciseType,
   type UsageTag,
 } from "@/types/exercise"
 
-interface ExerciseFormProps {
+interface ClientExerciseFormProps {
   exercise?: Exercise | null
   onSuccess: (exercise: Exercise) => void
   onClose: () => void
 }
 
-export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps) {
+export function ClientExerciseForm({ exercise, onSuccess, onClose }: ClientExerciseFormProps) {
   const isEdit = !!exercise
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+
+  const [name, setName] = useState(exercise?.name ?? "")
+  const [muscleGroup, setMuscleGroup] = useState<MuscleGroup | "">(exercise?.muscle_group ?? "")
+  const [equipment, setEquipment] = useState<Equipment | "">(exercise?.equipment ?? "")
+  const [usageTags, setUsageTags] = useState<UsageTag[]>(exercise?.usage_tags ?? [])
+  const [description, setDescription] = useState(exercise?.instructions ?? "")
+  const [mediaUrl, setMediaUrl] = useState(exercise?.media_url ?? "")
+
+  const toggleUsageTag = (t: UsageTag) =>
+    setUsageTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -48,21 +56,6 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
     }
   }
 
-  const [name, setName] = useState(exercise?.name ?? "")
-  const [muscleGroup, setMuscleGroup] = useState<MuscleGroup | "">(exercise?.muscle_group ?? "")
-  const [secondaryGroups, setSecondaryGroups] = useState<MuscleGroup[]>(exercise?.secondary_muscle_groups ?? [])
-  const [equipment, setEquipment] = useState<Equipment | "">(exercise?.equipment ?? "")
-  const [exerciseType, setExerciseType] = useState<ExerciseType | "">(exercise?.exercise_type ?? "")
-  const [usageTags, setUsageTags] = useState<UsageTag[]>(exercise?.usage_tags ?? [])
-  const [instructions, setInstructions] = useState(exercise?.instructions ?? "")
-  const [mediaUrl, setMediaUrl] = useState(exercise?.media_url ?? "")
-
-  const toggleSecondary = (g: MuscleGroup) =>
-    setSecondaryGroups((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
-
-  const toggleUsageTag = (t: UsageTag) =>
-    setUsageTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) { setError("El nombre es obligatorio"); return }
@@ -72,32 +65,28 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
     const data = {
       name,
       muscle_group: muscleGroup || undefined,
-      secondary_muscle_groups: secondaryGroups.length ? secondaryGroups : undefined,
       equipment: equipment || undefined,
-      exercise_type: exerciseType || undefined,
       usage_tags: usageTags,
-      instructions: instructions || undefined,
+      description: description || undefined,
       media_url: mediaUrl.trim() || undefined,
     }
 
     if (isEdit) {
-      const result = await updateExerciseAction(exercise.id, data)
+      const result = await updateMyExerciseAction(exercise.id, data)
       setLoading(false)
-      if ("error" in result && result.error) { setError(result.error); return }
+      if ("error" in result) { setError(result.error); return }
       onSuccess({
         ...exercise,
         name,
         muscle_group: (muscleGroup || null) as MuscleGroup | null,
-        secondary_muscle_groups: secondaryGroups.length ? secondaryGroups : null,
         equipment: (equipment || null) as Equipment | null,
-        exercise_type: (exerciseType || null) as ExerciseType | null,
         usage_tags: usageTags,
-        instructions: instructions || null,
+        instructions: description || null,
         media_url: mediaUrl.trim() || null,
         updated_at: new Date().toISOString(),
       })
     } else {
-      const result = await createExerciseAction(data)
+      const result = await createMyExerciseAction(data)
       setLoading(false)
       if ("error" in result) { setError(result.error); return }
       onSuccess(result.exercise)
@@ -106,7 +95,6 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
 
   const muscleGroups = Object.keys(MUSCLE_GROUP_LABELS) as MuscleGroup[]
   const equipments = Object.keys(EQUIPMENT_LABELS) as Equipment[]
-  const exerciseTypes = Object.keys(EXERCISE_TYPE_LABELS) as ExerciseType[]
   const usageTagOptions = Object.keys(USAGE_TAG_LABELS) as UsageTag[]
 
   return (
@@ -120,7 +108,7 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
       >
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-bold text-zinc-100">
-            {isEdit ? "Editar ejercicio" : "Nuevo ejercicio"}
+            {isEdit ? "Editar ejercicio" : "Crear ejercicio propio"}
           </h3>
           <button
             onClick={onClose}
@@ -133,17 +121,15 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            id="ex-name"
-            label="Nombre del ejercicio *"
-            placeholder="Sentadilla con barra"
+            id="my-ex-name"
+            label="Nombre *"
+            placeholder="Sentadilla con mancuernas"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-zinc-400">
-              Subir imagen (opcional)
-            </label>
+            <label className="text-xs font-medium text-zinc-400">Imagen (opcional)</label>
             <div className="flex items-center gap-3">
               {mediaUrl.trim() ? (
                 <img
@@ -159,14 +145,14 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
               )}
               <div className="flex-1 flex gap-2">
                 <input
-                  id="ex-file-upload"
+                  id="my-ex-file-upload"
                   type="file"
                   accept="image/png, image/jpeg, image/webp"
                   onChange={handleFileChange}
                   className="hidden"
                 />
                 <label
-                  htmlFor="ex-file-upload"
+                  htmlFor="my-ex-file-upload"
                   className="flex-1 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-zinc-300 font-semibold cursor-pointer hover:bg-white/10 hover:text-zinc-100 transition-all text-center"
                 >
                   {uploading ? (
@@ -186,6 +172,12 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
                 )}
               </div>
             </div>
+            <Input
+              id="my-ex-media-url"
+              placeholder="...o pega una URL de imagen"
+              value={mediaUrl}
+              onChange={(e) => setMediaUrl(e.target.value)}
+            />
           </div>
 
           <SelectField
@@ -195,41 +187,11 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
             options={[{ value: "", label: "Sin especificar" }, ...muscleGroups.map((g) => ({ value: g, label: MUSCLE_GROUP_LABELS[g] }))]}
           />
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-zinc-400">Músculos secundarios (opcional)</label>
-            <div className="flex flex-wrap gap-1.5">
-              {muscleGroups
-                .filter((g) => g !== muscleGroup)
-                .map((g) => {
-                  const on = secondaryGroups.includes(g)
-                  return (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => toggleSecondary(g)}
-                      className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
-                        on ? "bg-red-600/20 text-red-400" : "bg-zinc-800 text-zinc-500 hover:text-zinc-300"
-                      }`}
-                    >
-                      {MUSCLE_GROUP_LABELS[g]}
-                    </button>
-                  )
-                })}
-            </div>
-          </div>
-
           <SelectField
             label="Equipo"
             value={equipment}
             onChange={(v) => setEquipment(v as Equipment | "")}
             options={[{ value: "", label: "Sin especificar" }, ...equipments.map((e) => ({ value: e, label: EQUIPMENT_LABELS[e] }))]}
-          />
-
-          <SelectField
-            label="Tipo"
-            value={exerciseType}
-            onChange={(v) => setExerciseType(v as ExerciseType | "")}
-            options={[{ value: "", label: "Sin especificar" }, ...exerciseTypes.map((t) => ({ value: t, label: EXERCISE_TYPE_LABELS[t] }))]}
           />
 
           <div className="space-y-1.5">
@@ -254,12 +216,12 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
           </div>
 
           <Textarea
-            id="ex-instructions"
-            label="Instrucciones (opcional)"
-            placeholder="Descripción de la técnica..."
+            id="my-ex-description"
+            label="Descripción corta (opcional)"
+            placeholder="Cómo hacer el ejercicio..."
             rows={3}
-            value={instructions}
-            onChange={(e) => setInstructions(e.target.value)}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
           />
 
           {error && <p className="text-sm text-red-400">{error}</p>}

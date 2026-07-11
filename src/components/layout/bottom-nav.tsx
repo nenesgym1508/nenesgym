@@ -6,7 +6,7 @@ import { Home, CreditCard, QrCode, TrendingUp, User, Users, Dumbbell, ClipboardL
 import { cn } from "@/lib/utils"
 import { ROUTES } from "@/constants/routes"
 
-type NavItem = { href: string; label: string; icon: typeof Home }
+type NavItem = { href: string; label: string; icon: typeof Home; matchPrefixes?: string[] }
 
 // Cliente: la acción central (Entrada) se renderiza elevada como FAB.
 const clienteLeft: NavItem[] = [
@@ -23,8 +23,12 @@ const adminItems: NavItem[] = [
   { href: ROUTES.ADMIN_DASHBOARD, label: "Panel", icon: Home },
   { href: ROUTES.ADMIN_CLIENTES, label: "Clientes", icon: Users },
   { href: ROUTES.ADMIN_PAGOS, label: "Pagos", icon: CreditCard },
-  { href: ROUTES.ADMIN_CLASES, label: "Clases", icon: Dumbbell },
-  { href: ROUTES.ADMIN_RUTINAS, label: "Rutinas", icon: ClipboardList },
+  {
+    href: ROUTES.ADMIN_ENTRENAMIENTO,
+    label: "Entrenamiento",
+    icon: Dumbbell,
+    matchPrefixes: [ROUTES.ADMIN_CLASES, ROUTES.ADMIN_RUTINAS],
+  },
   { href: ROUTES.ADMIN_MAS, label: "Más", icon: MoreHorizontal },
 ]
 
@@ -34,7 +38,8 @@ interface BottomNavProps {
 
 function useIsActive() {
   const pathname = usePathname()
-  return (href: string) => pathname === href || pathname.startsWith(href + "/")
+  const matches = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+  return (item: NavItem) => matches(item.href) || (item.matchPrefixes?.some(matches) ?? false)
 }
 
 function FlatTab({ item, active }: { item: NavItem; active: boolean }) {
@@ -61,14 +66,14 @@ export function BottomNav({ role }: BottomNavProps) {
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/15 bg-zinc-950 shadow-[0_-1px_0_rgba(255,255,255,0.08)]">
         <div className="flex h-16">
           {adminItems.map((item) => (
-            <FlatTab key={item.href} item={item} active={isActive(item.href)} />
+            <FlatTab key={item.href} item={item} active={isActive(item)} />
           ))}
         </div>
       </nav>
     )
   }
 
-  const centerActive = isActive(clienteCenter.href)
+  const centerActive = isActive(clienteCenter)
   const CenterIcon = clienteCenter.icon
 
   return (
@@ -77,7 +82,7 @@ export function BottomNav({ role }: BottomNavProps) {
         {/* Lado izquierdo */}
         <div className="flex flex-1 justify-around items-center h-full">
           {clienteLeft.map((item) => (
-            <FlatTab key={item.href} item={item} active={isActive(item.href)} />
+            <FlatTab key={item.href} item={item} active={isActive(item)} />
           ))}
         </div>
 
@@ -96,7 +101,7 @@ export function BottomNav({ role }: BottomNavProps) {
         {/* Lado derecho */}
         <div className="flex flex-1 justify-around items-center h-full">
           {clienteRight.map((item) => (
-            <FlatTab key={item.href} item={item} active={isActive(item.href)} />
+            <FlatTab key={item.href} item={item} active={isActive(item)} />
           ))}
         </div>
 

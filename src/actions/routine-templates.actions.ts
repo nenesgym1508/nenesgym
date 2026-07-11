@@ -8,9 +8,7 @@ import type { RoutineGoal, RoutineLevel, Weekday } from "@/types/routine"
 
 const STANDARD_BLOCK_TITLES = [
   "Calentamiento",
-  "Trabajo principal",
-  "Complementarios",
-  "Estiramiento"
+  "Trabajo principal"
 ]
 
 export async function createRoutineTemplateAction(data: {
@@ -114,16 +112,19 @@ export async function addRoutineTemplateDayAction(templateId: string, title: str
   if (error) return { error: error.message }
 
   // Scaffold blocks
-  await supabase.from("routine_template_blocks").insert(
-    STANDARD_BLOCK_TITLES.map((tTitle, i) => ({
-      template_day_id: data.id,
-      title: tTitle,
-      position: i
-    }))
-  )
+  const { data: blocksData } = await supabase
+    .from("routine_template_blocks")
+    .insert(
+      STANDARD_BLOCK_TITLES.map((tTitle, i) => ({
+        template_day_id: data.id,
+        title: tTitle,
+        position: i
+      }))
+    )
+    .select("id, title, position")
 
   revalidatePath(adminRutinaPlantillaDetalle(templateId))
-  return { success: true, id: data.id }
+  return { success: true, id: data.id, blocks: blocksData ?? [] }
 }
 
 export async function updateRoutineTemplateDayAction(dayId: string, templateId: string, title: string, weekday: Weekday | null) {

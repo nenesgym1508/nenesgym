@@ -388,6 +388,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           created_by_role: string | null
+          custom_goal: string | null
           days_per_week: number | null
           description: string | null
           end_date: string | null
@@ -408,6 +409,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           created_by_role?: string | null
+          custom_goal?: string | null
           days_per_week?: number | null
           description?: string | null
           end_date?: string | null
@@ -428,6 +430,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           created_by_role?: string | null
+          custom_goal?: string | null
           days_per_week?: number | null
           description?: string | null
           end_date?: string | null
@@ -1264,6 +1267,7 @@ export type Database = {
       routine_templates: {
         Row: {
           created_at: string
+          custom_goal: string | null
           days_per_week: number | null
           description: string | null
           goal: string | null
@@ -1277,6 +1281,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_goal?: string | null
           days_per_week?: number | null
           description?: string | null
           goal?: string | null
@@ -1290,6 +1295,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_goal?: string | null
           days_per_week?: number | null
           description?: string | null
           goal?: string | null

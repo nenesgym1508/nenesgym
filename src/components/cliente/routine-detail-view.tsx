@@ -6,7 +6,7 @@ import Link from "next/link"
 import { ROUTES } from "@/constants/routes"
 import { DayTabBar } from "@/components/admin/day-tab-bar"
 import { BlockCard } from "@/components/admin/class-editor"
-import { ROUTINE_STATUS_LABELS, type ClientRoutineWithDays } from "@/types/routine"
+import { ROUTINE_STATUS_LABELS, ROUTINE_LEVEL_LABELS, formatRoutineGoal, type ClientRoutineWithDays } from "@/types/routine"
 import { MarkDoneTodayBar } from "@/components/cliente/mark-done-today-bar"
 
 interface RoutineDetailViewProps {
@@ -53,12 +53,12 @@ export function RoutineDetailView({ routine, isDoneToday, todayStr }: RoutineDet
           <div className="flex flex-wrap gap-2 text-[11px] text-zinc-500">
             {routine.goal && (
               <span className="rounded-full bg-zinc-800 px-2 py-0.5 border border-white/5">
-                Objetivo: {routine.goal}
+                Objetivo: {formatRoutineGoal(routine.goal, routine.custom_goal)}
               </span>
             )}
             {routine.level && (
               <span className="rounded-full bg-zinc-800 px-2 py-0.5 border border-white/5">
-                Nivel: {routine.level}
+                Nivel: {ROUTINE_LEVEL_LABELS[routine.level] ?? routine.level}
               </span>
             )}
             {routine.days_per_week && (

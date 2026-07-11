@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { ChevronRight, ClipboardList } from "lucide-react"
-import { ROUTINE_GOAL_LABELS, type RoutineGoal } from "@/types/routine"
+import { formatRoutineGoal } from "@/types/routine"
 import { adminRutinaPlantillaDetalle } from "@/constants/routes"
 import type { RoutineTemplate } from "@/services/routine-templates.service"
 
@@ -48,7 +48,7 @@ export function RoutineTemplatesList({ templates }: RoutineTemplatesListProps) {
                 )}
                 {tpl.goal && (
                   <span>
-                    {ROUTINE_GOAL_LABELS[tpl.goal as RoutineGoal] ?? tpl.goal}
+                    {formatRoutineGoal(tpl.goal, tpl.custom_goal)}
                   </span>
                 )}
                 {tpl.days_per_week && <span>{tpl.days_per_week} días/semana</span>}

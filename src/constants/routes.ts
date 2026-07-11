@@ -20,6 +20,7 @@ export const ROUTES = {
   ADMIN_MAS: '/admin/mas',
 
   // Admin — Clases
+  ADMIN_ENTRENAMIENTO: '/admin/entrenamiento',
   ADMIN_CLASES: '/admin/clases',
   ADMIN_CLASES_EJERCICIOS: '/admin/clases/ejercicios',
   ADMIN_CLASES_PLANTILLAS: '/admin/clases/plantillas',
@@ -32,6 +33,7 @@ export const ROUTES = {
 
   // Cliente — Rutinas
   CLIENTE_RUTINAS: '/cliente/rutinas',
+  CLIENTE_RUTINAS_EJERCICIOS: '/cliente/rutinas/ejercicios',
 } as const
 
 export function adminClienteDetalle(id: string) {

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   ChevronLeft, ChevronUp, ChevronDown, Plus, Trash2, BookmarkPlus,
   Copy, Eye, Loader2, X, Check, Info, CalendarPlus, Layers, Dumbbell,
-  Archive, Send,
+  Archive, Send, Pencil,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -36,8 +36,11 @@ import {
   MUSCLE_GROUP_LABELS,
   EQUIPMENT_LABELS,
   EXERCISE_TYPE_LABELS,
+  USAGE_TAG_LABELS,
+  getEffectiveUsageTags,
   type Exercise,
   type MuscleGroup,
+  type UsageTag,
 } from "@/types/exercise"
 import type { ClassTemplate } from "@/services/templates.service"
 import type { RoutineBlock, RoutineExercise } from "@/types/routine"
@@ -648,9 +651,10 @@ export function BlockCard({
           <button
             onClick={onStartEditTitle}
             disabled={readOnly}
-            className="flex-1 text-left text-sm font-semibold text-zinc-200 hover:text-red-400 transition-colors disabled:hover:text-zinc-200"
+            className="flex flex-1 items-center gap-1.5 text-left text-sm font-semibold text-zinc-200 hover:text-red-400 transition-colors disabled:hover:text-zinc-200"
           >
             {block.title}
+            {!readOnly && <Pencil className="size-3 text-zinc-600" />}
           </button>
         )}
 
@@ -749,8 +753,7 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, 
         )}
 
         <button
-          onClick={() => { if (!readOnly) setExpanded((v) => !v) }}
-          disabled={readOnly}
+          onClick={() => setExpanded((v) => !v)}
           className="flex-1 min-w-0 text-left"
         >
           <p className="text-sm font-medium text-zinc-200 leading-snug truncate">{ex.exercise.name}</p>
@@ -762,42 +765,67 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, 
           )}
         </button>
 
-        {!readOnly && (
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="shrink-0 text-zinc-600 hover:text-zinc-300 transition-colors"
-            aria-label={expanded ? "Cerrar edición" : "Editar"}
-          >
-            {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-          </button>
-        )}
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="shrink-0 text-zinc-600 hover:text-zinc-300 transition-colors"
+          aria-label={expanded ? "Cerrar detalle" : "Ver detalle"}
+        >
+          {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+        </button>
       </div>
 
-      {expanded && !readOnly && (
-        <div className="mt-2.5 pl-[46px]">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex gap-1">
-              <button onClick={onMoveUp} disabled={isFirst || isPending} className="flex h-6 w-6 items-center justify-center rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-20">
-                <ChevronUp className="size-3.5" />
-              </button>
-              <button onClick={onMoveDown} disabled={isLast || isPending} className="flex h-6 w-6 items-center justify-center rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-20">
-                <ChevronDown className="size-3.5" />
-              </button>
+      {expanded && (
+        <div className="mt-3 space-y-3">
+          <div className="overflow-hidden rounded-xl bg-zinc-800">
+            {ex.exercise.media_url ? (
+              <img
+                src={ex.exercise.media_url}
+                alt=""
+                loading="lazy"
+                className="h-44 w-full object-cover"
+                onError={(e) => { e.currentTarget.style.display = "none" }}
+              />
+            ) : (
+              <div className="flex h-44 w-full items-center justify-center text-zinc-600">
+                <Dumbbell className="size-10" />
+              </div>
+            )}
+          </div>
+
+          {ex.exercise.instructions && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 mb-1">Descripción</p>
+              <p className="text-xs leading-relaxed text-zinc-400 whitespace-pre-line">{ex.exercise.instructions}</p>
             </div>
-            <button onClick={onRemove} disabled={isPending} className="flex items-center gap-1 text-xs text-zinc-600 hover:text-red-400 transition-colors">
-              <X className="size-3.5" /> Quitar
-            </button>
-          </div>
-          <div className="grid grid-cols-4 gap-1.5">
-            <NumField label="Series" value={ex.sets} onChange={(v) => onUpdate?.("sets", v)} />
-            <NumField label="Reps" value={ex.reps} onChange={(v) => onUpdate?.("reps", v)} />
-            <NumField label="Seg" value={ex.duration_seconds} onChange={(v) => onUpdate?.("duration_seconds", v)} />
-            <NumField label="Desc" value={ex.rest_seconds} onChange={(v) => onUpdate?.("rest_seconds", v)} />
-          </div>
-          <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-            <TextField label="Peso sugerido" value={ex.suggested_weight} placeholder="20 kg" onChange={(v) => onUpdate?.("suggested_weight", v)} />
-            <TextField label="Nota" value={ex.notes} placeholder="Opcional" onChange={(v) => onUpdate?.("notes", v)} />
-          </div>
+          )}
+
+          {!readOnly && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex gap-1">
+                  <button onClick={onMoveUp} disabled={isFirst || isPending} className="flex h-6 w-6 items-center justify-center rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-20">
+                    <ChevronUp className="size-3.5" />
+                  </button>
+                  <button onClick={onMoveDown} disabled={isLast || isPending} className="flex h-6 w-6 items-center justify-center rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-20">
+                    <ChevronDown className="size-3.5" />
+                  </button>
+                </div>
+                <button onClick={onRemove} disabled={isPending} className="flex items-center gap-1 text-xs text-zinc-600 hover:text-red-400 transition-colors">
+                  <X className="size-3.5" /> Quitar
+                </button>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                <NumField label="Series" value={ex.sets} onChange={(v) => onUpdate?.("sets", v)} />
+                <NumField label="Reps" value={ex.reps} onChange={(v) => onUpdate?.("reps", v)} />
+                <NumField label="Seg" value={ex.duration_seconds} onChange={(v) => onUpdate?.("duration_seconds", v)} />
+                <NumField label="Desc" value={ex.rest_seconds} onChange={(v) => onUpdate?.("rest_seconds", v)} />
+              </div>
+              <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                <TextField label="Peso sugerido" value={ex.suggested_weight} placeholder="20 kg" onChange={(v) => onUpdate?.("suggested_weight", v)} />
+                <TextField label="Nota" value={ex.notes} placeholder="Opcional" onChange={(v) => onUpdate?.("notes", v)} />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -862,31 +890,88 @@ export function TextField({
 export interface ExercisePickerProps {
   exercises: Exercise[]
   existingIds: string[]
-  onSelect: (exercise: Exercise) => void
+  onSelect: (exercise: Exercise, overrides?: { sets: number; reps: number; rest_seconds: number }) => void
   onClose: () => void
   onCreateNew?: () => void
+  quickConfigDefaults?: { sets: number; reps: number; rest_seconds: number }
+  myExerciseIds?: string[]
+  // Vista de cliente: oculta "Complementario" como filtro (para reducir
+  // decisiones) — esos ejercicios siguen apareciendo dentro de "Principal".
+  simplifiedUsage?: boolean
 }
 
-export function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCreateNew }: ExercisePickerProps) {
+// Chips primarios curados (no derivados de los datos) para mantener el picker
+// simple — el resto de músculos sigue disponible vía el ejercicio en sí, no
+// como filtro rápido. "Uso" filtra por Exercise.usage_tags.
+const PRIMARY_MUSCLE_OPTIONS: MuscleGroup[] = ["pecho", "espalda", "pierna", "gluteo", "cardio"]
+const USAGE_OPTIONS: UsageTag[] = ["calentamiento", "trabajo_principal", "complementario", "estiramiento"]
+const SIMPLIFIED_USAGE_OPTIONS: UsageTag[] = ["calentamiento", "trabajo_principal", "estiramiento"]
+
+const HIDE_SCROLLBAR = "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+
+export function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCreateNew, quickConfigDefaults, myExerciseIds, simplifiedUsage = false }: ExercisePickerProps) {
+  const hasScopeToggle = !!myExerciseIds
+  // Con biblioteca personal chica (menos de 5) el usuario todavía necesita
+  // descubrir ejercicios; con biblioteca armada, seleccionar rápido desde lo propio.
+  const [scope, setScope] = useState<"mine" | "all">(() =>
+    myExerciseIds && myExerciseIds.length >= 5 ? "mine" : "all"
+  )
   const [search, setSearch] = useState("")
   const [filterGroup, setFilterGroup] = useState("")
+  const [filterUsage, setFilterUsage] = useState("")
   const [filterEquipment, setFilterEquipment] = useState("")
   const [filterType, setFilterType] = useState("")
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [detailExercise, setDetailExercise] = useState<Exercise | null>(null)
+  const [pendingExercise, setPendingExercise] = useState<Exercise | null>(null)
+  const [quickSets, setQuickSets] = useState(quickConfigDefaults?.sets ?? 3)
+  const [quickReps, setQuickReps] = useState(quickConfigDefaults?.reps ?? 12)
+  const [quickRest, setQuickRest] = useState(quickConfigDefaults?.rest_seconds ?? 60)
 
-  const filtered = useMemo(() => exercises.filter((ex) => {
+  const scopedExercises = useMemo(
+    () => (!hasScopeToggle || scope === "all" ? exercises : exercises.filter((ex) => myExerciseIds!.includes(ex.id))),
+    [exercises, hasScopeToggle, scope, myExerciseIds]
+  )
+
+  const filtered = useMemo(() => scopedExercises.filter((ex) => {
     if (filterGroup && ex.muscle_group !== filterGroup) return false
+    if (filterUsage) {
+      const tags = getEffectiveUsageTags(ex)
+      const matchesUsage = simplifiedUsage && filterUsage === "trabajo_principal"
+        ? tags.includes("trabajo_principal") || tags.includes("complementario")
+        : tags.includes(filterUsage as UsageTag)
+      if (!matchesUsage) return false
+    }
     if (filterEquipment && ex.equipment !== filterEquipment) return false
     if (filterType && ex.exercise_type !== filterType) return false
     if (search.trim() && !ex.name.toLowerCase().includes(search.trim().toLowerCase())) return false
     return true
-  }), [exercises, filterGroup, filterEquipment, filterType, search])
+  }), [scopedExercises, filterGroup, filterUsage, filterEquipment, filterType, search, simplifiedUsage])
 
-  const { muscleGroups, equipments, types } = useMemo(() => ({
-    muscleGroups: [...new Set(exercises.filter((e) => e.muscle_group).map((e) => e.muscle_group!))],
-    equipments:   [...new Set(exercises.filter((e) => e.equipment).map((e) => e.equipment!))],
-    types:        [...new Set(exercises.filter((e) => e.exercise_type).map((e) => e.exercise_type!))],
-  }), [exercises])
+  const { equipments, types } = useMemo(() => ({
+    equipments: [...new Set(scopedExercises.filter((e) => e.equipment).map((e) => e.equipment!))],
+    types:      [...new Set(scopedExercises.filter((e) => e.exercise_type).map((e) => e.exercise_type!))],
+  }), [scopedExercises])
+
+  const activeSecondaryFilters = (filterEquipment ? 1 : 0) + (filterType ? 1 : 0)
+
+  const handlePick = (ex: Exercise) => {
+    setDetailExercise(null)
+    if (quickConfigDefaults) {
+      setQuickSets(quickConfigDefaults.sets)
+      setQuickReps(quickConfigDefaults.reps)
+      setQuickRest(quickConfigDefaults.rest_seconds)
+      setPendingExercise(ex)
+    } else {
+      onSelect(ex)
+    }
+  }
+
+  const handleConfirmQuick = () => {
+    if (!pendingExercise) return
+    onSelect(pendingExercise, { sets: quickSets, reps: quickReps, rest_seconds: quickRest })
+    setPendingExercise(null)
+  }
 
   return (
     <div
@@ -894,106 +979,297 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCr
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-t-3xl border border-white/10 bg-zinc-900 flex flex-col"
-        style={{ height: "80vh", maxHeight: "80vh" }}
+        className="w-full max-w-lg rounded-t-3xl md:rounded-2xl border border-white/10 bg-zinc-900 flex flex-col h-[100dvh] md:h-[80vh] md:max-h-[80vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
-          <p className="text-sm font-bold text-zinc-100">Añadir ejercicio</p>
-          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300"><X className="size-4" /></button>
-        </div>
-
-        <div className="px-3 py-2 space-y-2 shrink-0">
-          <div className="flex gap-2">
-            <input
-              autoFocus
-              type="text"
-              placeholder="Buscar..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 rounded-lg border border-white/10 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-red-600/50"
-            />
-            {onCreateNew && (
+        {pendingExercise ? (
+          <>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
+              <p className="text-sm font-bold text-zinc-100">Configuración rápida</p>
+              <button onClick={() => setPendingExercise(null)} className="text-zinc-500 hover:text-zinc-300"><X className="size-4" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+              <div className="flex items-center gap-3">
+                {pendingExercise.media_url ? (
+                  <img
+                    src={pendingExercise.media_url}
+                    alt=""
+                    loading="lazy"
+                    width={48}
+                    height={48}
+                    className="size-12 rounded-lg object-cover bg-zinc-800 shrink-0"
+                    onError={(e) => { e.currentTarget.style.display = "none" }}
+                  />
+                ) : (
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-zinc-800 text-zinc-600">
+                    <Dumbbell className="size-5" />
+                  </div>
+                )}
+                <p className="text-sm font-semibold text-zinc-100">{pendingExercise.name}</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <NumField label="Series" value={quickSets} onChange={(v) => setQuickSets(v ?? 3)} />
+                <NumField label="Reps" value={quickReps} onChange={(v) => setQuickReps(v ?? 12)} />
+                <NumField label="Descanso (s)" value={quickRest} onChange={(v) => setQuickRest(v ?? 60)} />
+              </div>
+            </div>
+            <div className="p-4 border-t border-white/8">
               <button
-                onClick={onCreateNew}
-                className="flex items-center gap-1 rounded-lg bg-red-600 px-2.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors shrink-0"
+                onClick={handleConfirmQuick}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
               >
-                <Plus className="size-3.5" /> Crear
-              </button>
-            )}
-          </div>
-
-          <FilterRow label="Músculo" value={filterGroup} setValue={setFilterGroup} options={muscleGroups} labels={MUSCLE_GROUP_LABELS} />
-          <FilterRow label="Equipo" value={filterEquipment} setValue={setFilterEquipment} options={equipments} labels={EQUIPMENT_LABELS} />
-          <FilterRow label="Tipo" value={filterType} setValue={setFilterType} options={types} labels={EXERCISE_TYPE_LABELS} />
-        </div>
-
-        <div className="overflow-y-auto flex-1">
-          {filtered.length === 0 ? (
-            <div className="py-8 text-center space-y-3">
-              <p className="text-sm text-zinc-600">Sin resultados</p>
-              <button onClick={onCreateNew} className="text-xs font-semibold text-red-400 hover:text-red-300">
-                + Crear ejercicio nuevo
+                <Check className="size-4" /> Añadir ejercicio
               </button>
             </div>
-          ) : (
-            filtered.map((ex) => {
-              const alreadyIn = existingIds.includes(ex.id)
-              const expanded = expandedId === ex.id
-              const subtitle = [
-                ex.muscle_group ? MUSCLE_GROUP_LABELS[ex.muscle_group] : null,
-                ex.equipment ? EQUIPMENT_LABELS[ex.equipment] : null,
-                ex.exercise_type ? EXERCISE_TYPE_LABELS[ex.exercise_type] : null,
-              ].filter(Boolean).join(" · ")
-              return (
-                <div key={ex.id} className="border-b border-white/5">
-                  <div className={`flex items-center gap-3 px-4 py-3 ${alreadyIn ? "opacity-40" : ""}`}>
-                    {ex.media_url ? (
-                      <img
-                        src={ex.media_url}
-                        alt=""
-                        loading="lazy"
-                        width={36}
-                        height={36}
-                        className="size-9 rounded-md object-cover bg-zinc-800 shrink-0"
-                        onError={(e) => { e.currentTarget.style.display = "none" }}
-                      />
-                    ) : (
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-600">
-                        <Dumbbell className="size-4" />
-                      </div>
-                    )}
-                    <button
-                      onClick={() => !alreadyIn && onSelect(ex)}
-                      disabled={alreadyIn}
-                      className="flex-1 text-left min-w-0"
-                    >
-                      <p className="text-sm font-medium text-zinc-200 truncate">{ex.name}</p>
-                      {subtitle && <p className="text-[10px] text-zinc-600 truncate">{subtitle}</p>}
-                    </button>
-                    {ex.instructions && (
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
+              <p className="text-sm font-bold text-zinc-100">Añadir ejercicio</p>
+              <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300"><X className="size-4" /></button>
+            </div>
+
+            <div className="px-3 py-2 space-y-2 shrink-0">
+              {hasScopeToggle && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setScope("all")}
+                    className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      scope === "all" ? "bg-red-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    Explorar todos
+                  </button>
+                  <button
+                    onClick={() => setScope("mine")}
+                    className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      scope === "mine" ? "bg-red-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    Mis ejercicios
+                  </button>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Buscar..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="flex-1 rounded-lg border border-white/10 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-red-600/50"
+                />
+                <button
+                  onClick={() => setFiltersOpen((v) => !v)}
+                  className={`flex items-center gap-1 rounded-lg border px-2.5 text-xs font-semibold transition-colors shrink-0 ${
+                    filtersOpen || activeSecondaryFilters > 0
+                      ? "border-red-600/50 bg-red-600/10 text-red-400"
+                      : "border-white/10 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                  }`}
+                >
+                  Filtros{activeSecondaryFilters > 0 ? ` (${activeSecondaryFilters})` : ""}
+                </button>
+                {onCreateNew && (
+                  <button
+                    onClick={onCreateNew}
+                    className="flex items-center gap-1 rounded-lg bg-red-600 px-2.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors shrink-0"
+                  >
+                    <Plus className="size-3.5" /> Crear
+                  </button>
+                )}
+              </div>
+
+              <FilterRow label="Uso" value={filterUsage} setValue={setFilterUsage} options={simplifiedUsage ? SIMPLIFIED_USAGE_OPTIONS : USAGE_OPTIONS} labels={USAGE_TAG_LABELS} />
+              <FilterRow label="Músculo" value={filterGroup} setValue={setFilterGroup} options={PRIMARY_MUSCLE_OPTIONS} labels={MUSCLE_GROUP_LABELS} />
+
+              {filtersOpen && (
+                <div className="space-y-2 rounded-lg border border-white/8 bg-zinc-950/50 p-2">
+                  <FilterRow label="Equipo" value={filterEquipment} setValue={setFilterEquipment} options={equipments} labels={EQUIPMENT_LABELS} />
+                  <FilterRow label="Tipo" value={filterType} setValue={setFilterType} options={types} labels={EXERCISE_TYPE_LABELS} />
+                </div>
+              )}
+            </div>
+
+            <div className="overflow-y-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {filtered.length === 0 ? (
+                <div className="py-8 text-center space-y-3">
+                  {hasScopeToggle && scope === "mine" && scopedExercises.length === 0 ? (
+                    <>
+                      <p className="text-sm text-zinc-500 px-6">
+                        Aún no tienes ejercicios en tu biblioteca.
+                      </p>
                       <button
-                        onClick={() => setExpandedId(expanded ? null : ex.id)}
+                        onClick={() => setScope("all")}
+                        className="text-xs font-semibold text-red-400 hover:text-red-300"
+                      >
+                        Explora la biblioteca del gimnasio
+                      </button>
+                    </>
+                  ) : filterUsage ? (
+                    <>
+                      <p className="text-sm text-zinc-500 px-6">
+                        No tienes ejercicios de este tipo todavía.
+                      </p>
+                      <button
+                        onClick={() => { setFilterUsage(""); if (hasScopeToggle) setScope("all") }}
+                        className="text-xs font-semibold text-red-400 hover:text-red-300"
+                      >
+                        Explorar todos
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-sm text-zinc-600">Sin resultados</p>
+                  )}
+                  {onCreateNew && (
+                    <button onClick={onCreateNew} className="text-xs font-semibold text-red-400 hover:text-red-300">
+                      + Crear ejercicio nuevo
+                    </button>
+                  )}
+                </div>
+              ) : (
+                filtered.map((ex) => {
+                  const alreadyIn = existingIds.includes(ex.id)
+                  const subtitle = [
+                    ex.muscle_group ? MUSCLE_GROUP_LABELS[ex.muscle_group] : null,
+                    ex.equipment ? EQUIPMENT_LABELS[ex.equipment] : null,
+                    ex.exercise_type ? EXERCISE_TYPE_LABELS[ex.exercise_type] : null,
+                  ].filter(Boolean).join(" · ")
+                  return (
+                    <div key={ex.id} className={`flex items-center gap-3 border-b border-white/5 px-4 py-3 ${alreadyIn ? "opacity-40" : ""}`}>
+                      <button
+                        type="button"
+                        onClick={() => setDetailExercise(ex)}
+                        className="flex flex-1 items-center gap-3 min-w-0 text-left"
+                      >
+                        {ex.media_url ? (
+                          <img
+                            src={ex.media_url}
+                            alt=""
+                            loading="lazy"
+                            width={36}
+                            height={36}
+                            className="size-9 rounded-md object-cover bg-zinc-800 shrink-0"
+                            onError={(e) => { e.currentTarget.style.display = "none" }}
+                          />
+                        ) : (
+                          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-600">
+                            <Dumbbell className="size-4" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-zinc-200 truncate">{ex.name}</p>
+                          {subtitle && <p className="text-[10px] text-zinc-600 truncate">{subtitle}</p>}
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDetailExercise(ex)}
                         className="shrink-0 text-zinc-600 hover:text-zinc-300"
-                        aria-label="Ver instrucciones"
+                        aria-label="Ver detalle"
                       >
                         <Info className="size-4" />
                       </button>
-                    )}
-                    {alreadyIn ? (
-                      <Check className="size-4 text-green-500 shrink-0" />
-                    ) : (
-                      <button onClick={() => onSelect(ex)} className="shrink-0 text-zinc-500 hover:text-red-400">
-                        <Plus className="size-4" />
-                      </button>
-                    )}
-                  </div>
-                  {expanded && ex.instructions && (
-                    <p className="px-4 pb-3 -mt-1 text-[11px] text-zinc-500 whitespace-pre-line">{ex.instructions}</p>
-                  )}
-                </div>
-              )
-            })
+                      {alreadyIn ? (
+                        <Check className="size-4 text-green-500 shrink-0" />
+                      ) : (
+                        <button onClick={() => handlePick(ex)} className="shrink-0 text-zinc-500 hover:text-red-400">
+                          <Plus className="size-4" />
+                        </button>
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {detailExercise && (
+        <ExerciseDetailSheet
+          exercise={detailExercise}
+          onClose={() => setDetailExercise(null)}
+          onAdd={() => handlePick(detailExercise)}
+          alreadyIn={existingIds.includes(detailExercise.id)}
+        />
+      )}
+    </div>
+  )
+}
+
+function ExerciseDetailSheet({
+  exercise, onClose, onAdd, alreadyIn,
+}: {
+  exercise: Exercise
+  onClose: () => void
+  onAdd: () => void
+  alreadyIn: boolean
+}) {
+  const details = [
+    exercise.muscle_group ? { label: "Músculo", value: MUSCLE_GROUP_LABELS[exercise.muscle_group] } : null,
+    exercise.equipment ? { label: "Equipo", value: EQUIPMENT_LABELS[exercise.equipment] } : null,
+    exercise.exercise_type ? { label: "Tipo", value: EXERCISE_TYPE_LABELS[exercise.exercise_type] } : null,
+  ].filter((d): d is { label: string; value: string } => d !== null)
+
+  return (
+    <div
+      className="fixed inset-0 z-[110] flex items-end justify-center bg-black/70 md:backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-t-3xl md:rounded-2xl border border-white/10 bg-zinc-900 flex flex-col max-h-[90dvh] md:max-h-[80vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
+          <p className="text-sm font-bold text-zinc-100">Detalle del ejercicio</p>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300"><X className="size-4" /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {exercise.media_url ? (
+            <img
+              src={exercise.media_url}
+              alt=""
+              className="w-full h-56 object-cover bg-zinc-800"
+              onError={(e) => { e.currentTarget.style.display = "none" }}
+            />
+          ) : (
+            <div className="flex h-40 w-full items-center justify-center bg-zinc-800 text-zinc-600">
+              <Dumbbell className="size-12" />
+            </div>
+          )}
+
+          <div className="p-4 space-y-4">
+            <p className="text-lg font-bold text-zinc-100">{exercise.name}</p>
+
+            {details.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {details.map((d) => (
+                  <span key={d.label} className="rounded-lg bg-zinc-800 px-2.5 py-1 text-xs text-zinc-300">
+                    <span className="text-zinc-500">{d.label}:</span> {d.value}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {exercise.instructions && (
+              <p className="text-sm text-zinc-400 whitespace-pre-line">{exercise.instructions}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-white/8">
+          {alreadyIn ? (
+            <div className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-800 py-3 text-sm font-semibold text-green-400">
+              <Check className="size-4" /> Ya está en la rutina
+            </div>
+          ) : (
+            <button
+              onClick={onAdd}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+            >
+              <Plus className="size-4" /> Añadir a la rutina
+            </button>
           )}
         </div>
       </div>
@@ -1012,7 +1288,7 @@ function FilterRow<T extends string>({
 }) {
   if (options.length === 0) return null
   return (
-    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+    <div className={`flex items-center gap-1.5 overflow-x-auto pb-0.5 ${HIDE_SCROLLBAR}`}>
       <span className="text-[10px] font-medium text-zinc-600 uppercase shrink-0 w-12">{label}</span>
       <button
         onClick={() => setValue("")}
