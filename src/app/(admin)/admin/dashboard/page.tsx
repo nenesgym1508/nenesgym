@@ -1,15 +1,14 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { Users, CreditCard, CheckSquare, Clock } from "lucide-react"
+import { Users, CreditCard, CheckSquare, Clock, Plus, LogOut } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { getPendingPayments } from "@/services/payments.service"
 import { getTodayAttendance } from "@/services/attendance.service"
 import { getAllClients } from "@/services/clients.service"
-import { PageHeader } from "@/components/layout/page-header"
-import { Card } from "@/components/ui/card"
-import { PaymentBadge } from "@/components/ui/badge"
-import { formatCOP } from "@/lib/utils"
-import { formatDate, formatDatetime } from "@/lib/dates"
+import { logoutAction } from "@/actions/auth.actions"
+import { ClientSearchBox } from "@/components/admin/client-search-box"
+import { PendingPaymentsPreview } from "@/components/admin/pending-payments-preview"
+import { formatDatetime } from "@/lib/dates"
 import { GYM_ID } from "@/constants/plans"
 import { ROUTES } from "@/constants/routes"
 
@@ -43,78 +42,73 @@ export default async function AdminDashboardPage() {
   ]
 
   return (
-    <div>
-      <PageHeader title="Panel Admin" showLogout />
-      <div className="p-4 space-y-5">
-        <div className="flex items-center gap-3">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-white/8 text-lg font-bold text-zinc-100">
+    <div className="px-6 py-6 pb-24 md:pb-10 md:px-10 md:py-8 lg:px-12 space-y-6 md:space-y-8 md:max-w-6xl md:mx-auto">
+      {/* Header (mobile only — el sidebar de escritorio ya muestra perfil y logout) */}
+      <header className="flex items-center justify-between md:hidden">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full border border-white/8 flex items-center justify-center text-xl font-bold bg-zinc-900 shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
             {initial}
           </div>
-          <div className="min-w-0">
-            <p className="text-zinc-500 text-xs">Bienvenido,</p>
-            <h2 className="text-lg font-bold text-zinc-100 truncate">{profile?.full_name ?? "Admin"}</h2>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          {stats.map(({ label, value, icon: Icon, href, urgent }) => (
-            <Link key={href} href={href}>
-              <Card
-                className={`flex flex-col items-center gap-2 py-4 transition-colors hover:border-white/20 ${
-                  urgent ? "border-red-600/30 bg-red-950/10" : ""
-                }`}
-              >
-                <div className={`flex size-9 items-center justify-center rounded-full ${urgent ? "bg-red-600" : "bg-white/8"}`}>
-                  <Icon className="size-5 text-white" />
-                </div>
-                <span className="text-2xl font-black text-zinc-100">{value}</span>
-                <span className="text-[10px] text-zinc-500 text-center leading-tight uppercase tracking-wide">{label}</span>
-              </Card>
-            </Link>
-          ))}
-        </div>
-
-        {pendingPayments.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
-                Pagos por aprobar
-              </h3>
-              <Link href={ROUTES.ADMIN_PAGOS} className="text-xs text-red-500 hover:text-red-400">
-                Ver todos
-              </Link>
-            </div>
-            <Card className="p-0 overflow-hidden">
-              {pendingPayments.slice(0, 3).map((p, i) => {
-                const pay = p as typeof p & { client?: { profile?: { full_name?: string | null } }; plan?: { name: string } | null }
-                return (
-                  <Link
-                    key={p.id}
-                    href={ROUTES.ADMIN_PAGOS}
-                    className={`flex items-center gap-3 px-4 py-3 hover:bg-zinc-800/50 transition-colors ${i < Math.min(pendingPayments.length, 3) - 1 ? "border-b border-white/5" : ""}`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-zinc-200 truncate">
-                        {pay.client?.profile?.full_name ?? "Cliente"}
-                      </p>
-                      <p className="text-xs text-zinc-500">
-                        {pay.plan?.name ?? "Pago"} · {formatDate(p.created_at)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-zinc-200">{formatCOP(p.amount_cents)}</p>
-                      <PaymentBadge status={p.status} />
-                    </div>
-                  </Link>
-                )
-              })}
-            </Card>
+            <p className="text-zinc-500 text-xs">Bienvenido,</p>
+            <h1 className="text-lg font-bold tracking-tight text-zinc-100">{profile?.full_name ?? "Admin"}</h1>
           </div>
-        )}
+        </div>
+        <form action={logoutAction}>
+          <button type="submit" className="text-zinc-400 hover:text-red-500 transition-colors cursor-pointer p-2 rounded-lg hover:bg-zinc-900">
+            <LogOut className="size-6" />
+          </button>
+        </form>
+      </header>
+
+      {/* Title Section + búsqueda (en fila en escritorio) */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 className="text-3xl md:text-4xl font-bebas font-bold mb-1 tracking-wide uppercase text-white">Inicio</h2>
+          <p className="text-zinc-500 text-sm">Resumen general del gimnasio</p>
+        </div>
+        <div className="md:w-80 shrink-0">
+          <ClientSearchBox clients={allClients as any} />
+        </div>
+      </div>
+
+      <Link
+        href={ROUTES.ADMIN_CLIENTES}
+        className="flex w-full md:w-auto items-center justify-center gap-2 rounded-2xl btn-glossy-red px-4 md:px-10 py-4 text-sm font-semibold text-white"
+      >
+        <Plus className="size-5" />
+        Registrar pago
+      </Link>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-3 gap-3 md:gap-4">
+        {stats.map(({ label, value, icon: Icon, href, urgent }) => (
+          <Link key={href} href={href} className="flex h-full">
+            <div
+              className={`relative overflow-hidden flex flex-col items-center justify-center text-center rounded-2xl border border-white/8 bg-zinc-900/60 p-4 md:p-6 w-full h-full transition-colors hover:border-white/20 hover:bg-zinc-800/40 ${
+                urgent ? "border-red-600/30 bg-red-950/15" : ""
+              }`}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-white/[0.01] to-transparent"></div>
+              <Icon className="size-6 md:size-7 text-red-500 mb-2 relative z-10" />
+              <span className="text-2xl md:text-3xl font-black mb-0.5 relative z-10 text-zinc-100">{value}</span>
+              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider relative z-10 leading-tight flex items-center justify-center text-center h-8">
+                {label === "Pagos pendientes" ? <>Pagos<br/>pendientes</> : label}
+              </span>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Pagos por aprobar + Ingresos de hoy: 2 columnas en escritorio */}
+      <div className="md:grid md:grid-cols-3 md:gap-6 space-y-6 md:space-y-0">
+        <div className="md:col-span-2">
+          <PendingPaymentsPreview payments={pendingPayments as any} />
+        </div>
 
         {todayAttendance.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-3">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
               <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
                 Ingresos de hoy ({todayAttendance.length})
               </h3>
@@ -122,14 +116,14 @@ export default async function AdminDashboardPage() {
                 Ver todos
               </Link>
             </div>
-            <Card className="p-0 overflow-hidden">
+            <div className="overflow-hidden rounded-2xl border border-white/8 bg-zinc-900/60">
               {todayAttendance.slice(0, 5).map((a, i) => {
                 const att = a as typeof a & { client?: { profile?: { full_name?: string | null } } }
                 return (
                   <Link
                     key={a.id}
                     href={ROUTES.ADMIN_ASISTENCIAS}
-                    className={`flex items-center gap-3 px-4 py-3 hover:bg-zinc-800/50 transition-colors ${i < Math.min(todayAttendance.length, 5) - 1 ? "border-b border-white/5" : ""}`}
+                    className={`flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/20 transition-colors ${i < Math.min(todayAttendance.length, 5) - 1 ? "border-b border-white/5" : ""}`}
                   >
                     <div className="flex size-8 items-center justify-center rounded-full bg-white/8">
                       <Clock className="size-4 text-white" />
@@ -138,12 +132,12 @@ export default async function AdminDashboardPage() {
                       <p className="text-sm font-medium text-zinc-200">
                         {att.client?.profile?.full_name ?? "Cliente"}
                       </p>
-                      <p className="text-xs text-zinc-500">{formatDatetime(a.checked_in_at)}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">{formatDatetime(a.checked_in_at)}</p>
                     </div>
                   </Link>
                 )
               })}
-            </Card>
+            </div>
           </div>
         )}
       </div>

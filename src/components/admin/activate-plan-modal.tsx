@@ -2,8 +2,9 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Zap, X, Loader2, CheckCircle } from "lucide-react"
+import { UserCheck, X, CheckCircle } from "lucide-react"
 import { createManualPaymentAction } from "@/actions/admin.actions"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { formatCOP, computePlanDiscount } from "@/lib/utils"
 import { PAYMENT_METHOD_LABELS } from "@/constants/plans"
 import type { PaymentMethod } from "@/types/payment"
@@ -20,11 +21,13 @@ interface ActivatePlanModalProps {
   clientId: string
   clientName: string
   plans: Plan[]
+  triggerVariant?: 'default' | 'card'
+  isActive?: boolean
 }
 
 const METHODS: PaymentMethod[] = ["cash", "transfer", "nequi", "daviplata", "other"]
 
-export function ActivatePlanModal({ clientId, clientName, plans }: ActivatePlanModalProps) {
+export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant, isActive }: ActivatePlanModalProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [planId, setPlanId] = useState("")
@@ -69,13 +72,23 @@ export function ActivatePlanModal({ clientId, clientName, plans }: ActivatePlanM
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-900/40 transition-colors shrink-0"
-      >
-        <Zap className="size-3.5" />
-        Activar plan
-      </button>
+      {triggerVariant === 'card' ? (
+        <button
+          onClick={() => setOpen(true)}
+          className="w-full flex items-center justify-center gap-1.5 rounded-xl btn-glossy-red py-3 text-xs font-semibold text-white cursor-pointer hover:scale-[1.01] transition-transform"
+        >
+          <UserCheck className="size-4" />
+          {isActive ? "Expandir plan" : "Activar plan"}
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-1.5 rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-900/40 transition-colors shrink-0 cursor-pointer"
+        >
+          <UserCheck className="size-3.5" />
+          {isActive ? "Expandir plan" : "Activar plan"}
+        </button>
+      )}
 
       {open && (
         <div
@@ -184,22 +197,20 @@ export function ActivatePlanModal({ clientId, clientName, plans }: ActivatePlanM
                   <p className="text-xs text-red-400 mb-3">{errorMsg}</p>
                 )}
 
-                <button
+                <LoadingButton
                   onClick={handleActivate}
-                  disabled={!selectedPlan || status === "loading"}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-green-600 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+                  pending={status === "loading"}
+                  pendingText={isActive ? "Expandiendo..." : "Activando..."}
+                  disabled={!selectedPlan}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl btn-glossy-green py-2.5 text-sm font-semibold text-white disabled:opacity-50 cursor-pointer"
                 >
-                  {status === "loading" ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Zap className="size-4" />
-                      {selectedPlan
-                        ? `Activar ${selectedPlan.days} días`
-                        : "Selecciona un plan"}
-                    </>
-                  )}
-                </button>
+                  <UserCheck className="size-4" />
+                  {selectedPlan
+                    ? isActive
+                      ? `Expandir ${selectedPlan.days} días`
+                      : `Activar ${selectedPlan.days} días`
+                    : "Selecciona un plan"}
+                </LoadingButton>
                 <p className="text-center text-[10px] text-zinc-600 mt-3">
                   Se registrará un pago aprobado y se activará la membresía de inmediato
                 </p>

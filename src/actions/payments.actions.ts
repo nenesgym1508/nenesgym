@@ -60,5 +60,6 @@ export async function uploadPaymentAction(formData: FormData) {
   if (paymentError) return { error: "Error al registrar el pago: " + paymentError.message }
 
   revalidatePath(ROUTES.CLIENTE_PAGOS)
+  revalidatePath(ROUTES.CLIENTE_DASHBOARD)
   return { success: true }
 }

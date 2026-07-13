@@ -6,7 +6,7 @@ import { Home, CreditCard, QrCode, TrendingUp, User, Users, Dumbbell, ClipboardL
 import { cn } from "@/lib/utils"
 import { ROUTES } from "@/constants/routes"
 
-type NavItem = { href: string; label: string; icon: typeof Home; matchPrefixes?: string[] }
+export type NavItem = { href: string; label: string; icon: typeof Home; matchPrefixes?: string[] }
 
 // Cliente: la acción central (Entrada) se renderiza elevada como FAB.
 const clienteLeft: NavItem[] = [
@@ -19,7 +19,10 @@ const clienteRight: NavItem[] = [
   { href: ROUTES.CLIENTE_PROGRESO, label: "Progreso", icon: TrendingUp },
 ]
 
-const adminItems: NavItem[] = [
+// Lista plana (para el sidebar de escritorio, sin FAB elevado)
+export const clienteItems: NavItem[] = [clienteLeft[0]!, clienteLeft[1]!, clienteCenter, clienteRight[0]!, clienteRight[1]!]
+
+export const adminItems: NavItem[] = [
   { href: ROUTES.ADMIN_DASHBOARD, label: "Panel", icon: Home },
   { href: ROUTES.ADMIN_CLIENTES, label: "Clientes", icon: Users },
   { href: ROUTES.ADMIN_PAGOS, label: "Pagos", icon: CreditCard },
@@ -36,7 +39,7 @@ interface BottomNavProps {
   role: "client" | "admin"
 }
 
-function useIsActive() {
+export function useIsActive() {
   const pathname = usePathname()
   const matches = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
   return (item: NavItem) => matches(item.href) || (item.matchPrefixes?.some(matches) ?? false)
@@ -44,16 +47,31 @@ function useIsActive() {
 
 function FlatTab({ item, active }: { item: NavItem; active: boolean }) {
   const { href, label, icon: Icon } = item
+  const isPanel = label === "Panel"
+
   return (
     <Link
       href={href}
       className={cn(
-        "flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors",
+        "flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer",
         active ? "text-red-500" : "text-zinc-500 hover:text-zinc-300"
       )}
     >
-      <Icon className="size-5" strokeWidth={active ? 2.5 : 1.5} />
-      <span className={cn("text-[10px] font-medium", active && "font-semibold")}>{label}</span>
+      {isPanel ? (
+        <div
+          className={cn(
+            "size-6 rounded-full bg-zinc-950 flex items-center justify-center border transition-all overflow-hidden p-0.5 shadow-md",
+            active 
+              ? "border-red-500/50 shadow-[0_0_10px_rgba(220,38,38,0.55)]" 
+              : "border-white/10"
+          )}
+        >
+          <img src="/logo-v3.webp" alt="Nenes Gym" className="size-full object-contain" />
+        </div>
+      ) : (
+        <Icon className="size-5" strokeWidth={active ? 2.5 : 1.5} />
+      )}
+      <span className={cn("text-[10px] font-medium mt-0.5", active && "font-semibold")}>{label}</span>
     </Link>
   )
 }

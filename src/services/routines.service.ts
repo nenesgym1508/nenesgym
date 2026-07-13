@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { GYM_ID } from "@/constants/plans"
+import { getAllClients } from "@/services/clients.service"
 import type {
   ClientRoutine,
   ClientRoutineWithDays,
@@ -18,6 +19,7 @@ export async function getAdminRoutines(
     .from("client_routines")
     .select("*, client:clients(id, profile:profiles(full_name))")
     .eq("gym_id", GYM_ID)
+    .eq("created_by_role", "admin")
     .order("updated_at", { ascending: false })
 
   if (options?.status) {
@@ -103,6 +105,19 @@ export async function getActiveRoutineForClient(clientId: string): Promise<Clien
 
   if (!data || data.length === 0) return null
   return data[0] as ClientRoutine
+}
+
+export async function getClientsWithoutRoutine(): Promise<
+  { id: string; profile: { full_name: string | null } | null }[]
+> {
+  const supabase = await createClient()
+  const [clients, { data: withRoutine }] = await Promise.all([
+    getAllClients(),
+    supabase.from("client_routines").select("client_id").eq("gym_id", GYM_ID).eq("created_by_role", "admin").neq("status", "archived"),
+  ])
+
+  const clientIdsWithRoutine = new Set((withRoutine ?? []).map((r) => r.client_id).filter(Boolean))
+  return (clients as any[]).filter((c) => !clientIdsWithRoutine.has(c.id))
 }
 
 export async function getRoutineSessionForDate(routineId: string, date: string): Promise<RoutineSession | null> {

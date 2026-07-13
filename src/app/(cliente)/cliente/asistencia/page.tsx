@@ -4,7 +4,7 @@ import { getCurrentClientData } from "@/services/clients.service"
 import { getClientAttendance } from "@/services/attendance.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
-import { QrScannerWrapper } from "@/components/qr/qr-scanner-wrapper"
+import { EntradaWrapper } from "@/components/qr/entrada-wrapper"
 import { formatDate, formatDatetime, todayInBogota } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 
@@ -19,7 +19,7 @@ export default async function ClienteAsistenciaPage() {
   return (
     <div>
       <PageHeader title="Entrada" />
-      <div className="p-4 space-y-4">
+      <div className="p-4 md:px-10 md:py-8 space-y-4">
         {/* Estado del día */}
         <Card
           className={`flex items-center gap-3 p-3.5 ${
@@ -36,13 +36,7 @@ export default async function ClienteAsistenciaPage() {
           </p>
         </Card>
 
-        <div className="text-center">
-          <p className="text-zinc-400 text-sm">
-            Escanea el código QR del gimnasio para registrar tu ingreso
-          </p>
-        </div>
-
-        <QrScannerWrapper />
+        <EntradaWrapper />
 
         {/* Últimos 3 ingresos */}
         {recent.length > 0 && (

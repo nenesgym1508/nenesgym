@@ -53,26 +53,29 @@ export async function createRoutineAction(data: CreateRoutineInput) {
 
   if (error) return { error: error.message }
 
-  // Scaffold standard day "Día 1"
-  const { data: dayData, error: dayError } = await supabase
-    .from("client_routine_days")
-    .insert({
-      routine_id: newRoutine.id,
-      title: "Día 1",
-      weekday: null,
-      position: 0
-    })
-    .select("id")
-    .single()
+  // Crear N días (según days_per_week), cada uno con los bloques estándar.
+  const totalDays = data.days_per_week ?? 1
+  for (let i = 1; i <= totalDays; i++) {
+    const { data: dayData } = await supabase
+      .from("client_routine_days")
+      .insert({
+        routine_id: newRoutine.id,
+        title: `Día ${i}`,
+        weekday: null,
+        position: i - 1
+      })
+      .select("id")
+      .single()
 
-  if (!dayError && dayData) {
-    await supabase.from("client_routine_blocks").insert(
-      STANDARD_BLOCK_TITLES.map((title, i) => ({
-        routine_day_id: dayData.id,
-        title,
-        position: i
-      }))
-    )
+    if (dayData) {
+      await supabase.from("client_routine_blocks").insert(
+        STANDARD_BLOCK_TITLES.map((title, idx) => ({
+          routine_day_id: dayData.id,
+          title,
+          position: idx
+        }))
+      )
+    }
   }
 
   revalidatePath(ROUTES.ADMIN_RUTINAS)
@@ -114,7 +117,7 @@ export async function duplicateRoutineAction(id: string) {
   const supabase = await createClient()
   const { data: source, error: fetchErr } = await supabase
     .from("client_routines")
-    .select("*")
+    .select("client_id, title, description, goal, custom_goal, level, days_per_week, source_type, start_date, end_date, notes, created_by_role, created_by")
     .eq("id", id)
     .single()
 
@@ -148,7 +151,7 @@ export async function duplicateRoutineAction(id: string) {
   // Fetch days
   const { data: days } = await supabase
     .from("client_routine_days")
-    .select("*")
+    .select("id, title, weekday, position")
     .eq("routine_id", id)
 
   for (const day of days ?? []) {
@@ -167,7 +170,7 @@ export async function duplicateRoutineAction(id: string) {
 
     const { data: blocks } = await supabase
       .from("client_routine_blocks")
-      .select("*")
+      .select("id, title, position")
       .eq("routine_day_id", day.id)
 
     for (const block of blocks ?? []) {
@@ -185,7 +188,7 @@ export async function duplicateRoutineAction(id: string) {
 
       const { data: exercises } = await supabase
         .from("client_routine_exercises")
-        .select("*")
+        .select("exercise_id, position, sets, reps, duration_seconds, rest_seconds, suggested_weight, notes")
         .eq("block_id", block.id)
 
       if (exercises && exercises.length > 0) {
@@ -490,7 +493,7 @@ export async function createRoutineFromClassAction(classId: string, clientId: st
 
   const { data: dc, error: fetchErr } = await supabase
     .from("daily_classes")
-    .select("*")
+    .select("title, objective, level, notes")
     .eq("id", classId)
     .single()
 
@@ -529,7 +532,7 @@ export async function createRoutineFromClassAction(classId: string, clientId: st
   if (newDay) {
     const { data: blocks } = await supabase
       .from("class_blocks")
-      .select("*")
+      .select("id, title, position")
       .eq("daily_class_id", classId)
 
     for (const block of blocks ?? []) {
@@ -546,7 +549,7 @@ export async function createRoutineFromClassAction(classId: string, clientId: st
       if (newBlock) {
         const { data: exercises } = await supabase
           .from("class_block_exercises")
-          .select("*")
+          .select("exercise_id, position, sets, reps, duration_seconds, rest_seconds, suggested_weight, notes")
           .eq("block_id", block.id)
 
         if (exercises && exercises.length > 0) {
@@ -570,198 +573,6 @@ export async function createRoutineFromClassAction(classId: string, clientId: st
 
   revalidatePath(ROUTES.ADMIN_RUTINAS)
   return { success: true, id: newRoutine.id }
-}
-
-export async function createRoutineFromTemplateAction(templateId: string, clientId: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "No autenticado" }
-
-  const { data: rt, error: fetchErr } = await supabase
-    .from("routine_templates")
-    .select("*")
-    .eq("id", templateId)
-    .single()
-
-  if (fetchErr || !rt) return { error: "No se encontró la plantilla de rutina" }
-
-  const { data: newRoutine, error: insertErr } = await supabase
-    .from("client_routines")
-    .insert({
-      gym_id: GYM_ID,
-      client_id: clientId,
-      title: rt.name,
-      description: rt.description,
-      goal: rt.goal,
-      custom_goal: rt.custom_goal,
-      level: rt.level,
-      days_per_week: rt.days_per_week,
-      status: "active",
-      source_type: "template",
-      source_id: templateId,
-      notes: rt.notes,
-      created_by: user.id,
-      created_by_role: "admin"
-    })
-    .select("id")
-    .single()
-
-  if (insertErr) return { error: insertErr.message }
-
-  const { data: days } = await supabase
-    .from("routine_template_days")
-    .select("*")
-    .eq("template_id", templateId)
-
-  for (const day of days ?? []) {
-    const { data: newDay } = await supabase
-      .from("client_routine_days")
-      .insert({
-        routine_id: newRoutine.id,
-        title: day.title,
-        weekday: day.weekday,
-        position: day.position
-      })
-      .select("id")
-      .single()
-
-    if (newDay) {
-      const { data: blocks } = await supabase
-        .from("routine_template_blocks")
-        .select("*")
-        .eq("template_day_id", day.id)
-
-      for (const block of blocks ?? []) {
-        const { data: newBlock } = await supabase
-          .from("client_routine_blocks")
-          .insert({
-            routine_day_id: newDay.id,
-            title: block.title,
-            position: block.position
-          })
-          .select("id")
-          .single()
-
-        if (newBlock) {
-          const { data: exercises } = await supabase
-            .from("routine_template_block_exercises")
-            .select("*")
-            .eq("template_block_id", block.id)
-
-          if (exercises && exercises.length > 0) {
-            await supabase.from("client_routine_exercises").insert(
-              (exercises as any[]).map((ex: any) => ({
-                block_id: newBlock.id,
-                exercise_id: ex.exercise_id,
-                position: ex.position,
-                sets: ex.sets,
-                reps: ex.reps,
-                duration_seconds: ex.duration_seconds,
-                rest_seconds: ex.rest_seconds,
-                suggested_weight: ex.suggested_weight,
-                notes: ex.notes
-              }))
-            )
-          }
-        }
-      }
-    }
-  }
-
-  revalidatePath(ROUTES.ADMIN_RUTINAS)
-  return { success: true, id: newRoutine.id }
-}
-
-export async function saveRoutineAsTemplateAction(routineId: string, templateName: string) {
-  const supabase = await createClient()
-  const { data: source, error: fetchErr } = await supabase
-    .from("client_routines")
-    .select("*")
-    .eq("id", routineId)
-    .single()
-
-  if (fetchErr || !source) return { error: "No se encontró la rutina de origen" }
-
-  const { data: newTpl, error: insertErr } = await supabase
-    .from("routine_templates")
-    .insert({
-      gym_id: GYM_ID,
-      name: templateName.trim(),
-      description: source.description,
-      goal: source.goal,
-      custom_goal: source.custom_goal,
-      level: source.level,
-      days_per_week: source.days_per_week,
-      notes: source.notes,
-      is_active: true
-    })
-    .select("id")
-    .single()
-
-  if (insertErr) return { error: insertErr.message }
-
-  const { data: days } = await supabase
-    .from("client_routine_days")
-    .select("*")
-    .eq("routine_id", routineId)
-
-  for (const day of days ?? []) {
-    const { data: newDay } = await supabase
-      .from("routine_template_days")
-      .insert({
-        template_id: newTpl.id,
-        title: day.title,
-        weekday: day.weekday,
-        position: day.position
-      })
-      .select("id")
-      .single()
-
-    if (newDay) {
-      const { data: blocks } = await supabase
-        .from("client_routine_blocks")
-        .select("*")
-        .eq("routine_day_id", day.id)
-
-      for (const block of blocks ?? []) {
-        const { data: newBlock } = await supabase
-          .from("routine_template_blocks")
-          .insert({
-            template_day_id: newDay.id,
-            title: block.title,
-            position: block.position
-          })
-          .select("id")
-          .single()
-
-        if (newBlock) {
-          const { data: exercises } = await supabase
-            .from("client_routine_exercises")
-            .select("*")
-            .eq("block_id", block.id)
-
-          if (exercises && exercises.length > 0) {
-            await supabase.from("routine_template_block_exercises").insert(
-              (exercises as any[]).map((ex: any) => ({
-                template_block_id: newBlock.id,
-                exercise_id: ex.exercise_id,
-                position: ex.position,
-                sets: ex.sets,
-                reps: ex.reps,
-                duration_seconds: ex.duration_seconds,
-                rest_seconds: ex.rest_seconds,
-                suggested_weight: ex.suggested_weight,
-                notes: ex.notes
-              }))
-            )
-          }
-        }
-      }
-    }
-  }
-
-  revalidatePath(ROUTES.ADMIN_RUTINAS_PLANTILLAS)
-  return { success: true, id: newTpl.id }
 }
 
 // ── Fase 6 Actions — marcar hecho ──────────────────────────

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { getTemplates } from "@/services/templates.service"
+import { getTrainingRoutinesWithDayOptions } from "@/services/training-routines.service"
 import { NuevaClaseFlow } from "@/components/admin/nueva-clase-flow"
 import { ROUTES } from "@/constants/routes"
 
@@ -13,7 +13,7 @@ export default async function NuevaClasePage() {
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
   if (profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
 
-  const templates = await getTemplates()
+  const routines = await getTrainingRoutinesWithDayOptions()
 
-  return <NuevaClaseFlow templates={templates} userId={user.id} />
+  return <NuevaClaseFlow routines={routines} />
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ChevronRight, Plus, BookOpen } from "lucide-react"
+import { ChevronRight, Plus, UserPlus } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { ChipSelect } from "@/components/ui/chip-select"
 import { adminRutinaDetalle, ROUTES } from "@/constants/routes"
@@ -16,64 +16,97 @@ type RoutineRow = {
   client: { id: string; profile: { full_name: string | null } | null } | null
 }
 
+type ClientWithoutRoutine = { id: string; profile: { full_name: string | null } | null }
+
 interface RoutinesListProps {
   routines: RoutineRow[]
+  clientsWithoutRoutine?: ClientWithoutRoutine[]
 }
 
-const FILTER_OPTIONS: { value: RoutineStatus | ""; label: string }[] = [
+type FilterValue = RoutineStatus | "" | "sin_rutina"
+
+const FILTER_OPTIONS: { value: FilterValue; label: string }[] = [
   { value: "", label: "Todas" },
   { value: "active", label: ROUTINE_STATUS_LABELS.active },
   { value: "paused", label: ROUTINE_STATUS_LABELS.paused },
   { value: "completed", label: ROUTINE_STATUS_LABELS.completed },
   { value: "archived", label: ROUTINE_STATUS_LABELS.archived },
   { value: "draft", label: ROUTINE_STATUS_LABELS.draft },
+  { value: "sin_rutina", label: "Sin rutina" },
 ]
 
-const EMPTY_LABELS: Record<RoutineStatus | "", string> = {
-  "": "No hay rutinas todavía.",
+const EMPTY_LABELS: Record<FilterValue, string> = {
+  "": "No hay deportistas ni rutinas registradas.",
   active: "No hay rutinas activas.",
   paused: "No hay rutinas pausadas.",
   completed: "No hay rutinas completadas.",
   archived: "No hay rutinas archivadas.",
   draft: "No hay borradores de rutina.",
+  sin_rutina: "Todos los clientes tienen una rutina asignada.",
 }
 
-export function RoutinesList({ routines }: RoutinesListProps) {
-  const [filter, setFilter] = useState<RoutineStatus | "">("active")
+export function RoutinesList({ routines, clientsWithoutRoutine = [] }: RoutinesListProps) {
+  const [filter, setFilter] = useState<FilterValue>("")
   const [searchQuery, setSearchQuery] = useState("")
 
-  const filtered = routines.filter((r) => {
-    // Filtro por estado (chip)
-    if (filter && r.status !== filter) return false
-    // Filtro por búsqueda de texto
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim()
-      const matchesTitle = r.title.toLowerCase().includes(q)
-      const matchesClient = r.client?.profile?.full_name?.toLowerCase().includes(q) ?? false
-      if (!matchesTitle && !matchesClient) return false
+  const q = searchQuery.toLowerCase().trim()
+
+  // Combinación y unificación de filas
+  const unifiedRows = [
+    ...routines.map((r) => ({
+      type: "routine" as const,
+      id: r.id,
+      title: r.title,
+      status: r.status,
+      days_per_week: r.days_per_week,
+      clientName: r.client?.profile?.full_name ?? "Sin nombre",
+      clientId: r.client?.id,
+      href: adminRutinaDetalle(r.id),
+    })),
+    ...clientsWithoutRoutine.map((c) => ({
+      type: "no_routine" as const,
+      id: `no-routine-${c.id}`,
+      title: "Sin rutina asignada",
+      status: "sin_rutina" as const,
+      days_per_week: null,
+      clientName: c.profile?.full_name ?? "Sin nombre",
+      clientId: c.id,
+      href: `${ROUTES.ADMIN_RUTINAS_NUEVA}?clientId=${c.id}`,
+    })),
+  ]
+
+  // Ordenar alfabéticamente por el nombre del cliente
+  unifiedRows.sort((a, b) => a.clientName.localeCompare(b.clientName))
+
+  // Aplicar filtros
+  const filteredRows = unifiedRows.filter((row) => {
+    // 1. Filtrar por estado (pestaña)
+    if (filter === "sin_rutina") {
+      if (row.type !== "no_routine") return false
+    } else if (filter !== "") {
+      if (row.type !== "routine" || row.status !== filter) return false
     }
+
+    // 2. Filtrar por búsqueda de texto
+    if (q) {
+      const matchesClient = row.clientName.toLowerCase().includes(q)
+      const matchesTitle = row.type === "routine" && row.title.toLowerCase().includes(q)
+      if (!matchesClient && !matchesTitle) return false
+    }
+
     return true
   })
 
   return (
     <div className="space-y-4">
-      {/* Accesos rápidos - responsive */}
-      <div className="grid grid-cols-2 gap-2">
-        <Link
-          href={ROUTES.ADMIN_RUTINAS_PLANTILLAS}
-          className="flex items-center justify-center gap-2 rounded-2xl border border-white/8 bg-zinc-900/60 px-4 py-3.5 hover:bg-zinc-800/60 transition-colors"
-        >
-          <BookOpen className="size-4 text-zinc-400" />
-          <span className="text-sm font-medium text-zinc-300">Plantillas</span>
-        </Link>
-        <Link
-          href={ROUTES.ADMIN_RUTINAS_NUEVA}
-          className="flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
-        >
-          <Plus className="size-4" />
-          Nueva rutina
-        </Link>
-      </div>
+      {/* Accesos rápidos */}
+      <Link
+        href={ROUTES.ADMIN_RUTINAS_NUEVA}
+        className="flex items-center justify-center gap-2 rounded-2xl btn-glossy-red px-4 py-3.5 text-sm font-semibold text-white"
+      >
+        <Plus className="size-4" />
+        Nueva rutina
+      </Link>
 
       {/* Buscador en ancho completo */}
       <div className="w-full">
@@ -91,32 +124,46 @@ export function RoutinesList({ routines }: RoutinesListProps) {
 
       {/* Conteo */}
       <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-        {filtered.length} rutina{filtered.length === 1 ? "" : "s"}
+        {filteredRows.length} {filteredRows.length === 1 ? "registro" : "registros"}
       </h3>
 
       {/* Listado */}
-      {filtered.length === 0 ? (
-        <Card className="p-8 text-center text-zinc-500 text-sm">
-          {searchQuery.trim() ? "No se encontraron rutinas para esta búsqueda." : EMPTY_LABELS[filter]}
+      {filteredRows.length === 0 ? (
+        <Card className="p-8 text-center text-zinc-500 text-sm bg-[#0a0a0a] border border-[#222]">
+          {q ? "No se encontraron resultados para esta búsqueda." : EMPTY_LABELS[filter]}
         </Card>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-white/8 bg-zinc-900/60">
-          {filtered.map((r, idx) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {filteredRows.map((row) => (
             <Link
-              key={r.id}
-              href={adminRutinaDetalle(r.id)}
-              className={`flex items-center justify-between px-4 py-3.5 hover:bg-zinc-800/20 transition-colors ${
-                idx < filtered.length - 1 ? "border-b border-white/5" : ""
-              }`}
+              key={row.id}
+              href={row.href}
+              className="flex items-center justify-between rounded-2xl border border-white/8 bg-zinc-900/60 px-4 py-3.5 hover:bg-zinc-800/40 transition-colors cursor-pointer"
             >
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-zinc-200 truncate">{r.title}</p>
-                <p className="text-xs text-zinc-500 mt-0.5 truncate">
-                  {r.client?.profile?.full_name ?? "Sin cliente"} · {ROUTINE_STATUS_LABELS[r.status]}
-                  {r.days_per_week ? ` · ${r.days_per_week} días/sem` : ""}
+                <p className="font-bebas text-lg tracking-wide uppercase text-white truncate">
+                  {row.clientName}
                 </p>
+                {row.type === "routine" ? (
+                  <>
+                    <p className="text-sm font-semibold text-zinc-300 mt-0.5 truncate">{row.title}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      {ROUTINE_STATUS_LABELS[row.status as RoutineStatus]}
+                      {row.days_per_week ? ` · ${row.days_per_week} días/sem` : ""}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-red-500 mt-1 font-semibold flex items-center gap-1">
+                    Sin rutina asignada
+                  </p>
+                )}
               </div>
-              <ChevronRight className="size-4 text-zinc-600 shrink-0 ml-2" />
+              
+              {row.type === "routine" ? (
+                <ChevronRight className="size-4 text-zinc-600 shrink-0 ml-2" />
+              ) : (
+                <UserPlus className="size-4 text-red-500 shrink-0 ml-2 animate-pulse" />
+              )}
             </Link>
           ))}
         </div>

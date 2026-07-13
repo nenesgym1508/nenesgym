@@ -39,7 +39,7 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
 
   return (
     <>
-      <header className="flex h-14 items-center gap-3 border-b border-white/8 px-4 bg-zinc-950">
+      <header className="flex h-14 items-center gap-3 border-b border-white/8 px-4 md:px-10 bg-zinc-950">
         <h1 className="flex-1 text-base font-semibold text-zinc-100">NENE&apos;S GYM</h1>
         <div className="flex items-center gap-2 shrink-0">
           <InstallAppCard variant="header" />

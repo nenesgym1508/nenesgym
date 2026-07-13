@@ -39,7 +39,7 @@ export function ManualCheckInModal({ clients }: { clients: ClientOption[] }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-semibold text-zinc-200 transition-colors hover:border-white/25"
+        className="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-900/60 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
       >
         <UserPlus className="size-4" />
         Ingreso manual

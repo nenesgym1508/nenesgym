@@ -21,15 +21,23 @@ export default async function AdminPagosPage() {
   const [pending, allPayments] = await Promise.all([getPendingPayments(), getAllPayments()])
 
   return (
-    <div>
-      <PageHeader title="Gestión de pagos" />
-      <div className="p-4 space-y-6">
+    <div className="md:max-w-6xl md:mx-auto">
+      {/* Header unificado estilo cliente */}
+      <header className="flex items-start justify-between mb-6 px-6 pt-12 md:px-10 md:pt-10">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bebas font-bold mb-1 tracking-wide uppercase text-white">Pagos</h1>
+          <p className="text-zinc-500 text-sm">Gestión de ingresos y cobros</p>
+        </div>
+      </header>
+
+      <div className="px-6 pb-24 md:px-10 space-y-6">
         {pending.length > 0 ? (
           <div className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
               Por aprobar ({pending.length})
             </h3>
-            {pending.map((p) => {
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {pending.map((p) => {
               const pp = p as typeof p & {
                 plan?: { name: string; days: number; duration_days: number } | null
                 client?: {
@@ -67,10 +75,11 @@ export default async function AdminPagosPage() {
                   }}
                 />
               )
-            })}
+              })}
+            </div>
           </div>
         ) : (
-          <Card className="text-center py-8 text-zinc-500 text-sm">
+          <Card className="text-center py-8 text-zinc-500 text-sm bg-zinc-950/40 border-white/5">
             No hay pagos pendientes
           </Card>
         )}
@@ -79,7 +88,7 @@ export default async function AdminPagosPage() {
           <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-3">
             Historial reciente
           </h3>
-          <Card className="p-0 overflow-hidden">
+          <Card className="p-0 overflow-hidden bg-zinc-950/40 border-white/5">
             {allPayments.map((p, i) => {
               const pay = p as typeof p & {
                 client?: { profile?: { full_name?: string | null } }
@@ -88,13 +97,13 @@ export default async function AdminPagosPage() {
               return (
                 <div
                   key={p.id}
-                  className={`flex items-center gap-3 px-4 py-3 ${i < allPayments.length - 1 ? "border-b border-white/5" : ""}`}
+                  className={`flex items-center gap-3 px-4 py-3.5 ${i < allPayments.length - 1 ? "border-b border-white/5" : ""}`}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-zinc-200 truncate">
+                    <p className="font-bebas text-lg tracking-wide uppercase text-white truncate">
                       {pay.client?.profile?.full_name ?? "Cliente"}
                     </p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-zinc-500 mt-0.5">
                       {pay.plan?.name ?? "Personalizado"} · {formatDate(p.created_at)}
                     </p>
                   </div>

@@ -27,8 +27,15 @@ export default async function AdminMasPage() {
 
   return (
     <div>
-      <PageHeader title="Más" />
-      <div className="p-4 space-y-5">
+      {/* Header unificado estilo cliente */}
+      <header className="flex items-start justify-between mb-6 px-6 pt-12">
+        <div>
+          <h1 className="text-3xl font-bebas font-bold mb-1 tracking-wide uppercase text-white">Más</h1>
+          <p className="text-zinc-500 text-sm">Configuración y utilidades del sistema</p>
+        </div>
+      </header>
+
+      <div className="px-6 pb-24 space-y-5">
         <GymSettingsForm
           initialName={gym?.name ?? "NENE'S GYM"}
           initialGraceDays={gym?.grace_days ?? GRACE_DAYS_DEFAULT}

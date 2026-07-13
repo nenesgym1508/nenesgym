@@ -1,37 +1,22 @@
 "use client"
 
 import { useEffect, useId, useRef, useState } from "react"
-import { QrCode, XCircle, AlertCircle, Camera, Loader2 } from "lucide-react"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
-import { Card } from "@/components/ui/card"
-import { SuccessToast } from "@/components/ui/success-toast"
+import { QrCode, Camera, Loader2, KeyRound } from "lucide-react"
+import type { UseCheckIn } from "@/components/qr/use-check-in"
 
-type ScanStatus = "idle" | "scanning" | "loading" | "success" | "error" | "already" | "no_days"
+type CamStatus = "idle" | "scanning"
 
-interface SuccessInfo {
-  subtitle: string
-  message: string
+interface QrScannerProps {
+  checkIn: UseCheckIn
+  onSwitchToManual: () => void
 }
 
-const STATUS_CONFIG = {
-  idle: { color: "", message: "" },
-  scanning: { color: "text-zinc-400", message: "Apunta la cámara al QR del gimnasio" },
-  loading: { color: "text-zinc-400", message: "Registrando ingreso..." },
-  success: { color: "text-green-400", message: "¡Ingreso registrado!" },
-  error: { color: "text-red-400", message: "" },
-  already: { color: "text-yellow-400", message: "Ya registraste tu ingreso hoy" },
-  no_days: { color: "text-orange-400", message: "No tienes días disponibles" },
-}
-
-export default function QrScanner() {
+export default function QrScanner({ checkIn, onSwitchToManual }: QrScannerProps) {
   const scannerRef = useRef<HTMLDivElement>(null)
   const qrRef = useRef<InstanceType<typeof import("html5-qrcode")["Html5Qrcode"]> | null>(null)
   const readerId = "qr-reader-" + useId().replace(/:/g, "")
-  const [status, setStatus] = useState<ScanStatus>("idle")
-  const [message, setMessage] = useState("")
-  const [cameraError, setCameraError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<SuccessInfo | null>(null)
+  const [camStatus, setCamStatus] = useState<CamStatus>("idle")
+  const [cameraError, setCameraError] = useState<{ message: string; permissionDenied: boolean } | null>(null)
 
   const startScanner = async () => {
     try {
@@ -43,7 +28,7 @@ export default function QrScanner() {
       const qr = new Html5Qrcode(readerId)
       qrRef.current = qr
 
-      setStatus("scanning")
+      setCamStatus("scanning")
       setCameraError(null)
 
       await qr.start(
@@ -51,14 +36,21 @@ export default function QrScanner() {
         { fps: 10, qrbox: { width: 250, height: 250 } },
         async (decodedText) => {
           await qr.stop().catch(() => {})
-          await processCheckIn(decodedText)
+          setCamStatus("idle")
+          await checkIn.submit(decodedText, "qr")
         },
         () => {}
       )
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      setCameraError("No se pudo acceder a la cámara. " + msg)
-      setStatus("idle")
+      const name = err instanceof DOMException ? err.name : ""
+      const permissionDenied = name === "NotAllowedError" || name === "PermissionDeniedError"
+      setCameraError({
+        message: permissionDenied
+          ? "Permiso de cámara rechazado."
+          : "No se pudo acceder a la cámara.",
+        permissionDenied,
+      })
+      setCamStatus("idle")
     }
   }
 
@@ -67,52 +59,7 @@ export default function QrScanner() {
       await qrRef.current.stop().catch(() => {})
       qrRef.current = null
     }
-    setStatus("idle")
-  }
-
-  const processCheckIn = async (token: string) => {
-    setStatus("loading")
-    try {
-      const res = await fetch("/api/check-in", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      })
-      const data = await res.json()
-
-      if (data.ok) {
-        const now = new Date()
-        const fecha = format(now, "d MMM yyyy", { locale: es })
-        const hora = format(now, "h:mm a", { locale: es })
-        const dias =
-          data.remaining_days != null ? ` · Te quedan ${data.remaining_days} días` : ""
-        setSuccess({
-          subtitle: `${fecha} · ${hora}`,
-          message: `Buen entrenamiento 💪${dias}`,
-        })
-        setStatus("idle")
-        setMessage("")
-      } else {
-        if (data.code === "ALREADY_TODAY") {
-          setStatus("already")
-          setMessage(data.message)
-        } else if (data.code === "NO_DAYS" || data.code === "EXHAUSTED") {
-          setStatus("no_days")
-          setMessage(data.message)
-        } else {
-          setStatus("error")
-          setMessage(data.message ?? "Error al registrar ingreso")
-        }
-      }
-    } catch {
-      setStatus("error")
-      setMessage("Error de red. Intenta de nuevo.")
-    }
-  }
-
-  const reset = () => {
-    setStatus("idle")
-    setMessage("")
+    setCamStatus("idle")
   }
 
   useEffect(() => {
@@ -123,48 +70,13 @@ export default function QrScanner() {
     }
   }, [])
 
-  if (status === "already" || status === "no_days" || status === "error") {
-    const cfg = STATUS_CONFIG[status]
-    return (
-      <Card className="flex flex-col items-center gap-4 py-12 text-center">
-        <div className="size-16 rounded-full bg-white/5 flex items-center justify-center">
-          {status === "already" ? (
-            <AlertCircle className="size-8 text-yellow-400" />
-          ) : (
-            <XCircle className="size-8 text-red-400" />
-          )}
-        </div>
-        <div>
-          <p className={`text-sm font-semibold ${cfg.color}`}>
-            {cfg.message || message}
-          </p>
-          <p className="text-xs text-zinc-500 mt-1">{message}</p>
-        </div>
-        <button
-          onClick={reset}
-          className="text-sm text-red-500 hover:text-red-400 mt-2"
-        >
-          Intentar de nuevo
-        </button>
-      </Card>
-    )
-  }
-
   return (
     <div className="space-y-4">
-      <SuccessToast
-        open={success !== null}
-        title="Entrada registrada"
-        subtitle={success?.subtitle}
-        message={success?.message}
-        onClose={() => setSuccess(null)}
-      />
-
       {/* Visor de cámara */}
       <div className="relative overflow-hidden rounded-2xl bg-zinc-900 aspect-square max-w-sm mx-auto">
         <div ref={scannerRef} className="w-full h-full" />
 
-        {status === "idle" && (
+        {camStatus === "idle" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-zinc-900">
             <div className="size-20 rounded-2xl border-2 border-dashed border-zinc-700 flex items-center justify-center">
               <QrCode className="size-10 text-zinc-600" />
@@ -175,7 +87,7 @@ export default function QrScanner() {
           </div>
         )}
 
-        {status === "scanning" && (
+        {camStatus === "scanning" && (
           <div className="absolute inset-0 pointer-events-none">
             {/* Marco del escáner */}
             <div className="absolute inset-0 flex items-center justify-center">
@@ -189,7 +101,7 @@ export default function QrScanner() {
           </div>
         )}
 
-        {status === "loading" && (
+        {checkIn.status === "loading" && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/60">
             <Loader2 className="size-8 text-red-500 animate-spin" />
           </div>
@@ -198,67 +110,39 @@ export default function QrScanner() {
 
       {/* Error de cámara */}
       {cameraError && (
-        <p className="text-xs text-red-400 text-center">{cameraError}</p>
+        <div className="flex flex-col items-center gap-3 text-center">
+          <p className="text-xs text-red-400">{cameraError.message}</p>
+          <button
+            type="button"
+            onClick={onSwitchToManual}
+            className="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-400 transition-colors"
+          >
+            <KeyRound className="size-3.5" />
+            Usar código manual
+          </button>
+        </div>
       )}
 
       {/* Botones */}
       <div className="flex gap-3">
-        {status === "idle" ? (
+        {camStatus === "idle" ? (
           <button
             onClick={startScanner}
-            className="flex-1 flex items-center justify-center gap-2 h-12 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors"
+            disabled={checkIn.status === "loading"}
+            className="flex-1 flex items-center justify-center gap-2 h-12 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
           >
             <Camera className="size-5" />
             Activar cámara
           </button>
-        ) : status === "scanning" ? (
+        ) : (
           <button
             onClick={stopScanner}
             className="flex-1 h-12 rounded-xl border border-white/10 text-zinc-400 hover:text-zinc-200 transition-colors"
           >
             Cancelar
           </button>
-        ) : null}
+        )}
       </div>
-
-      {/* Ingreso manual */}
-      {status === "idle" && (
-        <ManualCheckin onToken={processCheckIn} />
-      )}
-    </div>
-  )
-}
-
-function ManualCheckin({ onToken }: { onToken: (token: string) => void }) {
-  const [show, setShow] = useState(false)
-  const [token, setToken] = useState("")
-
-  if (!show) {
-    return (
-      <button
-        onClick={() => setShow(true)}
-        className="w-full text-xs text-zinc-600 hover:text-zinc-400 py-2 transition-colors"
-      >
-        ¿No funciona la cámara? Ingresar código manualmente
-      </button>
-    )
-  }
-
-  return (
-    <div className="space-y-2">
-      <input
-        value={token}
-        onChange={(e) => setToken(e.target.value)}
-        placeholder="Pega aquí el código del gimnasio"
-        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-red-600"
-      />
-      <button
-        onClick={() => { if (token.trim()) onToken(token.trim()) }}
-        disabled={!token.trim()}
-        className="w-full h-10 rounded-lg bg-red-600/20 border border-red-600/40 text-red-400 text-sm font-medium disabled:opacity-50 hover:bg-red-600/30 transition-colors"
-      >
-        Registrar ingreso
-      </button>
     </div>
   )
 }

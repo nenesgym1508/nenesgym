@@ -40,12 +40,18 @@ export default async function AdminAsistenciasPage() {
 
   return (
     <div>
-      <PageHeader title="Ingresos" />
-      <div className="p-4 space-y-4">
+      {/* Header unificado estilo cliente */}
+      <header className="flex items-start justify-between mb-6 px-6 pt-12">
         <div>
-          <p className="text-xs text-zinc-500 capitalize">{today}</p>
-          <p className="text-2xl font-black text-zinc-100">
-            {attendance.length} <span className="text-lg font-normal text-zinc-400">ingresos hoy</span>
+          <h1 className="text-3xl font-bebas font-bold mb-1 tracking-wide uppercase text-white">Ingresos</h1>
+          <p className="text-zinc-500 text-sm capitalize">{today}</p>
+        </div>
+      </header>
+
+      <div className="px-6 pb-24 space-y-4">
+        <div>
+          <p className="text-2xl font-bebas font-bold text-zinc-100 uppercase tracking-wide">
+            {attendance.length} <span className="text-lg font-normal text-zinc-400 lowercase">ingresos hoy</span>
           </p>
         </div>
 
@@ -56,12 +62,12 @@ export default async function AdminAsistenciasPage() {
         </div>
 
         {attendance.length === 0 ? (
-          <Card className="text-center py-12">
+          <Card className="text-center py-12 bg-zinc-950/40 border-white/5">
             <Clock className="size-8 text-zinc-600 mx-auto mb-3" />
             <p className="text-zinc-500 text-sm">Nadie ha ingresado hoy</p>
           </Card>
         ) : (
-          <Card className="p-0 overflow-hidden">
+          <Card className="p-0 overflow-hidden bg-zinc-950/40 border-white/5">
             {attendance.map((a, i) => {
               const att = a as typeof a & { client?: { profile?: { full_name?: string | null } } }
               return (
@@ -70,8 +76,8 @@ export default async function AdminAsistenciasPage() {
                     <Clock className="size-4 text-green-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-zinc-200">{att.client?.profile?.full_name ?? "Cliente"}</p>
-                    <p className="text-xs text-zinc-500">{formatDatetime(a.checked_in_at)} · {a.session === "am" ? "Mañana" : "Tarde"} · {a.source === "qr" ? "QR" : "Manual"}</p>
+                    <p className="font-bebas text-lg tracking-wide uppercase text-white">{att.client?.profile?.full_name ?? "Cliente"}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">{formatDatetime(a.checked_in_at)} · {a.session === "am" ? "Mañana" : "Tarde"} · {a.source === "qr" ? "QR" : "Manual"}</p>
                   </div>
                 </div>
               )

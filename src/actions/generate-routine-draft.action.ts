@@ -46,54 +46,24 @@ function prioritize<T extends { id: string }>(pool: T[], usedIds: Set<string>): 
   return [...fresh, ...used]
 }
 
-export async function generateClassAction(params: {
-  class_date: string
+function objectiveTitle(o: ClassObjective): string {
+  return o.charAt(0).toUpperCase() + o.slice(1)
+}
+
+// Genera un BORRADOR de rutina (biblioteca), no una clase directa.
+// El profe revisa/edita en el editor normal y luego decide asignar o programar.
+export async function generateTrainingRoutineDraftAction(params: {
   muscle_group: MuscleGroup
   objective: ClassObjective
   level: ClassLevel
   estimated_duration_minutes: number
-  force?: boolean
-}): Promise<{ success: boolean; id?: string; error?: string; warning?: string }> {
+}): Promise<{ success: boolean; id?: string; error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: "No autenticado" }
-  const userId = user.id
 
   const groupLabel = MUSCLE_GROUP_LABELS[params.muscle_group] ?? params.muscle_group
 
-  // Aviso (no bloqueo) si ayer se trabajó el mismo grupo muscular.
-  if (!params.force) {
-    const yesterday = addDays(params.class_date, -1)
-    const { data: prevClass } = await supabase
-      .from("daily_classes")
-      .select("id")
-      .eq("gym_id", GYM_ID)
-      .eq("class_date", yesterday)
-      .neq("status", "archived")
-      .maybeSingle()
-
-    if (prevClass) {
-      const { data: prevBlocks } = await supabase
-        .from("class_blocks")
-        .select("class_block_exercises(exercise:exercises(muscle_group))")
-        .eq("daily_class_id", prevClass.id)
-
-      const prevGroups = new Set<string>()
-      for (const b of prevBlocks ?? []) {
-        for (const be of (b.class_block_exercises ?? []) as { exercise: { muscle_group: string | null } | null }[]) {
-          if (be.exercise?.muscle_group) prevGroups.add(be.exercise.muscle_group)
-        }
-      }
-      if (prevGroups.has(params.muscle_group)) {
-        return {
-          success: false,
-          warning: `Ayer también preparaste ${groupLabel}. ¿Quieres continuar?`,
-        }
-      }
-    }
-  }
-
-  // Obtener ejercicios activos del gym
   const { data: allExercises } = await supabase
     .from("exercises")
     .select("id, name, muscle_group, exercise_type")
@@ -104,87 +74,90 @@ export async function generateClassAction(params: {
     return { success: false, error: "No hay ejercicios en la biblioteca. Agrega ejercicios primero." }
   }
 
-  // Ejercicios ya usados esta semana (para evitar repetir si hay alternativas).
-  const monday = getMonday(params.class_date)
+  // Ejercicios ya usados esta semana en rutinas de biblioteca (para evitar repetir si hay alternativas).
+  const today = new Date().toISOString().split("T")[0]!
+  const monday = getMonday(today)
   const sunday = addDays(monday, 6)
-  const { data: weekClasses } = await supabase
-    .from("daily_classes")
+  const { data: weekRoutines } = await supabase
+    .from("training_routines")
     .select("id")
     .eq("gym_id", GYM_ID)
-    .gte("class_date", monday)
-    .lte("class_date", sunday)
-    .neq("status", "archived")
+    .gte("created_at", `${monday}T00:00:00`)
+    .lte("created_at", `${sunday}T23:59:59`)
 
   const usedIds = new Set<string>()
-  if (weekClasses?.length) {
-    const { data: weekBlocks } = await supabase
-      .from("class_blocks")
-      .select("class_block_exercises(exercise_id)")
-      .in("daily_class_id", weekClasses.map((c) => c.id))
-    for (const b of weekBlocks ?? []) {
-      for (const be of (b.class_block_exercises ?? []) as { exercise_id: string }[]) {
-        usedIds.add(be.exercise_id)
+  if (weekRoutines?.length) {
+    const { data: weekDays } = await supabase
+      .from("training_routine_days")
+      .select("id")
+      .in("routine_id", weekRoutines.map((r) => r.id))
+    if (weekDays?.length) {
+      const { data: weekBlocks } = await supabase
+        .from("training_routine_blocks")
+        .select("id")
+        .in("routine_day_id", weekDays.map((d) => d.id))
+      if (weekBlocks?.length) {
+        const { data: weekExercises } = await supabase
+          .from("training_routine_exercises")
+          .select("exercise_id")
+          .in("block_id", weekBlocks.map((b) => b.id))
+        for (const ex of weekExercises ?? []) usedIds.add(ex.exercise_id)
       }
     }
   }
 
-  // Calentamiento: movilidad o cardio (cualquier grupo muscular)
-  const warmupPool = allExercises.filter(
-    (e) => e.exercise_type === "movilidad" || e.exercise_type === "cardio"
-  )
+  const warmupPool = allExercises.filter((e) => e.exercise_type === "movilidad" || e.exercise_type === "cardio")
 
-  // Principales: para hipertrofia/fuerza usamos type='fuerza'.
   const mainType =
     params.objective === "cardio" ? "cardio"
     : params.objective === "movilidad" ? "movilidad"
     : params.objective === "tecnica" ? "tecnica"
     : "fuerza"
 
-  const mainPool = allExercises.filter(
-    (e) => e.muscle_group === params.muscle_group && e.exercise_type === mainType
-  )
+  const mainPool = allExercises.filter((e) => e.muscle_group === params.muscle_group && e.exercise_type === mainType)
 
   const compGroups = COMPLEMENTARY_GROUPS[params.muscle_group] ?? []
-  const compPool = allExercises.filter(
-    (e) => compGroups.includes(e.muscle_group as MuscleGroup) && e.exercise_type === "fuerza"
-  )
+  const compPool = allExercises.filter((e) => compGroups.includes(e.muscle_group as MuscleGroup) && e.exercise_type === "fuerza")
 
-  const abPool = allExercises.filter(
-    (e) => e.muscle_group === "abdomen" && e.exercise_type === "fuerza"
-  )
+  const abPool = allExercises.filter((e) => e.muscle_group === "abdomen" && e.exercise_type === "fuerza")
 
   if (mainPool.length === 0) {
     return {
       success: false,
-      error: `No hay suficientes ejercicios de ${groupLabel} para generar una clase completa. Agrega más ejercicios a la biblioteca o crea la clase manualmente.`,
+      error: `No hay suficientes ejercicios de ${groupLabel} para generar una rutina completa. Agrega más ejercicios a la biblioteca o crea la rutina manualmente.`,
     }
   }
 
-  // Selección priorizando ejercicios frescos de la semana.
   const warmup = prioritize(warmupPool, usedIds).slice(0, 2)
   const mainCount = params.estimated_duration_minutes >= 60 ? 4 : 3
   const main = prioritize(mainPool, usedIds).slice(0, mainCount)
   const comp = prioritize(compPool, usedIds).slice(0, 2)
   const ab = prioritize(abPool, usedIds).slice(0, 1)
 
-  const title = `${groupLabel} — ${CLASS_OBJECTIVE_TITLE(params.objective)}`
+  const name = `${groupLabel} — ${objectiveTitle(params.objective)}`
 
-  const { data: newClass, error: classError } = await supabase
-    .from("daily_classes")
+  const { data: newRoutine, error: routineError } = await supabase
+    .from("training_routines")
     .insert({
       gym_id: GYM_ID,
-      title,
-      class_date: params.class_date,
-      objective: params.objective,
+      name,
+      goal: params.objective,
       level: params.level,
-      estimated_duration_minutes: params.estimated_duration_minutes,
-      status: "draft",
-      created_by: userId,
+      days_per_week: 1,
+      is_active: true
     })
     .select("id")
     .single()
 
-  if (classError || !newClass) return { success: false, error: classError?.message }
+  if (routineError || !newRoutine) return { success: false, error: routineError?.message }
+
+  const { data: newDay } = await supabase
+    .from("training_routine_days")
+    .insert({ routine_id: newRoutine.id, title: "Día 1", weekday: null, position: 0 })
+    .select("id")
+    .single()
+
+  if (!newDay) return { success: true, id: newRoutine.id }
 
   const blocks: Array<{ title: string; exercises: typeof warmup }> = []
   if (warmup.length > 0) blocks.push({ title: "Calentamiento", exercises: warmup })
@@ -195,8 +168,8 @@ export async function generateClassAction(params: {
   for (let i = 0; i < blocks.length; i++) {
     const blk = blocks[i]!
     const { data: newBlock } = await supabase
-      .from("class_blocks")
-      .insert({ daily_class_id: newClass.id, title: blk.title, position: i })
+      .from("training_routine_blocks")
+      .insert({ routine_day_id: newDay.id, title: blk.title, position: i })
       .select("id")
       .single()
 
@@ -205,7 +178,7 @@ export async function generateClassAction(params: {
     const isStrength = blk.title !== "Calentamiento"
     for (let j = 0; j < blk.exercises.length; j++) {
       const ex = blk.exercises[j]!
-      await supabase.from("class_block_exercises").insert({
+      await supabase.from("training_routine_exercises").insert({
         block_id: newBlock.id,
         exercise_id: ex.id,
         position: j,
@@ -217,9 +190,5 @@ export async function generateClassAction(params: {
     }
   }
 
-  return { success: true, id: newClass.id }
-}
-
-function CLASS_OBJECTIVE_TITLE(o: ClassObjective): string {
-  return o.charAt(0).toUpperCase() + o.slice(1)
+  return { success: true, id: newRoutine.id }
 }

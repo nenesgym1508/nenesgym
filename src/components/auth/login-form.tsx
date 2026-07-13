@@ -4,11 +4,11 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import Link from "next/link"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 import { loginSchema, type LoginInput } from "@/schemas/client.schema"
 import { loginAction, resetPasswordAction } from "@/actions/auth.actions"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { ROUTES } from "@/constants/routes"
 
 export function LoginForm() {
@@ -92,17 +92,14 @@ export function LoginForm() {
         </p>
       )}
 
-      <Button
+      <LoadingButton
         type="submit"
-        disabled={isSubmitting}
-        className="w-full h-11 mt-2 bg-red-600 hover:bg-red-700 text-white font-semibold"
+        pending={isSubmitting}
+        pendingText="Ingresando..."
+        className="w-full h-11 mt-2 flex items-center justify-center gap-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors disabled:opacity-70"
       >
-        {isSubmitting ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          "Ingresar"
-        )}
-      </Button>
+        Ingresar
+      </LoadingButton>
 
       <p className="text-center text-sm text-zinc-500">
         ¿No tienes cuenta?{" "}

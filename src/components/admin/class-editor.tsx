@@ -22,7 +22,7 @@ import {
   duplicateClassAction,
   scaffoldStandardBlocksAction,
 } from "@/actions/classes.actions"
-import { saveClassAsTemplateAction } from "@/actions/templates.actions"
+import { saveClassAsTrainingRoutineAction } from "@/actions/training-routines.actions"
 import { ExerciseForm } from "@/components/admin/exercise-form"
 import { ActionMenu } from "@/components/ui/action-menu"
 import { ROUTES } from "@/constants/routes"
@@ -42,15 +42,12 @@ import {
   type MuscleGroup,
   type UsageTag,
 } from "@/types/exercise"
-import type { ClassTemplate } from "@/services/templates.service"
 import type { RoutineBlock, RoutineExercise } from "@/types/routine"
-import type { RoutineTemplateBlock, RoutineTemplateBlockExercise } from "@/services/routine-templates.service"
+import type { TrainingRoutineBlock, TrainingRoutineExercise } from "@/services/training-routines.service"
 
 interface ClassEditorProps {
   initialClass: DailyClassWithBlocks
   exercises: Exercise[]
-  templates: ClassTemplate[]
-  userId: string
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -89,7 +86,7 @@ const LEVEL_COLOR: Record<BalanceLevel, string> = {
 
 // ─── Main Editor ─────────────────────────────────────────────────────────────
 
-export function ClassEditor({ initialClass, exercises, templates, userId }: ClassEditorProps) {
+export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
   const router = useRouter()
   const [cls, setCls] = useState(initialClass)
   const [exerciseList, setExerciseList] = useState<Exercise[]>(exercises)
@@ -321,7 +318,7 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
   const handleSaveAsTemplate = async () => {
     if (!templateName.trim()) return
     setSavingTemplate(true)
-    await saveClassAsTemplateAction(cls.id, templateName.trim())
+    await saveClassAsTrainingRoutineAction(cls.id, templateName.trim())
     setSavingTemplate(false)
     setTemplateModalOpen(false)
     setTemplateName("")
@@ -373,7 +370,7 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
         <ActionMenu
           items={[
             {
-              label: "Guardar como plantilla",
+              label: "Guardar en biblioteca de rutinas",
               icon: <BookmarkPlus className="size-4" />,
               onClick: () => setTemplateModalOpen(true),
             },
@@ -554,14 +551,14 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-zinc-100">Guardar como plantilla</h3>
+              <h3 className="text-base font-bold text-zinc-100">Guardar en biblioteca de rutinas</h3>
               <button onClick={() => setTemplateModalOpen(false)} className="text-zinc-500 hover:text-zinc-300">
                 <X className="size-4" />
               </button>
             </div>
             <input
               type="text"
-              placeholder="Nombre de la plantilla"
+              placeholder="Nombre de la rutina"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
               className="w-full rounded-lg border border-white/10 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-red-600/50 mb-4"
@@ -583,7 +580,7 @@ export function ClassEditor({ initialClass, exercises, templates, userId }: Clas
 // ─── Block Card ───────────────────────────────────────────────────────────────
 
 export interface BlockCardProps {
-  block: ClassBlock | RoutineBlock | RoutineTemplateBlock
+  block: ClassBlock | RoutineBlock | TrainingRoutineBlock
   isFirst: boolean
   isLast: boolean
   isPending: boolean
@@ -704,7 +701,7 @@ export function BlockCard({
 // ─── Exercise Row ─────────────────────────────────────────────────────────────
 
 export interface ExerciseRowProps {
-  ex: BlockExercise | RoutineExercise | RoutineTemplateBlockExercise
+  ex: BlockExercise | RoutineExercise | TrainingRoutineExercise
   isFirst: boolean
   isLast: boolean
   isPending: boolean

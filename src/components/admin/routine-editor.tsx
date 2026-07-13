@@ -4,10 +4,10 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import {
   ChevronLeft, Plus, X, Check, Loader2, Dumbbell,
-  Copy, ClipboardCopy, Archive, Trash2, Calendar, Play
+  Copy, ClipboardCopy, Archive, Trash2, Calendar, Play, User, UserPlus
 } from "lucide-react"
 import Link from "next/link"
-import { ROUTES } from "@/constants/routes"
+import { ROUTES, adminClienteDetalle } from "@/constants/routes"
 import { ActionMenu } from "@/components/ui/action-menu"
 import { ChipSelect } from "@/components/ui/chip-select"
 import { MarkDoneTodayBar } from "@/components/cliente/mark-done-today-bar"
@@ -31,13 +31,12 @@ import {
   addExerciseToRoutineBlockAction,
   removeExerciseFromRoutineBlockAction,
   moveRoutineBlockExerciseAction,
-  updateRoutineBlockExerciseAction,
-  saveRoutineAsTemplateAction
+  updateRoutineBlockExerciseAction
 } from "@/actions/routines.actions"
+import { saveAsTrainingRoutineAction } from "@/actions/training-routines.actions"
 import {
   ROUTINE_STATUS_LABELS,
   ROUTINE_LEVEL_LABELS,
-  ADMIN_ROUTINE_GOAL_LABELS,
   CLIENT_ROUTINE_GOAL_LABELS,
   formatRoutineGoal,
   type ClientRoutineWithDays,
@@ -366,10 +365,10 @@ export function RoutineEditor({
   const handleSaveAsTemplate = () => {
     if (!templateName.trim()) return
     startTransition(async () => {
-      const res = await saveRoutineAsTemplateAction(routine.id, templateName)
+      const res = await saveAsTrainingRoutineAction(routine.id, templateName)
       if (!res.error) {
         setTemplateModalOpen(false)
-        alert("Plantilla guardada con éxito.")
+        alert("Rutina guardada en la biblioteca con éxito.")
       } else {
         alert(res.error)
       }
@@ -595,8 +594,22 @@ export function RoutineEditor({
               }
             }
           },
+          ...(routine.client_id
+            ? [
+                {
+                  label: "Ver perfil del cliente",
+                  icon: <User className="size-4" />,
+                  onClick: () => router.push(adminClienteDetalle(routine.client_id as string))
+                },
+                {
+                  label: "Asignar otra rutina",
+                  icon: <UserPlus className="size-4" />,
+                  onClick: () => router.push(`${ROUTES.ADMIN_RUTINAS_NUEVA}?clientId=${routine.client_id}`)
+                }
+              ]
+            : []),
           {
-            label: "Guardar como plantilla",
+            label: "Guardar en biblioteca de rutinas",
             icon: <ClipboardCopy className="size-4" />,
             onClick: () => {
               setTemplateName(routine.title)
@@ -828,7 +841,7 @@ export function RoutineEditor({
         )
       )}
 
-      {/* Modal guardar plantilla */}
+      {/* Modal guardar en biblioteca */}
       {templateModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
@@ -839,7 +852,7 @@ export function RoutineEditor({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-zinc-100">Guardar como plantilla</h3>
+              <h3 className="text-base font-bold text-zinc-100">Guardar en biblioteca de rutinas</h3>
               <button
                 onClick={() => setTemplateModalOpen(false)}
                 className="text-zinc-500 hover:text-zinc-300"
@@ -849,7 +862,7 @@ export function RoutineEditor({
             </div>
             <input
               type="text"
-              placeholder="Nombre de la plantilla"
+              placeholder="Nombre de la rutina"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
               className="w-full rounded-lg border border-white/10 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-red-600/50 mb-4"
@@ -862,7 +875,7 @@ export function RoutineEditor({
               {isPending ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
-                <><Check className="size-4" /> Guardar plantilla</>
+                <><Check className="size-4" /> Guardar rutina</>
               )}
             </button>
           </div>
@@ -953,54 +966,39 @@ export function RoutineEditor({
                   className="w-full rounded-lg border border-white/10 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-red-600/50"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className={variant === "client-own" ? "col-span-2" : undefined}>
-                  <label className="text-xs text-zinc-500">Objetivo</label>
-                  {variant === "client-own" ? (
-                    <div className="mt-1 space-y-2">
-                      <ChipSelect
-                        options={Object.entries(CLIENT_ROUTINE_GOAL_LABELS).map(([k, v]) => ({ value: k as ClientRoutineGoal, label: v }))}
-                        value={metaGoal as ClientRoutineGoal | ""}
-                        onChange={(v) => setMetaGoal(v)}
-                      />
-                      {metaGoal === "otro" && (
-                        <input
-                          type="text"
-                          maxLength={60}
-                          placeholder="Escribe tu objetivo..."
-                          value={metaCustomGoal}
-                          onChange={(e) => setMetaCustomGoal(e.target.value)}
-                          className="w-full rounded-lg border border-white/10 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-red-600/50"
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    <select
-                      value={metaGoal}
-                      onChange={(e) => setMetaGoal(e.target.value as RoutineGoal)}
+              <div>
+                <label className="text-xs text-zinc-500">Objetivo</label>
+                <div className="mt-1 space-y-2">
+                  <ChipSelect
+                    options={Object.entries(CLIENT_ROUTINE_GOAL_LABELS).map(([k, v]) => ({ value: k as ClientRoutineGoal, label: v }))}
+                    value={metaGoal as ClientRoutineGoal | ""}
+                    onChange={(v) => setMetaGoal(v)}
+                  />
+                  {metaGoal === "otro" && (
+                    <input
+                      type="text"
+                      maxLength={60}
+                      placeholder="Escribe tu objetivo..."
+                      value={metaCustomGoal}
+                      onChange={(e) => setMetaCustomGoal(e.target.value)}
                       className="w-full rounded-lg border border-white/10 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-red-600/50"
-                    >
-                      <option value="">Ninguno</option>
-                      {Object.entries(ADMIN_ROUTINE_GOAL_LABELS).map(([k, v]) => (
-                        <option key={k} value={k}>{v}</option>
-                      ))}
-                    </select>
+                    />
                   )}
                 </div>
-                <div>
-                  <label className="text-xs text-zinc-500">Nivel</label>
-                  <select
-                    value={metaLevel}
-                    onChange={(e) => setMetaLevel(e.target.value as RoutineLevel)}
-                    className="w-full rounded-lg border border-white/10 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-red-600/50"
-                  >
-                    <option value="">Ninguno</option>
-                    <option value="general">General</option>
-                    <option value="principiante">Principiante</option>
-                    <option value="intermedio">Intermedio</option>
-                    <option value="avanzado">Avanzado</option>
-                  </select>
-                </div>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500">Nivel</label>
+                <select
+                  value={metaLevel}
+                  onChange={(e) => setMetaLevel(e.target.value as RoutineLevel)}
+                  className="w-full rounded-lg border border-white/10 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-red-600/50"
+                >
+                  <option value="">Ninguno</option>
+                  <option value="general">General</option>
+                  <option value="principiante">Principiante</option>
+                  <option value="intermedio">Intermedio</option>
+                  <option value="avanzado">Avanzado</option>
+                </select>
               </div>
               <div>
                 <label className="text-xs text-zinc-500">Días por semana</label>

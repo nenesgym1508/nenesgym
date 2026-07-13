@@ -14,7 +14,7 @@ import dynamicImport from "next/dynamic"
 const ActivatePlanModal = dynamicImport(() => import("@/components/admin/activate-plan-modal").then(m => m.ActivatePlanModal))
 import { AutoAprobacionToggle } from "@/components/admin/auto-aprobacion-toggle"
 import { DesbloquearToggle } from "@/components/admin/desbloquear-toggle"
-import { ROUTES } from "@/constants/routes"
+import { ROUTES, adminClienteRutinasDetalle } from "@/constants/routes"
 import { formatDate, formatDatetime, todayInBogota, nowInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
 import { getBmiCategory, formatCOP } from "@/lib/utils"
 import { BMI_CATEGORIES, GYM_ID } from "@/constants/plans"
@@ -123,6 +123,13 @@ export default async function AdminClienteDetallePage({
             clientName={clientProfile?.full_name ?? "Cliente"}
             plans={planOptions}
           />
+          <Link
+            href={adminClienteRutinasDetalle(clientData.id)}
+            className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors"
+          >
+            <Dumbbell className="size-3.5" />
+            Rutinas
+          </Link>
         </div>
 
         {/* Membresía */}

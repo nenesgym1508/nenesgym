@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Check, X, Loader2, Eye, Sparkles, AlertTriangle, CheckCircle, Zap } from "lucide-react"
+import { Check, X, Eye, Sparkles, AlertTriangle, CheckCircle, Zap } from "lucide-react"
 import { approvePaymentAction, rejectPaymentAction } from "@/actions/admin.actions"
 import { Card } from "@/components/ui/card"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { formatCOP } from "@/lib/utils"
 import { formatDate } from "@/lib/dates"
 import { PAYMENT_METHOD_LABELS } from "@/constants/plans"
@@ -41,12 +42,13 @@ interface PendingPayment {
 
 interface PendingPaymentCardProps {
   payment: PendingPayment
+  initialShowReject?: boolean
 }
 
-export function PendingPaymentCard({ payment }: PendingPaymentCardProps) {
+export function PendingPaymentCard({ payment, initialShowReject }: PendingPaymentCardProps) {
   const [status, setStatus] = useState<"idle" | "approving" | "rejecting" | "done" | "error">("idle")
   const [rejectNote, setRejectNote] = useState("")
-  const [showReject, setShowReject] = useState(false)
+  const [showReject, setShowReject] = useState(initialShowReject ?? false)
   const [errorMsg, setErrorMsg] = useState("")
 
   const totalDays = payment.plan?.days ?? 20
@@ -210,17 +212,15 @@ export function PendingPaymentCard({ payment }: PendingPaymentCardProps) {
             >
               Cancelar
             </button>
-            <button
+            <LoadingButton
               onClick={handleReject}
-              disabled={!rejectNote.trim() || status === "rejecting"}
-              className="flex-1 rounded-lg bg-red-600/20 border border-red-600/40 py-2 text-sm text-red-400 hover:bg-red-600/30 disabled:opacity-50"
+              pending={status === "rejecting"}
+              pendingText="Rechazando..."
+              disabled={!rejectNote.trim()}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-red-600/20 border border-red-600/40 py-2 text-sm text-red-400 hover:bg-red-600/30 disabled:opacity-50"
             >
-              {status === "rejecting" ? (
-                <Loader2 className="size-3.5 animate-spin mx-auto" />
-              ) : (
-                "Confirmar rechazo"
-              )}
-            </button>
+              Confirmar rechazo
+            </LoadingButton>
           </div>
         </div>
       )}
@@ -231,25 +231,20 @@ export function PendingPaymentCard({ payment }: PendingPaymentCardProps) {
           <button
             onClick={() => setShowReject(true)}
             disabled={status === "approving"}
-            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-red-900/50 bg-red-950/30 py-2.5 text-sm text-red-400 hover:bg-red-900/40 transition-colors disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-red-900/50 bg-red-950/30 py-2.5 text-sm text-red-400 hover:bg-red-900/40 transition-colors disabled:opacity-50 cursor-pointer"
           >
             <X className="size-4" />
             Rechazar
           </button>
-          <button
+          <LoadingButton
             onClick={handleApprove}
-            disabled={status === "approving"}
-            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-green-600 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+            pending={status === "approving"}
+            pendingText="Aprobando..."
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl btn-glossy-green py-2.5 text-sm font-semibold text-white disabled:opacity-50 cursor-pointer"
           >
-            {status === "approving" ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <>
-                <Check className="size-4" />
-                Aprobar
-              </>
-            )}
-          </button>
+            <Check className="size-4" />
+            Aprobar
+          </LoadingButton>
         </div>
       )}
     </Card>

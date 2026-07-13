@@ -12,10 +12,19 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
     const { data, error } = await supabase.rpc("process_check_in", {
-      p_gym_token: token,
+      p_gym_token: token.trim(),
     })
 
     if (error) {
+      // 22P02 = invalid_text_representation: el texto ingresado no tiene
+      // forma de UUID válido (típico de un código manual mal escrito).
+      if (error.code === "22P02") {
+        return NextResponse.json({
+          ok: false,
+          code: "INVALID_CODE",
+          message: "Código incorrecto.",
+        })
+      }
       return NextResponse.json({
         ok: false,
         code: "DB_ERROR",

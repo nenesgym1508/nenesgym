@@ -1,20 +1,14 @@
 import { redirect } from "next/navigation"
-import Link from "next/link"
-import { Users } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { getAllClientsWithMembership, computeEffectiveStatus } from "@/services/memberships.service"
 import { getAvailablePlans } from "@/services/payments.service"
 import { PageHeader } from "@/components/layout/page-header"
-import { Card } from "@/components/ui/card"
-import { MembershipBadge } from "@/components/ui/badge"
+import { ClientsList } from "@/components/admin/clients-list"
 import dynamicImport from "next/dynamic"
 const GymQrModal = dynamicImport(() => import("@/components/admin/gym-qr-modal").then(m => m.GymQrModal))
-const ActivatePlanModal = dynamicImport(() => import("@/components/admin/activate-plan-modal").then(m => m.ActivatePlanModal))
-import { AutoAprobacionToggle } from "@/components/admin/auto-aprobacion-toggle"
-import { DesbloquearToggle } from "@/components/admin/desbloquear-toggle"
-import { formatDate, todayInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
+import { todayInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
 import { GYM_ID } from "@/constants/plans"
-import { ROUTES, adminClienteDetalle } from "@/constants/routes"
+import { ROUTES } from "@/constants/routes"
 import type { MembershipStatus } from "@/types/membership"
 
 export const dynamic = "force-dynamic"
@@ -27,7 +21,7 @@ export default async function AdminClientesPage() {
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
   if (profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
 
-  const [clients, plans, { data: gym }] = await Promise.all([
+  const [rawClients, plans, { data: gym }] = await Promise.all([
     getAllClientsWithMembership(),
     getAvailablePlans(),
     supabase.from("gyms").select("name, checkin_token").eq("id", GYM_ID).single(),
@@ -41,105 +35,50 @@ export default async function AdminClientesPage() {
     price_cents: p.price_cents,
   }))
 
-  return (
-    <div>
-      <PageHeader title={`Clientes (${clients.length})`} />
-      <div className="p-4 space-y-3">
-        {/* Barra de acciones */}
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-zinc-500">Gestiona ingresos y membresías</p>
-          {gym && <GymQrModal token={gym.checkin_token} gymName={gym.name} />}
-        </div>
+  // Precalcular estado de membresía en el servidor (computeEffectiveStatus
+  // depende de memberships.service, que no puede importarse desde un client component).
+  const today = todayInBogota()
+  const clients = (rawClients as any[]).map((c) => {
+    const latestMem = (c.memberships as Array<{
+      status: string; total_days: number; used_days: number
+      start_date: string; end_date: string; grace_days: number
+      plan: { name: string; days?: number } | null
+    }> | undefined)?.sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
 
-        {clients.length === 0 ? (
-          <Card className="text-center py-12">
-            <Users className="size-8 text-zinc-600 mx-auto mb-3" />
-            <p className="text-zinc-500 text-sm">No hay clientes registrados</p>
-          </Card>
-        ) : (
-          <Card className="p-0 overflow-hidden">
-            {clients.map((c, i) => {
-              const ct = c as typeof c & {
-                comprobante_bloqueado?: boolean
-                profile: { full_name?: string | null; email?: string | null } | null
-                memberships?: Array<{
-                  status: string
-                  total_days: number
-                  used_days: number
-                  start_date: string
-                  end_date: string
-                  grace_days: number
-                  plan: { name: string; days?: number } | null
-                }>
-              }
-              const latestMem = (ct.memberships as Array<{
-                status: string; total_days: number; used_days: number
-                start_date: string; end_date: string; grace_days: number
-                plan: { name: string; days?: number } | null
-              }>)?.sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
-              // Modelo base calendario: las faltas también descuentan días.
-              const elapsedDays = latestMem
-                ? eligibleDaysElapsed(
-                    latestMem.start_date,
-                    todayInBogota(),
-                    daysPerWeekForPlan(latestMem.plan?.days ?? latestMem.total_days)
-                  )
-                : 0
-              const remainingDays = latestMem ? Math.max(0, latestMem.total_days - elapsedDays) : 0
-              const effectiveStatus = latestMem
-                ? computeEffectiveStatus(
-                    elapsedDays,
-                    latestMem.total_days,
-                    latestMem.end_date,
-                    latestMem.grace_days,
-                    latestMem.status as MembershipStatus
-                  )
-                : null
-              return (
-                <div
-                  key={c.id}
-                  className={`px-4 py-3.5 ${i < clients.length - 1 ? "border-b border-white/5" : ""}`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-zinc-200 truncate">
-                        {ct.profile?.full_name ?? "Sin nombre"}
-                      </p>
-                      <p className="text-xs text-zinc-500 truncate">{ct.profile?.email ?? ""}</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {ct.comprobante_bloqueado && <DesbloquearToggle clientId={c.id} />}
-                      <AutoAprobacionToggle clientId={c.id} initialValue={c.auto_aprobacion} />
-                      {effectiveStatus ? (
-                        <MembershipBadge status={effectiveStatus} />
-                      ) : (
-                        <span className="text-xs text-zinc-600">Sin membresía</span>
-                      )}
-                      <ActivatePlanModal
-                        clientId={c.id}
-                        clientName={ct.profile?.full_name ?? "Cliente"}
-                        plans={planOptions}
-                      />
-                      <Link
-                        href={adminClienteDetalle(c.id)}
-                        className="flex items-center rounded-lg border border-white/10 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 transition-colors"
-                      >
-                        Ver
-                      </Link>
-                    </div>
-                  </div>
-                  {latestMem && (
-                    <p className="text-xs text-zinc-600 mt-1">
-                      {latestMem.plan?.name ?? "Plan personalizado"} · Vence{" "}
-                      {formatDate(latestMem.end_date)} · {remainingDays} días
-                      restantes
-                    </p>
-                  )}
-                </div>
-              )
-            })}
-          </Card>
-        )}
+    const elapsedDays = latestMem
+      ? eligibleDaysElapsed(latestMem.start_date, today, daysPerWeekForPlan(latestMem.plan?.days ?? latestMem.total_days))
+      : 0
+    const remainingDays = latestMem ? Math.max(0, latestMem.total_days - elapsedDays) : 0
+    const effectiveStatus: MembershipStatus | null = latestMem
+      ? computeEffectiveStatus(elapsedDays, latestMem.total_days, latestMem.end_date, latestMem.grace_days, latestMem.status as MembershipStatus)
+      : null
+
+    return {
+      id: c.id,
+      auto_aprobacion: c.auto_aprobacion,
+      comprobante_bloqueado: c.comprobante_bloqueado,
+      profile: c.profile,
+      effectiveStatus,
+      remainingDays,
+      planName: latestMem?.plan?.name ?? null,
+      startDate: latestMem?.start_date ?? null,
+      endDate: latestMem?.end_date ?? null,
+    }
+  })
+
+  return (
+    <div className="md:max-w-6xl md:mx-auto">
+      {/* Header unificado estilo cliente */}
+      <header className="flex items-start justify-between mb-6 px-6 pt-12 md:px-10 md:pt-10">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bebas font-bold mb-1 tracking-wide uppercase text-white">Clientes</h1>
+          <p className="text-zinc-500 text-sm">Gestiona ingresos y membresías</p>
+        </div>
+        {gym && <GymQrModal token={gym.checkin_token} gymName={gym.name} />}
+      </header>
+
+      <div className="px-6 pb-24 md:px-10">
+        <ClientsList clients={clients} plans={planOptions} />
       </div>
     </div>
   )

@@ -1,25 +1,12 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { requireAdmin } from "@/lib/auth/require-admin"
 import { computeEffectiveStatus } from "@/services/memberships.service"
 import { todayInBogota, nowInBogota, gymSession, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 import type { MembershipStatus } from "@/types/membership"
-
-async function requireAdmin() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "No autenticado" as const }
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, gym_id")
-    .eq("id", user.id)
-    .single()
-  if (profile?.role !== "admin") return { error: "Sin permisos" as const }
-  return { supabase, gymId: profile.gym_id }
-}
 
 export async function updateGymSettingsAction(input: {
   name: string
@@ -251,21 +238,14 @@ export async function createManualPaymentAction(formData: {
   totalDays: number
   durationDays: number
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "No autenticado" }
-
-  const { data: adminProfile } = await supabase
-    .from("profiles")
-    .select("role, gym_id")
-    .eq("id", user.id)
-    .single()
-  if (adminProfile?.role !== "admin") return { error: "Sin permisos" }
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error }
+  const { supabase } = ctx
 
   const { data: payment, error: paymentError } = await supabase
     .from("payments")
     .insert({
-      gym_id: adminProfile.gym_id,
+      gym_id: ctx.gymId,
       client_id: formData.clientId,
       plan_id: formData.planId || null,
       amount_cents: formData.amountCents,

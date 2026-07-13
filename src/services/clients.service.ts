@@ -36,5 +36,6 @@ export async function getAllClients() {
     )
     .eq("profile.role", "client")
     .order("created_at", { ascending: false })
+    .limit(500)
   return data ?? []
 }

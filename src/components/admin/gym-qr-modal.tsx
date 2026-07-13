@@ -30,7 +30,7 @@ export function GymQrModal({ token, gymName }: GymQrModalProps) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-lg bg-red-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+        className="flex items-center gap-2 rounded-xl btn-glossy-red px-4 py-2 text-sm font-medium text-white cursor-pointer"
       >
         <QrCode className="size-4" />
         QR de ingreso

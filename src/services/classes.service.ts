@@ -30,53 +30,27 @@ export async function getDailyClasses(options?: {
   return (data ?? []) as DailyClass[]
 }
 
-export async function getDailyClassByDate(date: string): Promise<DailyClass | null> {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from("daily_classes")
-    .select("*")
-    .eq("gym_id", GYM_ID)
-    .eq("class_date", date)
-    .neq("status", "archived")
-    .single()
-  return (data as DailyClass | null) ?? null
-}
-
 export async function getDailyClassWithBlocks(id: string): Promise<DailyClassWithBlocks | null> {
   const supabase = await createClient()
-  const { data: classData } = await supabase
-    .from("daily_classes")
-    .select("*")
-    .eq("id", id)
-    .eq("gym_id", GYM_ID)
-    .single()
+
+  // Consulta anidada única (evita el N+1 de una consulta por bloque).
+  const [{ data: classData }, { data: blocks }] = await Promise.all([
+    supabase.from("daily_classes").select("*").eq("id", id).eq("gym_id", GYM_ID).single(),
+    supabase
+      .from("class_blocks")
+      .select(
+        "*, exercises:class_block_exercises(*, exercise:exercises(id, name, muscle_group, exercise_type, equipment, secondary_muscle_groups, media_url, instructions))"
+      )
+      .eq("daily_class_id", id)
+      .order("position")
+      .order("position", { referencedTable: "exercises" }),
+  ])
 
   if (!classData) return null
 
-  const { data: blocks } = await supabase
-    .from("class_blocks")
-    .select("*")
-    .eq("daily_class_id", id)
-    .order("position")
-
-  const blocksWithExercises: ClassBlock[] = []
-
-  for (const block of blocks ?? []) {
-    const { data: blockExercises } = await supabase
-      .from("class_block_exercises")
-      .select("*, exercise:exercises(id, name, muscle_group, exercise_type, equipment, secondary_muscle_groups, media_url, instructions)")
-      .eq("block_id", block.id)
-      .order("position")
-
-    blocksWithExercises.push({
-      ...block,
-      exercises: (blockExercises ?? []) as BlockExercise[],
-    })
-  }
-
   return {
     ...(classData as DailyClass),
-    blocks: blocksWithExercises,
+    blocks: (blocks ?? []) as ClassBlock[],
   }
 }
 

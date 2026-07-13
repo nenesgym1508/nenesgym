@@ -12,7 +12,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, backHref, showLogout, showInstall }: PageHeaderProps) {
   return (
-    <header className="flex h-14 items-center gap-3 border-b border-white/8 px-4">
+    <header className="flex h-14 items-center gap-3 border-b border-white/8 px-4 md:px-10">
       {backHref && (
         <Link href={backHref} className="text-zinc-400 hover:text-zinc-100">
           <ChevronLeft className="size-5" />

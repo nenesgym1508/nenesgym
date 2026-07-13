@@ -62,5 +62,6 @@ export async function getAllClientsWithMembership() {
     )
     .eq("profile.role", "client")
     .order("created_at", { ascending: false })
+    .limit(500)
   return (data ?? []) as Array<{ id: string; auto_aprobacion: boolean; comprobante_bloqueado: boolean; profile: unknown; memberships: unknown[] }>
 }

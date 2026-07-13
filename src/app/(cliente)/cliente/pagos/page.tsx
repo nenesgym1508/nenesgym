@@ -33,7 +33,7 @@ export default async function ClientePagosPage() {
   return (
     <div>
       <PageHeader title="Mis pagos" />
-      <div className="p-4 space-y-6">
+      <div className="p-4 md:px-10 md:py-8 space-y-6">
         <PaymentUploadForm
           plans={plans}
           comprobanteBloqueado={bloqueado}
