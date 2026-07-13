@@ -1,5 +1,4 @@
 import { CreditCard } from "lucide-react"
-import { Card } from "@/components/ui/card"
 import { PaymentBadge } from "@/components/ui/badge"
 import { formatCOP } from "@/lib/utils"
 import { formatDate } from "@/lib/dates"
@@ -20,24 +19,24 @@ export function PaymentHistory({ payments }: PaymentHistoryProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
         Historial de pagos
       </h3>
-      <Card className="p-0 overflow-hidden">
+      <div className="overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)]">
         {payments.map((p, i) => (
           <div
             key={p.id}
-            className={`flex items-start gap-3 px-4 py-3.5 ${
+            className={`flex items-start gap-3 px-5 py-3.5 ${
               i < payments.length - 1 ? "border-b border-white/5" : ""
             }`}
           >
-            <div className="size-9 rounded-full bg-zinc-800 flex items-center justify-center shrink-0 mt-0.5">
-              <CreditCard className="size-4 text-zinc-400" />
+            <div className="w-10 h-10 rounded-full border border-zinc-600 bg-zinc-950 flex items-center justify-center shrink-0 mt-0.5">
+              <CreditCard className="size-4 text-red-500" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-zinc-200 truncate">
+                <span className="font-bebas text-base tracking-wide uppercase text-white truncate">
                   {p.plan?.name ?? "Pago personalizado"}
                 </span>
                 <PaymentBadge status={p.status} />
@@ -58,7 +57,7 @@ export function PaymentHistory({ payments }: PaymentHistoryProps) {
             </span>
           </div>
         ))}
-      </Card>
+      </div>
     </div>
   )
 }

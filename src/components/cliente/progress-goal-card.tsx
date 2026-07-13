@@ -35,8 +35,8 @@ export function GoalCard({ goal }: GoalCardProps) {
   }
 
   return (
-    <div className="relative rounded-2xl border border-white/8 bg-zinc-900/60 p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500 mb-1.5">
+    <div className="relative rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.65)]">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">
         Mi objetivo
       </p>
       <button
@@ -44,9 +44,11 @@ export function GoalCard({ goal }: GoalCardProps) {
         disabled={isPending}
         className="flex w-full items-center justify-between gap-2"
       >
-        <div className="flex items-center gap-2">
-          <Target className="size-4 text-red-500 shrink-0" />
-          <span className="text-sm font-semibold text-zinc-100">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-full border border-red-500/40 shadow-[0_0_10px_rgba(220,38,38,0.15)] flex items-center justify-center bg-zinc-950 shrink-0">
+            <Target className="size-5 text-red-500" />
+          </div>
+          <span className="font-bebas text-lg tracking-wide uppercase text-white">
             {current ? GOAL_LABELS[current] : "Elige un objetivo"}
           </span>
         </div>
@@ -56,7 +58,7 @@ export function GoalCard({ goal }: GoalCardProps) {
       </button>
 
       {open && (
-        <div className="mt-2 overflow-hidden rounded-xl border border-white/8 bg-zinc-800">
+        <div className="mt-3 overflow-hidden rounded-xl border border-white/8 bg-zinc-950">
           {GOAL_OPTIONS.map((type) => (
             <button
               key={type}

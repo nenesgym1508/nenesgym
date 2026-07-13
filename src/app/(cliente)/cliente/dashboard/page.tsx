@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import Image from "next/image"
 import { CheckCircle2, Clock } from "lucide-react"
 import { getCurrentClientData } from "@/services/clients.service"
 import { getActiveMembership, computeEffectiveStatus } from "@/services/memberships.service"
 import { getClientAttendance, getMonthlyAttendance } from "@/services/attendance.service"
 import { getClientPayments } from "@/services/payments.service"
 import { getProgressSummary } from "@/services/progress.service"
-import { getActiveRoutineForClient, getRoutineSessionForDate } from "@/services/routines.service"
+import { getActiveRoutineForClient } from "@/services/routines.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
 import { DashboardCalendar } from "@/components/cliente/dashboard-calendar"
@@ -50,9 +49,6 @@ export default async function ClienteDashboardPage() {
 
   // Fetch routines info
   const activeRoutine = client ? await getActiveRoutineForClient(client.id) : null
-  const todayStr = todayInBogota()
-  const routineSession = activeRoutine ? await getRoutineSessionForDate(activeRoutine.id, todayStr) : null
-  const isRoutineDoneToday = !!routineSession
 
   const attendanceDates = attendance.map(a => {
     const [year, month, day] = a.check_in_date.split('T')[0].split('-').map(Number)
@@ -134,7 +130,7 @@ export default async function ClienteDashboardPage() {
           email: profile.email ?? user.email ?? ""
         }}
       />
-      <div className="p-4 space-y-4">
+      <div className="p-4 md:px-10 md:py-8 space-y-4">
         {/* 1. Saludo + avatar */}
         <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 fill-mode-both flex items-start justify-between gap-3">
           <div>
@@ -162,8 +158,8 @@ export default async function ClienteDashboardPage() {
             </div>
 
             {/* 3+4. CTA + Estado del día — bloque unificado */}
-            <div className="flex flex-col gap-2">
-              {bothSessionsDone ? (
+            <div className="flex flex-col gap-1">
+              {bothSessionsDone && (
                 <div className="flex items-center gap-3 rounded-2xl border border-green-700/40 bg-zinc-900 px-4 py-3.5">
                   <div className="flex size-10 items-center justify-center rounded-xl bg-green-500/15">
                     <CheckCircle2 className="size-5 text-green-400" />
@@ -172,33 +168,15 @@ export default async function ClienteDashboardPage() {
                     Completaste tus 2 ingresos de hoy
                   </span>
                 </div>
-              ) : (
-                <Link
-                  href={ROUTES.CLIENTE_ASISTENCIA}
-                  className="block animate-btn-heartbeat"
-                >
-                  <Image
-                    src="/btn-registrar.webp"
-                    alt="Registrar entrada"
-                    width={2172}
-                    height={724}
-                    className="w-full h-auto"
-                    priority
-                  />
-                </Link>
               )}
               <TodayStatusCard
                 trainedToday={alreadyToday}
                 sessionsToday={sessionsToday}
                 lastCheckInAt={lastCheckInAt}
                 paymentAlert={paymentAlert}
+                showRegisterCta={!bothSessionsDone}
               />
-              <TodayRoutineCard
-                hasRoutine={!!activeRoutine}
-                routineId={activeRoutine?.id}
-                routineTitle={activeRoutine?.title}
-                isDoneToday={isRoutineDoneToday}
-              />
+              <TodayRoutineCard hasRoutine={!!activeRoutine} />
             </div>
 
 
@@ -236,18 +214,18 @@ export default async function ClienteDashboardPage() {
             {/* 9. Últimos ingresos */}
             {recentAttendance.length > 0 && (
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-3">
+                <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-2">
                   Últimos ingresos
                 </h3>
-                <Card className="p-0 overflow-hidden">
+                <div className="overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)]">
                   {recentAttendance.map((a, i) => (
                     <div
                       key={a.id}
-                      className={`flex items-center gap-3 px-4 py-3 ${
+                      className={`flex items-center gap-3 px-5 py-3.5 ${
                         i < recentAttendance.length - 1 ? "border-b border-white/5" : ""
                       }`}
                     >
-                      <div className="size-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                      <div className="w-9 h-9 rounded-full border border-green-500/40 bg-zinc-950 flex items-center justify-center shrink-0">
                         <Clock className="size-4 text-green-400" />
                       </div>
                       <div>
@@ -256,21 +234,21 @@ export default async function ClienteDashboardPage() {
                       </div>
                     </div>
                   ))}
-                </Card>
+                </div>
               </div>
             )}
           </>
         ) : (
           <>
-            <Card className="text-center py-8">
-              <p className="text-zinc-500 text-sm mb-3">No tienes una membresía activa</p>
+            <div className="rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] text-center py-8 px-5">
+              <p className="text-zinc-400 text-sm mb-3">No tienes una membresía activa</p>
               <Link
                 href={ROUTES.CLIENTE_PAGOS}
-                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+                className="inline-flex items-center gap-2 rounded-xl btn-glossy-red px-4 py-2.5 text-sm font-semibold text-white transition-colors"
               >
                 Ver planes
               </Link>
-            </Card>
+            </div>
             <Card className="bg-zinc-950/50 border-white/5">
               <DashboardCalendar
                 currentDate={now}

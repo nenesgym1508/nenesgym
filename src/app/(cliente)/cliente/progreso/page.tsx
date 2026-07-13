@@ -116,7 +116,7 @@ export default async function ClienteProgresoPage() {
   return (
     <div>
       <PageHeader title="Mi progreso" />
-      <div className="p-4 space-y-4">
+      <div className="p-4 md:px-10 md:py-8 space-y-4">
 
         {/* CTA */}
         <ProgressForm todayRecord={todayRecord} latestHeightCm={latest?.height_cm} />
@@ -128,14 +128,14 @@ export default async function ClienteProgresoPage() {
           <>
             {/* Métricas priorizadas por objetivo */}
             {cards.length > 0 && (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {cards.map((c) => (
-                  <div key={c.key} className="rounded-2xl border border-white/8 bg-zinc-900/60 p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500 mb-1">
+                  <div key={c.key} className="rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-3.5 shadow-[0_4px_25px_rgba(0,0,0,0.65)]">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1">
                       {c.label}
                     </p>
                     <div className="flex items-end gap-1 leading-none">
-                      <span className="text-2xl font-black text-zinc-100">{c.value}</span>
+                      <span className="font-bebas text-3xl tracking-wide text-white">{c.value}</span>
                       {c.unit && <span className="mb-0.5 text-[11px] text-zinc-500">{c.unit}</span>}
                     </div>
                     {c.delta != null && c.delta !== 0 ? (
@@ -153,7 +153,7 @@ export default async function ClienteProgresoPage() {
 
             {/* IMC — dato secundario */}
             {bmiInfo && latest?.bmi != null && (
-              <div className="flex items-center gap-3 rounded-xl border border-white/8 bg-zinc-900/60 px-4 py-2.5">
+              <div className="flex items-center gap-3 rounded-xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 px-4 py-2.5">
                 <span className="text-xs text-zinc-500">IMC</span>
                 <span className="text-sm font-bold text-zinc-200">{latest.bmi.toFixed(1)}</span>
                 <span className={`text-xs font-semibold ml-auto ${bmiInfo.color}`}>

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react"
 import {
   Upload, CheckCircle, Loader2, ImageIcon, AlertCircle,
-  AlertTriangle, ChevronRight, ShieldCheck, Copy, Check, X,
+  AlertTriangle, ChevronRight, ShieldCheck, Copy, Check, X, Calendar, Star,
 } from "lucide-react"
 import { uploadPaymentAction } from "@/actions/payments.actions"
 import { formatCOP, formatPesos, computePlanDiscount } from "@/lib/utils"
@@ -100,7 +100,6 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
   const [paso, setPaso] = useState<Paso>("plan")
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [method, setMethod] = useState("nequi")
-  const [customAmount, setCustomAmount] = useState("")
   const [preview, setPreview] = useState<string | null>(null)
   const [imageBase64, setImageBase64] = useState<string | null>(null)
   const [datosIA, setDatosIA] = useState<DatosIA | null>(null)
@@ -110,9 +109,7 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
   const [copiado, setCopiado] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const amountCents = selectedPlan
-    ? selectedPlan.price_cents
-    : (parseInt(customAmount) * 100 || 0)
+  const amountCents = selectedPlan ? selectedPlan.price_cents : 0
 
   const needsReceipt = METHODS_WITH_RECEIPT.includes(method)
 
@@ -232,7 +229,6 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
   const reiniciar = () => {
     setPaso("plan")
     setSelectedPlan(null)
-    setCustomAmount("")
     setPreview(null)
     setImageBase64(null)
     setDatosIA(null)
@@ -310,55 +306,72 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
 
           {/* Planes */}
           {plans.length > 0 && (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 pt-2.5">
               {(() => {
                 const singleDayPlan = plans.find(p => p.days === 1 || p.name.toLowerCase().includes("suelto"))
                 const singleDayPrice = singleDayPlan ? singleDayPlan.price_cents : 500000
-                return plans.map((plan) => {
+                const isMostChosenPlan = (p: Plan) => p.name.toLowerCase().replace(/í/g, "i").includes("5 dias/semana")
+                const sortedPlans = [...plans].sort((a, b) =>
+                  Number(isMostChosenPlan(b)) - Number(isMostChosenPlan(a)) || b.price_cents - a.price_cents
+                )
+                return sortedPlans.map((plan) => {
                   const disc = computePlanDiscount(plan.price_cents, plan.days, singleDayPrice)
+                  const isSelected = selectedPlan?.id === plan.id
+                  const isMostChosen = isMostChosenPlan(plan)
+
+                  // Nombre corto (sin paréntesis) para que el título siempre sea de una sola línea.
+                  const parenDetails = [...plan.name.matchAll(/\(([^)]+)\)/g)].map((m) => m[1])
+                  const baseName = plan.name.replace(/\s*\([^)]*\)/g, "").trim()
+                  const extraDetails = parenDetails.filter((d) => !d.includes(String(plan.days)))
+                  const metaLine = [
+                    ...extraDetails,
+                    `${plan.days} ${plan.days === 1 ? "día" : "días"} de uso`,
+                    `${plan.duration_days} días de vigencia`,
+                  ].join(" · ")
+
                   return (
                     <button
                       key={plan.id}
                       type="button"
-                      onClick={() => setSelectedPlan(selectedPlan?.id === plan.id ? null : plan)}
-                      className={`relative w-full flex items-center justify-between rounded-xl border p-4 text-left transition-[border-color,background-color,box-shadow] ${
-                        selectedPlan?.id === plan.id
-                          ? "border-red-500 bg-red-950/20 shadow-[0_0_12px_rgba(239,68,68,0.12)]"
-                          : "border-white/10 bg-white/[0.02] hover:border-white/20"
+                      onClick={() => setSelectedPlan(isSelected ? null : plan)}
+                      className={`relative w-full flex h-[76px] items-center gap-3 rounded-2xl border p-4 text-left shadow-[0_4px_25px_rgba(0,0,0,0.65)] transition-[border-color,background-color,box-shadow] ${
+                        isSelected
+                          ? "border-green-500 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_0_12px_rgba(34,197,94,0.25)]"
+                          : "border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 hover:border-zinc-600"
                       }`}
                     >
-                      <div className="space-y-0.5 pr-4">
-                        <span className="text-sm font-semibold text-zinc-200 block">{plan.name}</span>
-                        <span className="text-[11px] text-zinc-500 block">
-                          {plan.days} días de uso · 30 días de vigencia
+                      {isSelected && (
+                        <span className="absolute -left-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full border border-green-500 bg-zinc-950 text-green-500">
+                          <Check className="size-3" strokeWidth={3} />
                         </span>
+                      )}
+                      {isMostChosen && (
+                        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full border border-amber-200/60 bg-gradient-to-b from-amber-300 via-yellow-500 to-amber-700 pl-1.5 pr-2.5 py-1 text-[10px] font-bold text-amber-950 uppercase shadow-[0_3px_10px_rgba(0,0,0,0.5)]">
+                          <Star className="size-3 fill-amber-950" />
+                          Más elegido
+                        </span>
+                      )}
+                      <div className="w-11 h-11 rounded-xl border border-white/5 bg-zinc-950 flex items-center justify-center shrink-0">
+                        <Calendar className="size-5 text-zinc-400" />
                       </div>
-                      <div className="flex flex-col items-end gap-1.5 shrink-0">
-                        <span className="text-sm font-bold text-zinc-100">{formatCOP(plan.price_cents)}</span>
-                        {disc > 0 && (
-                          <span className="rounded bg-green-500/10 border border-green-500/20 px-2 py-0.5 text-[10px] font-bold text-green-400 uppercase">
-                            -{disc}%
-                          </span>
-                        )}
+                      <div className="flex-1 min-w-0 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <span className="font-bebas text-lg tracking-wide uppercase text-white block truncate">{baseName}</span>
+                          <span className="text-[11px] text-zinc-500 block truncate">{metaLine}</span>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <span className="font-bebas text-xl tracking-wide text-white">{formatCOP(plan.price_cents)}</span>
+                          {disc > 0 && (
+                            <span className="rounded-md bg-green-500/10 border border-green-500/20 px-2 py-0.5 text-[10px] font-bold text-green-400 uppercase">
+                              -{disc}%
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </button>
                   )
                 })
               })()}
-            </div>
-          )}
-
-          {/* Monto personalizado */}
-          {!selectedPlan && (
-            <div>
-              <label className="text-xs font-medium text-zinc-500 mb-1.5 block">O ingresa un monto personalizado (COP)</label>
-              <input
-                type="number"
-                placeholder="Ej: 80000"
-                value={customAmount}
-                onChange={e => setCustomAmount(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20"
-              />
             </div>
           )}
 

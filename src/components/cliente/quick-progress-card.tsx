@@ -1,6 +1,5 @@
 import Link from "next/link"
 import { TrendingUp, ArrowUp, ArrowDown, ChevronRight } from "lucide-react"
-import { Card } from "@/components/ui/card"
 import { ROUTES } from "@/constants/routes"
 
 interface QuickProgressCardProps {
@@ -13,22 +12,22 @@ export function QuickProgressCard({ weightKg, bmi, weightDelta }: QuickProgressC
   const hasDelta = weightDelta != null && weightDelta !== 0
 
   return (
-    <Card className="overflow-hidden p-0">
-      <div className="flex items-center gap-4 p-4">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
-          <TrendingUp className="size-5 text-zinc-300" />
+    <div className="overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)]">
+      <div className="flex items-center gap-4 p-5">
+        <div className="w-11 h-11 rounded-full border border-zinc-600 flex items-center justify-center bg-zinc-950 shrink-0">
+          <TrendingUp className="size-5 text-red-500" />
         </div>
         <div className="flex flex-1 items-start gap-5">
           {weightKg != null && (
             <div>
-              <p className="text-sm font-bold text-zinc-100">{weightKg} kg</p>
-              <p className="text-xs text-zinc-500">Peso</p>
+              <p className="font-bebas text-2xl tracking-wide text-white leading-none">{weightKg} <span className="text-xs font-sans text-zinc-500">kg</span></p>
+              <p className="text-xs text-zinc-500 mt-1">Peso</p>
             </div>
           )}
           {bmi != null && (
             <div>
-              <p className="text-sm font-bold text-zinc-100">{bmi.toFixed(1)}</p>
-              <p className="text-xs text-zinc-500">IMC</p>
+              <p className="font-bebas text-2xl tracking-wide text-white leading-none">{bmi.toFixed(1)}</p>
+              <p className="text-xs text-zinc-500 mt-1">IMC</p>
             </div>
           )}
           {hasDelta && (
@@ -58,6 +57,6 @@ export function QuickProgressCard({ weightKg, bmi, weightDelta }: QuickProgressC
         Ver progreso
         <ChevronRight className="size-3.5" />
       </Link>
-    </Card>
+    </div>
   )
 }

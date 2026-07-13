@@ -51,8 +51,8 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
 
   if (records.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/8 bg-zinc-900/50 py-10 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800">
+      <div className="flex flex-col items-center gap-3 rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 py-10 text-center shadow-[0_4px_25px_rgba(0,0,0,0.65)]">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-zinc-600 bg-zinc-950">
           <Activity className="size-5 text-zinc-500" />
         </div>
         <div>
@@ -104,7 +104,7 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
       </div>
 
       {latest.waist_cm != null && (
-        <div className="flex items-center gap-2 rounded-xl border border-white/8 bg-zinc-900/60 px-4 py-2.5">
+        <div className="flex items-center gap-2 rounded-xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 px-4 py-2.5">
           <WaistIcon className="size-3.5 text-zinc-500 shrink-0" />
           <span className="text-xs text-zinc-500">Cintura</span>
           <span className="text-sm font-bold text-zinc-200 ml-auto">{latest.waist_cm} cm</span>
@@ -113,9 +113,9 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
 
       {/* ── IMC GAUGE ── */}
       {latest.bmi != null && bmiInfo && (
-        <div className="rounded-2xl border border-white/8 bg-zinc-900/60 p-4">
+        <div className="rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-4 shadow-[0_4px_25px_rgba(0,0,0,0.65)]">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">
               Índice de masa corporal
             </p>
             <span className={`text-xs font-bold ${bmiInfo.color}`}>{bmiInfo.label}</span>
@@ -150,9 +150,9 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
 
       {/* ── METRIC CHART ── */}
       {availableMetrics.length > 0 && (
-        <div className="rounded-2xl border border-white/8 bg-zinc-900/60 p-4">
+        <div className="rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-4 shadow-[0_4px_25px_rgba(0,0,0,0.65)]">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">
               Evolución
             </p>
             <div className="flex gap-1">
@@ -213,13 +213,13 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
         <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-500">
           Historial
         </p>
-        <div className="overflow-hidden rounded-2xl border border-white/8 bg-zinc-900/60">
+        <div className="overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)]">
           {(() => {
             const visibleRecords = records.slice(0, 20)
             return visibleRecords.map((r, i) => (
               <div
                 key={r.id}
-                className={`px-4 py-3.5 ${
+                className={`px-5 py-3.5 ${
                   i < visibleRecords.length - 1 ? "border-b border-white/5" : ""
                 }`}
               >
@@ -367,7 +367,7 @@ function StatCard({
   accent?: string
 }) {
   return (
-    <div className="flex flex-col gap-1.5 rounded-2xl border border-white/8 bg-zinc-900/60 px-3 py-3">
+    <div className="flex flex-col gap-1.5 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 px-3 py-3 shadow-[0_4px_25px_rgba(0,0,0,0.65)]">
       <div className="flex items-center gap-1.5">
         <Icon className="size-3.5 text-zinc-500" />
         <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
@@ -375,7 +375,7 @@ function StatCard({
         </span>
       </div>
       <div className="flex items-end gap-1 leading-none">
-        <span className={`text-2xl font-black ${accent ?? "text-zinc-100"}`}>{value}</span>
+        <span className={`font-bebas text-3xl tracking-wide ${accent ?? "text-white"}`}>{value}</span>
         {unit && <span className="mb-0.5 text-[11px] font-medium text-zinc-500">{unit}</span>}
       </div>
       {delta != null && (

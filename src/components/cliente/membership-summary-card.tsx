@@ -1,6 +1,5 @@
 import Image from "next/image"
 import { Calendar } from "lucide-react"
-import { Card } from "@/components/ui/card"
 import { MembershipBadge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/dates"
 import type { MembershipStatus } from "@/types/membership"
@@ -21,19 +20,20 @@ export function MembershipSummaryCard({
   endDate,
 }: MembershipSummaryCardProps) {
   return (
-    <Card className="relative overflow-hidden border-red-900/30 bg-zinc-950">
+    <div className="relative overflow-hidden rounded-3xl border border-zinc-700 bg-zinc-950 shadow-[0_4px_25px_rgba(0,0,0,0.65)]">
       {/* Imagen de fondo */}
       <Image
         src="/gym-card-bg.webp"
         alt=""
         fill
+        sizes="(min-width: 768px) 700px, 100vw"
         className="pointer-events-none object-cover object-right opacity-60 select-none"
         priority
       />
       {/* Overlay para legibilidad del texto */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/70 to-transparent" />
 
-      <div className="relative">
+      <div className="relative p-5">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
             Membresía
@@ -42,13 +42,13 @@ export function MembershipSummaryCard({
         </div>
 
         <div className="flex flex-col">
-          <span data-stat className="text-5xl font-black leading-none text-zinc-100">
+          <span data-stat className="font-bebas text-6xl font-bold leading-none tracking-wide text-white">
             {remainingDays}
           </span>
           <span className="mt-1 text-xs text-zinc-400">entrenamientos restantes</span>
         </div>
 
-        <div className="mt-4 flex flex-col gap-1.5 text-xs text-zinc-500">
+        <div className="mt-4 border-t border-white/5 pt-3 flex flex-col gap-1.5 text-xs text-zinc-500">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <Calendar className="size-3.5" />
@@ -65,6 +65,6 @@ export function MembershipSummaryCard({
           </div>
         </div>
       </div>
-    </Card>
+    </div>
   )
 }

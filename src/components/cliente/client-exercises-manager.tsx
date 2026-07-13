@@ -112,13 +112,13 @@ export function ClientExercisesManager({
   return (
     <div className="space-y-4">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-zinc-500" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-zinc-500" />
         <input
           type="text"
           placeholder="Buscar ejercicio..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-xl border border-white/10 bg-zinc-900 py-2.5 pl-9 pr-3 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/20"
+          className="w-full rounded-full border border-[#222] bg-[#0a0a0a] py-3 pl-11 pr-4 text-sm text-white placeholder-zinc-500 outline-none focus:border-red-600/50 transition-colors"
         />
       </div>
 
@@ -156,7 +156,7 @@ export function ClientExercisesManager({
                   <button
                     onClick={() => handleRemove(ex.id)}
                     disabled={isPending && pendingId === ex.id}
-                    className="shrink-0 rounded-lg bg-zinc-800 px-2.5 py-1.5 text-[11px] font-semibold text-red-400 hover:bg-red-950/40 transition-colors"
+                    className="shrink-0 rounded-md border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-[11px] font-semibold text-red-400 hover:bg-red-500/20 transition-colors"
                   >
                     Quitar
                   </button>
@@ -185,7 +185,7 @@ export function ClientExercisesManager({
                       <button
                         onClick={() => handleRemove(ex.id)}
                         disabled={isPending && pendingId === ex.id}
-                        className="group shrink-0 flex items-center gap-1 rounded-lg bg-green-900/30 px-2.5 py-1.5 text-[11px] font-semibold text-green-400 hover:bg-red-950/40 hover:text-red-400 transition-colors"
+                        className="group shrink-0 flex items-center gap-1 rounded-md border border-green-500/20 bg-green-500/10 px-2.5 py-1 text-[11px] font-semibold text-green-500 hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-400 transition-colors"
                       >
                         <Check className="size-3.5 group-hover:hidden" />
                         <X className="size-3.5 hidden group-hover:block" />
@@ -196,7 +196,7 @@ export function ClientExercisesManager({
                       <button
                         onClick={() => handleAdd(ex.id)}
                         disabled={isPending && pendingId === ex.id}
-                        className="shrink-0 rounded-lg bg-red-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-red-700 transition-colors"
+                        className="btn-glossy-red shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white cursor-pointer"
                       >
                         + Añadir
                       </button>
@@ -213,7 +213,7 @@ export function ClientExercisesManager({
         <div className="space-y-3">
           <button
             onClick={openCreate}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl btn-glossy-red px-4 py-3 text-sm font-semibold text-white cursor-pointer"
           >
             <Plus className="size-4" />
             Crear ejercicio propio
@@ -232,7 +232,7 @@ export function ClientExercisesManager({
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         onClick={() => openEdit(ex)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 transition-colors"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition-colors"
                         aria-label="Editar"
                       >
                         <Pencil className="size-3.5" />
@@ -240,7 +240,7 @@ export function ClientExercisesManager({
                       <button
                         onClick={() => handleDelete(ex)}
                         disabled={isPending && pendingId === ex.id}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-800 text-red-400 hover:bg-red-950/40 transition-colors"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
                         aria-label="Eliminar"
                       >
                         <Trash2 className="size-3.5" />
@@ -276,8 +276,8 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   return (
     <button
       onClick={onClick}
-      className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-        active ? "bg-red-600 text-white" : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800"
+      className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-colors cursor-pointer ${
+        active ? "btn-glossy-red text-white" : "border border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800"
       }`}
     >
       {children}
@@ -287,7 +287,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 
 function RowList({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/8 bg-zinc-900/60 divide-y divide-white/5">
+    <div className="space-y-3">
       {children}
     </div>
   )
@@ -315,25 +315,25 @@ function ExerciseRowItem({
       tabIndex={0}
       onClick={() => onView(ex)}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onView(ex) }}
-      className={`flex w-full items-center gap-3 px-4 py-3 text-left cursor-pointer hover:bg-white/5 transition-colors ${pending ? "opacity-50" : ""}`}
+      className={`flex w-full items-center gap-3 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] px-4 py-3 text-left cursor-pointer hover:border-zinc-600 transition-colors ${pending ? "opacity-50" : ""}`}
     >
       {ex.media_url ? (
         <img
           src={ex.media_url}
           alt=""
           loading="lazy"
-          width={40}
-          height={40}
-          className="h-10 w-10 shrink-0 rounded-lg object-cover bg-zinc-800"
+          width={44}
+          height={44}
+          className="h-11 w-11 shrink-0 rounded-xl border border-zinc-700 object-cover bg-zinc-950"
           onError={(e) => { e.currentTarget.style.display = "none" }}
         />
       ) : (
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-800 text-zinc-600">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 text-zinc-600">
           <Dumbbell className="size-4" />
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-zinc-200 truncate">{ex.name}</p>
+        <p className="font-bebas text-base tracking-wide uppercase text-white truncate">{ex.name}</p>
         {subtitle && <p className="text-[11px] text-zinc-500 truncate">{subtitle}</p>}
       </div>
       <div onClick={(e) => e.stopPropagation()} className="shrink-0">
@@ -355,8 +355,10 @@ function EmptyState({
   onAction?: () => void
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-10 text-center px-6">
-      <Dumbbell className="size-8 text-zinc-700 mb-2" />
+    <div className="flex flex-col items-center justify-center rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] py-10 text-center px-6">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-zinc-600 bg-zinc-950 mb-3">
+        <Dumbbell className="size-5 text-zinc-500" />
+      </div>
       <p className="text-xs text-zinc-500">{text}</p>
       {subtext && <p className="text-xs text-zinc-500 mt-1">{subtext}</p>}
       {actionLabel && onAction && (
