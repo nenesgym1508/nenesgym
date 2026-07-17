@@ -1,12 +1,29 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/require-admin"
-import { computeEffectiveStatus } from "@/services/memberships.service"
+import { computeEffectiveStatus, searchAdminClients } from "@/services/memberships.service"
 import { todayInBogota, nowInBogota, gymSession, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 import type { MembershipStatus } from "@/types/membership"
+
+// Buscador rápido del dashboard: consulta en Postgres (ilike + límite) en vez de
+// descargar toda la lista de clientes al navegador.
+export async function searchClientsQuickAction(
+  q: string
+): Promise<{ id: string; full_name: string | null; email: string | null }[]> {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return []
+  const term = q.trim()
+  if (!term) return []
+  const { rows } = await searchAdminClients({ search: term, status: "todos", page: 1, pageSize: 6 })
+  return rows.map((r) => ({
+    id: r.id,
+    full_name: r.profile?.full_name ?? null,
+    email: r.profile?.email ?? null,
+  }))
+}
 
 export async function updateGymSettingsAction(input: {
   name: string
@@ -37,6 +54,8 @@ export async function updateGymSettingsAction(input: {
     .eq("id", ctx.gymId)
   if (error) return { error: error.message }
 
+  // Config del gym cacheada (tag "gym"): invalidar para que el cambio aparezca al abrir.
+  updateTag("gym")
   revalidatePath(ROUTES.ADMIN_MAS)
   return { success: true }
 }
@@ -101,6 +120,8 @@ export async function savePlanAction(input: {
     : await ctx.supabase.from("plans").insert(row)
   if (error) return { error: error.message }
 
+  // Planes cacheados (tag "plans"): invalidar para que el cambio aparezca al abrir.
+  updateTag("plans")
   revalidatePath(ROUTES.ADMIN_MAS)
   return { success: true }
 }
@@ -113,6 +134,7 @@ export async function setPlanActiveAction(planId: string, isActive: boolean) {
     .update({ is_active: isActive })
     .eq("id", planId)
   if (error) return { error: error.message }
+  updateTag("plans")
   revalidatePath(ROUTES.ADMIN_MAS)
   return { success: true }
 }

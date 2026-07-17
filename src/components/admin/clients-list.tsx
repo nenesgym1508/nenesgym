@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useTransition, useCallback } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Search, Users, Calendar, Banknote, ChevronRight } from "lucide-react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { Search, Users, Calendar, Banknote, ChevronRight, ChevronLeft } from "lucide-react"
 import dynamicImport from "next/dynamic"
 const ActivatePlanModal = dynamicImport(() => import("@/components/admin/activate-plan-modal").then(m => m.ActivatePlanModal))
 import { Card } from "@/components/ui/card"
@@ -32,41 +32,60 @@ type ClientRow = {
   endDate: string | null
 }
 
+type StatusFilter = "todos" | "activos" | "sin_membresia"
+
 interface ClientsListProps {
   clients: ClientRow[]
   plans: Plan[]
+  total: number
+  page: number
+  pageSize: number
+  search: string
+  status: StatusFilter
 }
 
-export function ClientsList({ clients, plans }: ClientsListProps) {
+const TABS: { key: StatusFilter; label: string }[] = [
+  { key: "todos", label: "Todos" },
+  { key: "activos", label: "Activos" },
+  { key: "sin_membresia", label: "Sin membresía" },
+]
+
+export function ClientsList({ clients, plans, total, page, pageSize, search, status }: ClientsListProps) {
   const router = useRouter()
-  const [search, setSearch] = useState("")
-  const [tab, setTab] = useState<"todos" | "activos" | "sin_membresia">("todos")
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [isPending, startTransition] = useTransition()
+  const [searchInput, setSearchInput] = useState(search)
   const [registeringId, setRegisteringId] = useState<string | null>(null)
 
-  const q = search.toLowerCase().trim()
+  // Actualiza los query params (búsqueda desde Postgres se resuelve en el servidor).
+  const updateParams = useCallback(
+    (next: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString())
+      for (const [k, v] of Object.entries(next)) {
+        if (v === null || v === "") params.delete(k)
+        else params.set(k, v)
+      }
+      const qs = params.toString()
+      startTransition(() => {
+        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+      })
+    },
+    [router, pathname, searchParams]
+  )
 
-  // Buscar plan de 1 día suelto
+  // Debounce del buscador: navega (servidor) 350ms después de la última tecla; resetea a página 1.
+  useEffect(() => {
+    if (searchInput === search) return
+    const t = setTimeout(() => updateParams({ q: searchInput || null, page: null }), 350)
+    return () => clearTimeout(t)
+  }, [searchInput, search, updateParams])
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+
   const singleDayPlan = plans.find(
     (p) => p.days === 1 || p.name.toLowerCase().includes("suelto") || p.name.toLowerCase().includes("dia")
   )
-
-  const filtered = q
-    ? clients.filter((c) =>
-        (c.profile?.full_name?.toLowerCase().includes(q) ?? false) ||
-        (c.profile?.email?.toLowerCase().includes(q) ?? false)
-      )
-    : clients
-
-  // Filtrado por pestañas (tabs)
-  const tabFiltered = filtered.filter((c) => {
-    if (tab === "activos") {
-      return c.effectiveStatus === "active" || c.effectiveStatus === "grace"
-    }
-    if (tab === "sin_membresia") {
-      return !c.effectiveStatus || c.effectiveStatus === "exhausted" || c.effectiveStatus === "cancelled"
-    }
-    return true
-  })
 
   const handleRegisterSingleDay = async (clientId: string, clientName: string) => {
     if (!singleDayPlan) return
@@ -94,6 +113,9 @@ export function ClientsList({ clients, plans }: ClientsListProps) {
     }
   }
 
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1
+  const to = Math.min(page * pageSize, total)
+
   return (
     <div className="space-y-6">
       {/* Buscador de clientes */}
@@ -102,57 +124,40 @@ export function ClientsList({ clients, plans }: ClientsListProps) {
         <input
           type="text"
           placeholder="Buscar cliente por nombre o email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           className="w-full bg-[#0a0a0a] border border-[#222] rounded-full py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-red-600/50 text-white placeholder-zinc-500 transition-colors"
         />
       </div>
 
       {/* Tabs */}
       <div className="flex bg-[#0a0a0a] border border-[#222] rounded-xl p-1">
-        <button
-          onClick={() => setTab("todos")}
-          className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors cursor-pointer text-center ${
-            tab === "todos"
-              ? "text-red-500 border-b-2 border-red-500 bg-zinc-900/60"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          Todos
-        </button>
-        <button
-          onClick={() => setTab("activos")}
-          className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors cursor-pointer text-center ${
-            tab === "activos"
-              ? "text-red-500 border-b-2 border-red-500 bg-zinc-900/60"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          Activos
-        </button>
-        <button
-          onClick={() => setTab("sin_membresia")}
-          className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors cursor-pointer text-center ${
-            tab === "sin_membresia"
-              ? "text-red-500 border-b-2 border-red-500 bg-zinc-900/60"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          Sin membresía
-        </button>
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => updateParams({ status: t.key === "todos" ? null : t.key, page: null })}
+            className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors cursor-pointer text-center ${
+              status === t.key
+                ? "text-red-500 border-b-2 border-red-500 bg-zinc-900/60"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* Listado de clientes */}
-      {tabFiltered.length === 0 ? (
+      {clients.length === 0 ? (
         <Card className="text-center py-12 bg-[#0a0a0a] border border-[#222]">
           <Users className="size-8 text-zinc-600 mx-auto mb-3" />
           <p className="text-zinc-500 text-sm">
-            {q ? "No se encontraron clientes para esta búsqueda." : "No hay clientes en esta sección."}
+            {search ? "No se encontraron clientes para esta búsqueda." : "No hay clientes en esta sección."}
           </p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {tabFiltered.map((c) => {
+        <div className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 transition-opacity ${isPending ? "opacity-60" : ""}`}>
+          {clients.map((c) => {
             const clientName = c.profile?.full_name ?? "Cliente"
             const initials = clientName
               .split(" ")
@@ -171,8 +176,8 @@ export function ClientsList({ clients, plans }: ClientsListProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 rounded-full border flex items-center justify-center text-sm font-semibold bg-zinc-950 text-white transition-all ${
-                      isActive 
-                        ? "border-green-500/40 shadow-[0_0_10px_rgba(34,197,94,0.15)]" 
+                      isActive
+                        ? "border-green-500/40 shadow-[0_0_10px_rgba(34,197,94,0.15)]"
                         : "border-red-500/40 shadow-[0_0_10px_rgba(220,38,38,0.15)]"
                     }`}>
                       {initials}
@@ -283,6 +288,36 @@ export function ClientsList({ clients, plans }: ClientsListProps) {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Paginación */}
+      {total > pageSize && (
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-xs text-zinc-500">
+            {from}–{to} de {total}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => updateParams({ page: String(page - 1) })}
+              disabled={page <= 1 || isPending}
+              aria-label="Página anterior"
+              className="flex items-center justify-center size-9 rounded-lg border border-[#222] bg-[#0a0a0a] text-zinc-300 hover:text-white hover:border-red-600/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <span className="text-xs text-zinc-400 tabular-nums">
+              {page} / {totalPages}
+            </span>
+            <button
+              onClick={() => updateParams({ page: String(page + 1) })}
+              disabled={page >= totalPages || isPending}
+              aria-label="Página siguiente"
+              className="flex items-center justify-center size-9 rounded-lg border border-[#222] bg-[#0a0a0a] text-zinc-300 hover:text-white hover:border-red-600/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
         </div>
       )}
     </div>

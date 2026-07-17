@@ -1,29 +1,30 @@
 import { redirect } from "next/navigation"
 import { Clock } from "lucide-react"
-import { createClient } from "@/lib/supabase/server"
+import { getAuthenticatedSession } from "@/lib/auth/session"
+import { getGymSettings } from "@/services/gym.service"
 import { getTodayAttendance } from "@/services/attendance.service"
 import { getAllClients } from "@/services/clients.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
-import dynamic from "next/dynamic"
-const GymQrModal = dynamic(() => import("@/components/admin/gym-qr-modal").then(m => m.GymQrModal))
-const ManualCheckInModal = dynamic(() => import("@/components/admin/manual-checkin-modal").then(m => m.ManualCheckInModal))
+import dynamicImport from "next/dynamic"
+const GymQrModal = dynamicImport(() => import("@/components/admin/gym-qr-modal").then(m => m.GymQrModal))
+const ManualCheckInModal = dynamicImport(() => import("@/components/admin/manual-checkin-modal").then(m => m.ManualCheckInModal))
 import { formatDatetime } from "@/lib/dates"
 import { GYM_ID } from "@/constants/plans"
 import { ROUTES } from "@/constants/routes"
 
+export const dynamic = "force-dynamic"
+
 export default async function AdminAsistenciasPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect(ROUTES.LOGIN)
+  const session = await getAuthenticatedSession()
+  if (!session) redirect(ROUTES.LOGIN)
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-  if (profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
+  if (session.profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
 
-  const [attendance, clients, { data: gym }] = await Promise.all([
+  const [attendance, clients, gym] = await Promise.all([
     getTodayAttendance(GYM_ID),
     getAllClients(),
-    supabase.from("gyms").select("name, checkin_token").eq("id", GYM_ID).single(),
+    getGymSettings(),
   ])
 
   const clientOptions = clients.map((c) => {

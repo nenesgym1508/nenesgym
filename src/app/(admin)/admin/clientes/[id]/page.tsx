@@ -1,7 +1,7 @@
-import { notFound, redirect } from "next/navigation"
+import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Dumbbell } from "lucide-react"
-import { createClient } from "@/lib/supabase/server"
+import { requireAdminSession } from "@/lib/auth/session"
 import { getClientById } from "@/services/clients.service"
 import { getActiveMembership, computeEffectiveStatus } from "@/services/memberships.service"
 import { getClientProgress, getActiveGoal } from "@/services/progress.service"
@@ -31,11 +31,7 @@ export default async function AdminClienteDetallePage({
 }) {
   const { id } = await params
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect(ROUTES.LOGIN)
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-  if (profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
+  await requireAdminSession()
 
   const [clientData, plans] = await Promise.all([
     getClientById(id),

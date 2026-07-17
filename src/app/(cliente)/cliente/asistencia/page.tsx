@@ -8,6 +8,8 @@ import { EntradaWrapper } from "@/components/qr/entrada-wrapper"
 import { formatDate, formatDatetime, todayInBogota } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 
+export const dynamic = "force-dynamic"
+
 export default async function ClienteAsistenciaPage() {
   const clientData = await getCurrentClientData()
   if (!clientData) redirect(ROUTES.LOGIN)

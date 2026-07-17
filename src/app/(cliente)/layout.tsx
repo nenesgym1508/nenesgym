@@ -1,20 +1,10 @@
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { ClientSidebar } from "@/components/layout/client-sidebar"
-import { createClient } from "@/lib/supabase/server"
+import { getAuthenticatedSession } from "@/lib/auth/session"
 
 export default async function ClienteLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  let fullName: string | null = null
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single()
-    fullName = profile?.full_name ?? null
-  }
+  const session = await getAuthenticatedSession()
+  const fullName = session?.profile?.full_name ?? null
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -28,3 +18,4 @@ export default async function ClienteLayout({ children }: { children: React.Reac
     </div>
   )
 }
+

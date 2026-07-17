@@ -40,15 +40,13 @@ export default async function ClienteDashboardPage() {
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth() + 1
 
-  const [membership, attendance, payments, progress] = await Promise.all([
+  const [membership, attendance, payments, progress, activeRoutine] = await Promise.all([
     client ? getActiveMembership(client.id) : Promise.resolve(null),
     client ? getClientAttendance(client.id, 90) : Promise.resolve([]),
     client ? getClientPayments(client.id) : Promise.resolve([]),
     client ? getProgressSummary(client.id) : Promise.resolve(null),
+    client ? getActiveRoutineForClient(client.id) : Promise.resolve(null),
   ])
-
-  // Fetch routines info
-  const activeRoutine = client ? await getActiveRoutineForClient(client.id) : null
 
   const attendanceDates = attendance.map(a => {
     const [year, month, day] = a.check_in_date.split('T')[0].split('-').map(Number)

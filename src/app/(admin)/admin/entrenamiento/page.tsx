@@ -1,7 +1,6 @@
 import Link from "next/link"
-import { redirect } from "next/navigation"
 import { Plus, Dumbbell } from "lucide-react"
-import { createClient } from "@/lib/supabase/server"
+import { requireAdminSession } from "@/lib/auth/session"
 import { getTrainingRoutines } from "@/services/training-routines.service"
 import { getAdminRoutines, getClientsWithoutRoutine } from "@/services/routines.service"
 import { PageHeader } from "@/components/layout/page-header"
@@ -18,11 +17,7 @@ export default async function AdminEntrenamientoPage({
 }: {
   searchParams: Promise<{ tab?: string }>
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect(ROUTES.LOGIN)
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-  if (profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
+  await requireAdminSession()
 
   const { tab: tabParam } = await searchParams
   const tab: EntrenamientoTab = tabParam === "asignaciones" || tabParam === "clases" ? tabParam : "rutinas"

@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { LogOut, ClipboardList } from "lucide-react"
-import { createClient } from "@/lib/supabase/server"
+import { getAuthenticatedSession } from "@/lib/auth/session"
 import { getGymSettings, getAdminPlans } from "@/services/gym.service"
 import { logoutAction } from "@/actions/auth.actions"
 import { PageHeader } from "@/components/layout/page-header"
@@ -11,16 +11,13 @@ import { ProfileSettingsForm } from "@/components/admin/profile-settings-form"
 import { GRACE_DAYS_DEFAULT } from "@/constants/plans"
 import { ROUTES } from "@/constants/routes"
 
-export default async function AdminMasPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect(ROUTES.LOGIN)
+export const dynamic = "force-dynamic"
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, full_name")
-    .eq("id", user.id)
-    .single()
+export default async function AdminMasPage() {
+  const session = await getAuthenticatedSession()
+  if (!session) redirect(ROUTES.LOGIN)
+
+  const { user, profile } = session
   if (profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
 
   const [gym, plans] = await Promise.all([getGymSettings(), getAdminPlans()])

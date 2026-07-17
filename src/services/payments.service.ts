@@ -1,4 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
+import { unstable_cache } from "next/cache"
+import { createClient as createSimpleClient } from "@supabase/supabase-js"
+import { env } from "@/lib/env"
 
 export async function getClientPayments(clientId: string) {
   const supabase = await createClient()
@@ -56,12 +59,20 @@ export async function getReceiptSignedUrl(path: string) {
   return data?.signedUrl ?? null
 }
 
-export async function getAvailablePlans() {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from("plans")
-    .select("*")
-    .eq("is_active", true)
-    .order("price_cents", { ascending: true })
-  return data ?? []
-}
+export const getAvailablePlans = unstable_cache(
+  async () => {
+    const supabase = createSimpleClient(
+      env.NEXT_PUBLIC_SUPABASE_URL,
+      env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    )
+    const { data } = await supabase
+      .from("plans")
+      .select("*")
+      .eq("is_active", true)
+      .order("price_cents", { ascending: true })
+    return data ?? []
+  },
+  ["available-plans"],
+  { revalidate: 300, tags: ["plans"] }
+)
+

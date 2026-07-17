@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import { getAuthenticatedSession } from "@/lib/auth/session"
 import { getAllPayments, getPendingPayments } from "@/services/payments.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { PendingPaymentCard } from "@/components/admin/pending-payment-card"
@@ -10,13 +10,13 @@ import { formatDate } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 import type { PaymentMethod } from "@/types/payment"
 
-export default async function AdminPagosPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect(ROUTES.LOGIN)
+export const dynamic = "force-dynamic"
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-  if (profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
+export default async function AdminPagosPage() {
+  const session = await getAuthenticatedSession()
+  if (!session) redirect(ROUTES.LOGIN)
+
+  if (session.profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
 
   const [pending, allPayments] = await Promise.all([getPendingPayments(), getAllPayments()])
 

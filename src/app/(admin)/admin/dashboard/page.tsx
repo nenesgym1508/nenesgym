@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Users, CreditCard, CheckSquare, Clock, Plus, LogOut } from "lucide-react"
-import { createClient } from "@/lib/supabase/server"
+import { getAuthenticatedSession } from "@/lib/auth/session"
 import { getPendingPayments } from "@/services/payments.service"
 import { getTodayAttendance } from "@/services/attendance.service"
-import { getAllClients } from "@/services/clients.service"
+import { countClients } from "@/services/clients.service"
 import { logoutAction } from "@/actions/auth.actions"
 import { ClientSearchBox } from "@/components/admin/client-search-box"
 import { PendingPaymentsPreview } from "@/components/admin/pending-payments-preview"
@@ -15,28 +15,23 @@ import { ROUTES } from "@/constants/routes"
 export const dynamic = "force-dynamic"
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect(ROUTES.LOGIN)
+  const session = await getAuthenticatedSession()
+  if (!session) redirect(ROUTES.LOGIN)
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, full_name")
-    .eq("id", user.id)
-    .single()
+  const { profile } = session
   if (profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
 
-  const [pendingPayments, todayAttendance, allClients] = await Promise.all([
+  const [pendingPayments, todayAttendance, clientCount] = await Promise.all([
     getPendingPayments(),
     getTodayAttendance(GYM_ID),
-    getAllClients(),
+    countClients(),
   ])
 
   const hasPending = pendingPayments.length > 0
   const initial = (profile?.full_name ?? "A").charAt(0).toUpperCase()
 
   const stats = [
-    { label: "Clientes", value: allClients.length, icon: Users, href: ROUTES.ADMIN_CLIENTES, urgent: false },
+    { label: "Clientes", value: clientCount, icon: Users, href: ROUTES.ADMIN_CLIENTES, urgent: false },
     { label: "Pagos pendientes", value: pendingPayments.length, icon: CreditCard, href: ROUTES.ADMIN_PAGOS, urgent: hasPending },
     { label: "Ingresos hoy", value: todayAttendance.length, icon: CheckSquare, href: ROUTES.ADMIN_ASISTENCIAS, urgent: false },
   ]
@@ -68,7 +63,7 @@ export default async function AdminDashboardPage() {
           <p className="text-zinc-500 text-sm">Resumen general del gimnasio</p>
         </div>
         <div className="md:w-80 shrink-0">
-          <ClientSearchBox clients={allClients as any} />
+          <ClientSearchBox />
         </div>
       </div>
 

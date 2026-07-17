@@ -1,10 +1,10 @@
-import { notFound, redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import { notFound } from "next/navigation"
+import { requireAdminSession } from "@/lib/auth/session"
 import { getClientById } from "@/services/clients.service"
 import { getClientRoutines } from "@/services/routines.service"
 import { ClientRoutinesSection } from "@/components/admin/client-routines-section"
 import { PageHeader } from "@/components/layout/page-header"
-import { adminClienteDetalle, ROUTES } from "@/constants/routes"
+import { adminClienteDetalle } from "@/constants/routes"
 
 export const dynamic = "force-dynamic"
 
@@ -15,11 +15,7 @@ export default async function ClienteRutinasPage({
 }) {
   const { id } = await params
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect(ROUTES.LOGIN)
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-  if (profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
+  await requireAdminSession()
 
   const clientData = await getClientById(id)
   if (!clientData) notFound()

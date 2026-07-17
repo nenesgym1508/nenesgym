@@ -2,6 +2,32 @@
 
 Todos los cambios notables en este proyecto serán documentados en este archivo.
 
+## [1.5.0] - 2026-07-17
+
+### Rendimiento — Bloque 1 (navegación inmediata)
+- **Reactivado prefetch + Router Cache del cliente**: se eliminó el header `no-store` global de páginas HTML en `next.config.ts` (desactivaba el prefetch de `<Link>` y el Router Cache → cada navegación era un ida-y-vuelta completo, con sensación de lentitud y "doble clic"). Se añadió `experimental.staleTimes: { dynamic: 30, static: 180 }`. Sigue fresco: las páginas son `force-dynamic` y las mutaciones usan `revalidatePath`.
+- **Feedback inmediato del toque** con `useLinkStatus` (hook nativo Next 16) en `bottom-nav.tsx` (barra inferior + FAB "Entrada") y en ambos sidebars vía `SidebarNavLink` compartido: el ítem tocado se resalta al instante aunque los datos sigan cargando.
+- **4 `loading.tsx` nuevos** con skeletons locales (respetan header + estructura, sin overlay global): `cliente/pagos`, `cliente/progreso`, `cliente/asistencia`, `admin/asistencias`.
+
+### Rendimiento — Bloque 2 (consultas: auth duplicada) ✅ cierra pendiente Tier 2
+- **Eliminada la auth duplicada por página en las 12 rutas admin**: cada página hacía su propio `supabase.auth.getUser()` (round-trip de red) + consulta `profiles.select("role")`, sin deduplicarse con el `getAuthenticatedSession()` que el layout ya ejecuta. Se centralizó en `requireAdminSession()` (`src/lib/auth/session.ts`), que reutiliza la sesión cacheada con React `cache()`. Ahorro por navegación admin: **1 `getUser` de red + 1 query `profiles`**. Sin cambios de comportamiento del guard.
+- **Búsqueda + filtros + paginación de Clientes movidos a Postgres** (antes se descargaban hasta 500 clientes y se filtraba en el navegador). La página `admin/clientes` ahora es dirigida por `searchParams` (`?q=&status=&page=`); el buscador tiene debounce de 350ms y `useTransition` (descarta búsquedas anteriores vía navegación URL). Nuevo servicio `searchAdminClients()` que llama la RPC `admin_search_clients` (búsqueda ilike + filtro de estado date-based + `LIMIT/OFFSET` + `count(*) over()` en una sola consulta). El badge exacto por tarjeta se sigue calculando en JS.
+- **Migración `admin_search_clients.sql` aplicada y verificada en producción** (RPC `SECURITY INVOKER` + `search_path=public` → respeta RLS, sin advisories nuevos). Probados los 3 filtros, búsqueda ilike y paginación con conteo total. `searchAdminClients` conserva un fallback con gracia (carga completa + JS) por si la RPC no existiera, así el código nunca rompe la página.
+- **Dashboard admin ya no descarga todos los clientes**: el contador "Clientes" usa `countClients()` (total vía la RPC, sin traer filas) y el buscador rápido (`ClientSearchBox`) consulta al servidor con debounce 300ms + descarte de respuestas viejas (`searchClientsQuickAction`), en vez de recibir la lista completa. Mismo patrón de escala que la pantalla de Clientes.
+- **Invalidación de caché de catálogos al editar**: los planes (`getAvailablePlans`/`getAdminPlans`, tag `plans`) y la config del gym (`getGymSettings`, tag `gym`) ya estaban cacheados, pero sus ediciones no refrescaban el caché. Ahora `savePlanAction`, `setPlanActiveAction` y `updateGymSettingsAction` llaman `updateTag(...)` (Next 16, expiración inmediata / leer-tus-propios-cambios), así el cambio del admin aparece para todos en la siguiente apertura, no una versión vieja. Se verificó que no hay otras rutas que modifiquen `plans`/`gyms` sin invalidar.
+
+## [1.4.0] - 2026-07-14
+
+### Rendimiento (Tier 1 — investigación + fixes aplicados)
+- **`getActiveRoutineForClient` paralizado**: se movió dentro del `Promise.all` del dashboard cliente; antes se ejecutaba secuencialmente DESPUÉS del bloque de 4 queries, añadiendo ~300-600ms innecesarios. Ahora corre en paralelo.
+- **Cache headers inteligentes en `next.config.ts`**: la regla `no-store` global sobreescribía los assets `/_next/static/*` que Next.js ya genera con hashes inmutables. Ahora los assets JS/CSS van con `max-age=31536000, immutable` (CDN Vercel), íconos con `max-age=86400`, y las páginas HTML siguen con `no-store`. Resultado: recarga de página usa caché de assets en lugar de re-descargarlos.
+- Investigación completa de benchmarks industry (Mindbody, Glofox, PushPress, WodGuru) y plan de mejoras Tier 2-3 documentado en `performance_report.md`.
+
+### Pendiente (Tier 2 — próxima sesión)
+- `unstable_cache` para planes y gym settings
+- ~~Eliminar auth duplicada en layouts~~ ✅ hecho en 1.5.0
+- ~~Paginación real en lista de clientes~~ ✅ hecho y migración aplicada en 1.5.0
+
 ## [1.3.0] - 2026-07-13
 
 ### Añadido

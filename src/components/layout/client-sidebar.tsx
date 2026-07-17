@@ -2,10 +2,9 @@
 
 import Link from "next/link"
 import { LogOut } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { ROUTES } from "@/constants/routes"
 import { logoutAction } from "@/actions/auth.actions"
-import { clienteItems, useIsActive } from "@/components/layout/bottom-nav"
+import { clienteItems, useIsActive, SidebarNavLink } from "@/components/layout/bottom-nav"
 
 interface ClientSidebarProps {
   fullName?: string | null
@@ -28,25 +27,9 @@ export function ClientSidebar({ fullName }: ClientSidebarProps) {
       </Link>
 
       <nav className="flex-1 flex flex-col gap-1">
-        {clienteItems.map((item) => {
-          const active = isActive(item)
-          const Icon = item.icon
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
-                active
-                  ? "bg-zinc-900 text-red-500 font-semibold border-l-2 border-red-500"
-                  : "text-zinc-400 hover:bg-zinc-900/60 hover:text-zinc-200 border-l-2 border-transparent"
-              )}
-            >
-              <Icon className="size-5" strokeWidth={active ? 2.5 : 1.5} />
-              {item.label}
-            </Link>
-          )
-        })}
+        {clienteItems.map((item) => (
+          <SidebarNavLink key={item.href} item={item} active={isActive(item)} />
+        ))}
       </nav>
 
       <div className="mt-auto flex items-center gap-3 border-t border-white/10 pt-4 px-2">

@@ -1,25 +1,38 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef, useTransition } from "react"
 import Link from "next/link"
-import { Search } from "lucide-react"
+import { Search, Loader2 } from "lucide-react"
 import { adminClienteDetalle } from "@/constants/routes"
+import { searchClientsQuickAction } from "@/actions/admin.actions"
 
-interface ClientOption {
-  id: string
-  profile: { full_name?: string | null; email?: string | null } | null
-}
+type ClientMatch = { id: string; full_name: string | null; email: string | null }
 
-export function ClientSearchBox({ clients }: { clients: ClientOption[] }) {
+export function ClientSearchBox() {
   const [search, setSearch] = useState("")
+  const [matches, setMatches] = useState<ClientMatch[]>([])
+  const [isPending, startTransition] = useTransition()
+  // Descarta respuestas de búsquedas antiguas (la última tecleada gana).
+  const reqIdRef = useRef(0)
 
-  const q = search.toLowerCase().trim()
-  const matches = q
-    ? clients.filter((c) =>
-        (c.profile?.full_name?.toLowerCase().includes(q) ?? false) ||
-        (c.profile?.email?.toLowerCase().includes(q) ?? false)
-      )
-    : []
+  useEffect(() => {
+    const q = search.trim()
+    const reqId = ++reqIdRef.current
+    const t = setTimeout(() => {
+      if (!q) {
+        if (reqId === reqIdRef.current) setMatches([])
+        return
+      }
+      startTransition(async () => {
+        const results = await searchClientsQuickAction(q)
+        // Ignora si llegó una búsqueda más nueva mientras tanto.
+        if (reqId === reqIdRef.current) setMatches(results)
+      })
+    }, q ? 300 : 0)
+    return () => clearTimeout(t)
+  }, [search])
+
+  const q = search.trim()
 
   return (
     <div className="relative">
@@ -29,24 +42,29 @@ export function ClientSearchBox({ clients }: { clients: ClientOption[] }) {
         placeholder="Buscar cliente por nombre o email..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full bg-zinc-900/60 border border-white/10 rounded-full py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-red-600/50 text-zinc-200 placeholder-zinc-500 transition-colors"
+        className="w-full bg-zinc-900/60 border border-white/10 rounded-full py-3.5 pl-12 pr-10 text-sm focus:outline-none focus:border-red-600/50 text-zinc-200 placeholder-zinc-500 transition-colors"
       />
+      {isPending && (
+        <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-zinc-500 animate-spin" />
+      )}
 
       {q && (
         <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-xl">
           {matches.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-zinc-500">Sin resultados.</p>
+            <p className="px-4 py-3 text-sm text-zinc-500">
+              {isPending ? "Buscando..." : "Sin resultados."}
+            </p>
           ) : (
-            matches.slice(0, 6).map((c, i) => (
+            matches.map((c, i) => (
               <Link
                 key={c.id}
                 href={adminClienteDetalle(c.id)}
                 className={`flex flex-col px-4 py-2.5 hover:bg-zinc-800/60 transition-colors ${
-                  i < Math.min(matches.length, 6) - 1 ? "border-b border-white/5" : ""
+                  i < matches.length - 1 ? "border-b border-white/5" : ""
                 }`}
               >
-                <span className="text-sm font-medium text-zinc-200 truncate">{c.profile?.full_name ?? "Sin nombre"}</span>
-                <span className="text-xs text-zinc-500 truncate">{c.profile?.email ?? ""}</span>
+                <span className="text-sm font-medium text-zinc-200 truncate">{c.full_name ?? "Sin nombre"}</span>
+                <span className="text-xs text-zinc-500 truncate">{c.email ?? ""}</span>
               </Link>
             ))
           )}
