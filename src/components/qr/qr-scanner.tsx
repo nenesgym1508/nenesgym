@@ -41,7 +41,7 @@ export default function QrScanner({ checkIn, onSwitchToManual }: QrScannerProps)
         // Intentar primero con la cámara trasera (ideal para móvil)
         await qr.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
+          { fps: 10 },
           async (decodedText) => {
             await qr.stop().catch(() => {})
             setCamStatus("idle")
@@ -54,7 +54,7 @@ export default function QrScanner({ checkIn, onSwitchToManual }: QrScannerProps)
         // Fallback a cámara frontal/webcam (ideal para laptops, PC o emuladores)
         await qr.start(
           { facingMode: "user" },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
+          { fps: 10 },
           async (decodedText) => {
             await qr.stop().catch(() => {})
             setCamStatus("idle")
@@ -113,8 +113,17 @@ export default function QrScanner({ checkIn, onSwitchToManual }: QrScannerProps)
 
   return (
     <div className="space-y-4">
+      <style>{`
+        #${readerId} video {
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: cover !important;
+          border-radius: 1rem !important;
+        }
+      `}</style>
+
       {/* Visor de cámara */}
-      <div className="relative overflow-hidden rounded-2xl bg-zinc-900 aspect-square max-w-sm mx-auto">
+      <div className="relative overflow-hidden rounded-2xl bg-zinc-900 aspect-square max-w-sm mx-auto border border-white/5">
         <div ref={scannerRef} className="w-full h-full" />
 
         {camStatus === "idle" && (
@@ -129,15 +138,13 @@ export default function QrScanner({ checkIn, onSwitchToManual }: QrScannerProps)
         )}
 
         {camStatus === "scanning" && (
-          <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
             {/* Marco del escáner */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="size-56 relative">
-                <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-red-500 rounded-tl-lg" />
-                <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-red-500 rounded-tr-lg" />
-                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-red-500 rounded-bl-lg" />
-                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-red-500 rounded-br-lg" />
-              </div>
+            <div className="size-64 relative animate-pulse duration-1000">
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-red-500 rounded-tl-xl" />
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-red-500 rounded-tr-xl" />
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-red-500 rounded-bl-xl" />
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-red-500 rounded-br-xl" />
             </div>
           </div>
         )}
