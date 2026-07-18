@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { GYM_ID } from "@/constants/plans"
 import { unstable_cache } from "next/cache"
 import type {
@@ -19,7 +20,7 @@ export function getDailyClasses(options?: {
 }): Promise<DailyClass[]> {
   return unstable_cache(
     async () => {
-      const supabase = await createClient()
+      const supabase = createAdminClient()
       let query = supabase
         .from("daily_classes")
         .select("*")
@@ -82,7 +83,7 @@ export function getWeekMuscleBalance(mondayDate: string): Promise<{
 }> {
   return unstable_cache(
     async () => {
-      const supabase = await createClient()
+      const supabase = createAdminClient()
       const monday = new Date(mondayDate + "T12:00:00")
       const sunday = new Date(monday)
       sunday.setDate(monday.getDate() + 6)

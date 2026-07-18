@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { GYM_ID } from "@/constants/plans"
 import { getAllClients } from "@/services/clients.service"
 import { unstable_cache } from "next/cache"
@@ -18,7 +19,7 @@ export function getAdminRoutines(
 ): Promise<(ClientRoutine & { client: { id: string; profile: { full_name: string | null } | null } | null })[]> {
   return unstable_cache(
     async () => {
-      const supabase = await createClient()
+      const supabase = createAdminClient()
       let query = supabase
         .from("client_routines")
         .select("*, client:clients(id, profile:profiles(full_name))")
@@ -120,14 +121,22 @@ export function getClientsWithoutRoutine(): Promise<
 > {
   return unstable_cache(
     async () => {
-      const supabase = await createClient()
-      const [clients, { data: withRoutine }] = await Promise.all([
-        getAllClients(),
+      const supabase = createAdminClient()
+      const [{ data: clients }, { data: withRoutine }] = await Promise.all([
+        supabase
+          .from("clients")
+          .select(`
+            id, created_at, document_id,
+            profile:profiles!inner(id, full_name, email, phone, role)
+          `)
+          .eq("profile.role", "client")
+          .order("created_at", { ascending: false })
+          .limit(500),
         supabase.from("client_routines").select("client_id").eq("gym_id", GYM_ID).eq("created_by_role", "admin").neq("status", "archived"),
       ])
 
       const clientIdsWithRoutine = new Set((withRoutine ?? []).map((r) => r.client_id).filter(Boolean))
-      return (clients as any[]).filter((c) => !clientIdsWithRoutine.has(c.id))
+      return ((clients ?? []) as any[]).filter((c) => !clientIdsWithRoutine.has(c.id))
     },
     ["clients-without-routine"],
     { revalidate: 3600, tags: ["admin-routines"] }

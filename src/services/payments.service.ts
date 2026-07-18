@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { unstable_cache } from "next/cache"
-import { createClient as createSimpleClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { env } from "@/lib/env"
 
 export async function getClientPayments(clientId: string) {
@@ -61,10 +61,7 @@ export async function getReceiptSignedUrl(path: string) {
 
 export const getAvailablePlans = unstable_cache(
   async () => {
-    const supabase = createSimpleClient(
-      env.NEXT_PUBLIC_SUPABASE_URL,
-      env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    )
+    const supabase = createAdminClient()
     const { data } = await supabase
       .from("plans")
       .select("*")

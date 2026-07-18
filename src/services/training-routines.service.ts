@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { GYM_ID } from "@/constants/plans"
 import type { RoutineGoal, RoutineLevel, Weekday } from "@/types/routine"
 import type { MuscleGroup, Equipment } from "@/types/exercise"
@@ -66,7 +67,7 @@ export interface TrainingRoutineExercise {
 export function getTrainingRoutines(search?: string): Promise<TrainingRoutine[]> {
   return unstable_cache(
     async () => {
-      const supabase = await createClient()
+      const supabase = createAdminClient()
       let query = supabase
         .from("training_routines")
         .select("*")
