@@ -23,6 +23,12 @@ export default function QrScanner({ checkIn, onSwitchToManual }: QrScannerProps)
       const { Html5Qrcode } = await import("html5-qrcode")
       if (!scannerRef.current) return
 
+      // Si ya existe una instancia previa, asegurar su detención antes de reiniciarla
+      if (qrRef.current) {
+        await qrRef.current.stop().catch(() => {})
+        qrRef.current = null
+      }
+
       scannerRef.current.id = readerId
 
       const qr = new Html5Qrcode(readerId)
@@ -31,26 +37,54 @@ export default function QrScanner({ checkIn, onSwitchToManual }: QrScannerProps)
       setCamStatus("scanning")
       setCameraError(null)
 
-      await qr.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        async (decodedText) => {
-          await qr.stop().catch(() => {})
-          setCamStatus("idle")
-          await checkIn.submit(decodedText, "qr")
-        },
-        () => {}
-      )
+      try {
+        // Intentar primero con la cámara trasera (ideal para móvil)
+        await qr.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          async (decodedText) => {
+            await qr.stop().catch(() => {})
+            setCamStatus("idle")
+            await checkIn.submit(decodedText, "qr")
+          },
+          () => {}
+        )
+      } catch (environmentError) {
+        console.warn("No se detectó cámara trasera, probando con cámara frontal/webcam:", environmentError)
+        // Fallback a cámara frontal/webcam (ideal para laptops, PC o emuladores)
+        await qr.start(
+          { facingMode: "user" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          async (decodedText) => {
+            await qr.stop().catch(() => {})
+            setCamStatus("idle")
+            await checkIn.submit(decodedText, "qr")
+          },
+          () => {}
+        )
+      }
     } catch (err) {
+      console.error("Error al iniciar escáner QR:", err)
       const name = err instanceof DOMException ? err.name : ""
+      const isTypeError = err instanceof TypeError
       const permissionDenied = name === "NotAllowedError" || name === "PermissionDeniedError"
+
+      let errorMessage = "No se pudo acceder a la cámara."
+      if (permissionDenied) {
+        errorMessage = "Permiso de cámara rechazado. Habilita el acceso en tu navegador."
+      } else if (isTypeError || (typeof window !== "undefined" && !navigator?.mediaDevices)) {
+        errorMessage = "La cámara requiere una conexión segura (HTTPS o localhost) o no es soportada."
+      }
+
       setCameraError({
-        message: permissionDenied
-          ? "Permiso de cámara rechazado."
-          : "No se pudo acceder a la cámara.",
+        message: errorMessage,
         permissionDenied,
       })
       setCamStatus("idle")
+      if (qrRef.current) {
+        qrRef.current.clear()
+        qrRef.current = null
+      }
     }
   }
 
