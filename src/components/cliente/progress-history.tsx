@@ -79,8 +79,8 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
   return (
     <div className="space-y-4">
 
-      {/* ── STATS TRIO ── */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* ── STATS DUO ── */}
+      <div className="grid grid-cols-2 gap-2">
         <StatCard
           icon={Scale}
           label="Peso"
@@ -93,13 +93,6 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
           label="Altura"
           value={latest.height_cm != null ? `${latest.height_cm}` : "—"}
           unit="cm"
-        />
-        <StatCard
-          icon={Activity}
-          label="IMC"
-          value={latest.bmi != null ? latest.bmi.toFixed(1) : "—"}
-          unit=""
-          accent={bmiInfo?.color}
         />
       </div>
 
@@ -118,7 +111,9 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
             <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">
               Índice de masa corporal
             </p>
-            <span className={`text-xs font-bold ${bmiInfo.color}`}>{bmiInfo.label}</span>
+            <span className={`text-xs font-bold ${bmiInfo.color}`}>
+              {bmiInfo.label} ({latest.bmi.toFixed(1)})
+            </span>
           </div>
           <div className="relative h-2 w-full overflow-hidden rounded-full">
             <div

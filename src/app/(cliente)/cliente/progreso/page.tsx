@@ -147,16 +147,7 @@ export default async function ClienteProgresoPage() {
               </div>
             )}
 
-            {/* IMC — dato secundario */}
-            {bmiInfo && latest?.bmi != null && (
-              <div className="flex items-center gap-3 rounded-xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 px-4 py-2.5">
-                <span className="text-xs text-zinc-500">IMC</span>
-                <span className="text-sm font-bold text-zinc-200">{latest.bmi.toFixed(1)}</span>
-                <span className={`text-xs font-semibold ml-auto ${bmiInfo.color}`}>
-                  {bmiInfo.label}
-                </span>
-              </div>
-            )}
+
 
             {/* Asistencias y Racha — nuevo bloque horizontal similar al IMC */}
             <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 px-4 py-2.5 text-xs">
