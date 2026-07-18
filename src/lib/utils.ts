@@ -53,7 +53,7 @@ export function getChangeMeaning(
 
   // 1. Objetivo: ganar masa
   if (goalType === "gain_muscle") {
-    if (["arm", "chest", "leg"].includes(metric)) {
+    if (["weight", "arm", "chest", "leg"].includes(metric)) {
       return direction === "increase" ? "positive" : "negative"
     }
     return "neutral"
