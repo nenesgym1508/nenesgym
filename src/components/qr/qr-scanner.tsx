@@ -68,10 +68,17 @@ export default function QrScanner({ checkIn, onSwitchToManual }: QrScannerProps)
       const name = err instanceof DOMException ? err.name : ""
       const isTypeError = err instanceof TypeError
       const permissionDenied = name === "NotAllowedError" || name === "PermissionDeniedError"
+      const errStr = String(err)
 
       let errorMessage = "No se pudo acceder a la cámara."
       if (permissionDenied) {
         errorMessage = "Permiso de cámara rechazado. Habilita el acceso en tu navegador."
+      } else if (
+        name === "NotReadableError" ||
+        errStr.includes("NotReadableError") ||
+        errStr.includes("Could not start video source")
+      ) {
+        errorMessage = "La cámara ya está siendo usada por otra aplicación (Zoom, Teams, OBS o en otra pestaña). Ciérrala e intenta de nuevo."
       } else if (isTypeError || (typeof window !== "undefined" && !navigator?.mediaDevices)) {
         errorMessage = "La cámara requiere una conexión segura (HTTPS o localhost) o no es soportada."
       }
