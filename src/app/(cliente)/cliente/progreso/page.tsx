@@ -217,17 +217,16 @@ export default async function ClienteProgresoPage() {
                 </div>
                 
                 <Card className="border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.65)] space-y-5">
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-3 sm:gap-6">
                     {/* IMC actual (grande, izquierda) */}
-                    <div className="shrink-0 pr-6 border-r border-white/5">
+                    <div className="shrink-0 pr-4 sm:pr-6 border-r border-white/5">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-0.5">IMC Actual</p>
-                      <p className="font-bebas text-5xl font-bold text-red-500 tracking-wide leading-none">{latest.bmi.toFixed(1)}</p>
-                      <p className="text-xs font-bold text-red-500 mt-1">{bmiInfo.label}</p>
+                      <p className="font-bebas text-4xl sm:text-5xl font-bold text-red-500 tracking-wide leading-none">{latest.bmi.toFixed(1)}</p>
                     </div>
                     
                     {/* Categoría y consejo (derecha) */}
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-lg font-bold tracking-wide uppercase leading-tight ${bmiInfo.color}`}>
+                    <div className="min-w-0 flex-1 pl-1">
+                      <p className={`text-base sm:text-lg font-bold tracking-wide uppercase leading-tight ${bmiInfo.color}`}>
                         {bmiInfo.label} ({latest.bmi.toFixed(1)})
                       </p>
                       <p className="mt-1 text-xs text-zinc-400">
