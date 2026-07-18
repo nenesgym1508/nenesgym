@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { Scale, Dumbbell, Flame, Ruler } from "lucide-react"
+import { Flame, Calendar } from "lucide-react"
 import { getCurrentClientData } from "@/services/clients.service"
 import { getClientProgress, getActiveGoal } from "@/services/progress.service"
 import { getMonthlyAttendance } from "@/services/attendance.service"
@@ -11,16 +11,7 @@ import { ROUTES } from "@/constants/routes"
 import { nowInBogota, todayInBogota } from "@/lib/dates"
 import { getBmiCategory } from "@/lib/utils"
 import { BMI_CATEGORIES } from "@/constants/plans"
-import {
-  type ProgressRecord,
-  type ProgressMetricKey,
-  GOAL_HIGHLIGHT_METRICS,
-  DEFAULT_HIGHLIGHT_METRICS,
-  BODY_METRIC_LABELS,
-  BODY_METRIC_COLUMN,
-  BODY_METRIC_UNIT,
-  type BodyMetricKey,
-} from "@/types/progress"
+import { type ProgressRecord } from "@/types/progress"
 
 export const dynamic = "force-dynamic"
 
@@ -30,7 +21,55 @@ function shiftDate(dateStr: string, days: number): string {
   return d.toISOString().split("T")[0]!
 }
 
-const BODY_KEYS: BodyMetricKey[] = ["weight", "waist", "chest", "arm", "leg"]
+// Iconos customizados vectoriales en SVG para las métricas corporales
+const WeightIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <circle cx="12" cy="13" r="3" />
+    <path d="M12 9v1" />
+  </svg>
+)
+
+const ArmIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 14c-1.5-1-2.5-2.5-2.5-4.5 0-3.5 3-5 5.5-3 1.5 1.2 2 2.5 3.5 2.5 2 0 3-1.5 4.5-1.5 2 0 3.5 1.5 3.5 3.5 0 3-3 6.5-6 8-2.5 1.2-5.5 0-7-2.5" />
+    <path d="M10.5 9.5c1 1.5 2.5 2 4.5 1" />
+  </svg>
+)
+
+const WaistIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 4c2 3 3 5 3 8 0 4-1 6-3 8" />
+    <path d="M20 4c-2 3-3 5-3 8 0 4 1 6 3 8" />
+    <path d="M7 12h10" />
+    <path d="M10 12v-2" />
+    <path d="M14 12v-2" />
+  </svg>
+)
+
+const LegIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 3h5v9c0 2.5 1.5 4.5 1.5 6.5v2.5M18 3h-5v9c0 2.5-1.5 4.5-1.5 6.5v2.5" />
+  </svg>
+)
+
+const ChestIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 5c3 1 5 1 9 0 4 1 6 1 9 0v3c0 4-3 7-9 7s-9-3-9-7V5z" />
+    <path d="M6 9c2 1 4 2 6 0 2 2 4 1 6 0" />
+    <path d="M12 9v5" />
+  </svg>
+)
+
+const HeightIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="8" y="2" width="8" height="20" rx="2" />
+    <line x1="12" y1="6" x2="16" y2="6" />
+    <line x1="12" y1="10" x2="16" y2="10" />
+    <line x1="12" y1="14" x2="16" y2="14" />
+    <line x1="12" y1="18" x2="16" y2="18" />
+  </svg>
+)
 
 export default async function ClienteProgresoPage() {
   const clientData = await getCurrentClientData()
@@ -71,33 +110,32 @@ export default async function ClienteProgresoPage() {
       )
     : null
 
-  // Métricas priorizadas por objetivo
-  const highlightKeys = goal ? GOAL_HIGHLIGHT_METRICS[goal.goal_type] : DEFAULT_HIGHLIGHT_METRICS
+  // Helper para obtener datos y deltas
+  const getMetricData = (col: keyof ProgressRecord, unit: string) => {
+    const latestRec = records.find((r) => r[col] != null)
+    const val = latestRec ? (latestRec[col] as number) : null
+    const prevRec = records.filter((r) => r[col] != null)[1] ?? null
+    const prevVal = prevRec ? (prevRec[col] as number) : null
+    const diff = val != null && prevVal != null ? +(val - prevVal).toFixed(1) : null
+    return { val, diff, unit }
+  }
 
-  // 1. Peso (Weight)
-  const latestWeightRec = records.find((r) => r.weight_kg != null)
-  const latestWeight = latestWeightRec?.weight_kg ?? null
-  const prevWeightRec = records.filter((r) => r.weight_kg != null)[1] ?? null
-  const prevWeight = prevWeightRec?.weight_kg ?? null
-  const weightDiff = latestWeight != null && prevWeight != null
-    ? +(latestWeight - prevWeight).toFixed(1)
-    : null
+  const pesoData = getMetricData("weight_kg", "kg")
+  const brazoData = getMetricData("arm_cm", "cm")
+  const cinturaData = getMetricData("waist_cm", "cm")
+  const piernaData = getMetricData("leg_cm", "cm")
+  const pechoData = getMetricData("chest_cm", "cm")
+  const alturaData = getMetricData("height_cm", "cm")
 
-  // 2. Métrica física priorizada según el objetivo (excluyendo peso)
-  const prioritizedBodyKey = (highlightKeys.find((k) => k !== "weight" && BODY_KEYS.includes(k as any)) as BodyMetricKey) || "arm"
-  const bodyLabel = BODY_METRIC_LABELS[prioritizedBodyKey]
-  const bodyUnit = BODY_METRIC_UNIT[prioritizedBodyKey]
-  const bodyCol = BODY_METRIC_COLUMN[prioritizedBodyKey]
-  
-  const latestBodyRec = records.find((r) => r[bodyCol] != null)
-  const latestBodyValue = latestBodyRec ? (latestBodyRec[bodyCol] as number) : null
-  const prevBodyRec = records.filter((r) => r[bodyCol] != null)[1] ?? null
-  const prevBodyValue = prevBodyRec ? (prevBodyRec[bodyCol] as number) : null
-  const bodyDiff = latestBodyValue != null && prevBodyValue != null
-    ? +(latestBodyValue - prevBodyValue).toFixed(1)
-    : null
-
-  const BodyIcon = prioritizedBodyKey === "waist" ? Ruler : Dumbbell
+  // Filtramos las métricas de forma que solo se muestren las que han sido registradas por el usuario
+  const metricsList = [
+    { label: "Peso", data: pesoData, Icon: WeightIcon },
+    { label: "Brazo", data: brazoData, Icon: ArmIcon },
+    { label: "Cintura", data: cinturaData, Icon: WaistIcon },
+    { label: "Pierna", data: piernaData, Icon: LegIcon },
+    { label: "Pecho", data: pechoData, Icon: ChestIcon },
+    { label: "Altura", data: alturaData, Icon: HeightIcon },
+  ].filter((m) => m.data.val !== null)
 
   return (
     <div>
@@ -116,107 +154,55 @@ export default async function ClienteProgresoPage() {
 
         {records.length > 0 && (
           <>
-            {/* ── RESUMEN ACTUAL (Cuadrícula 2x2 estilo mockup) ── */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 border-l-2 border-red-600 pl-2">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Resumen actual</h3>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                {/* Card 1: Peso */}
-                <div className="flex items-center gap-3.5 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-4 shadow-lg">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5">
-                    <Scale className="size-5 text-red-500" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 leading-none mb-1">Peso</p>
-                    <div className="flex items-baseline gap-0.5 leading-none">
-                      <span className="font-bebas text-3xl tracking-wide text-white">{latestWeight ?? "—"}</span>
-                      {latestWeight != null && <span className="text-[10px] text-zinc-500">{BODY_METRIC_UNIT["weight"]}</span>}
-                    </div>
-                    {weightDiff !== null && weightDiff !== 0 ? (
-                      <p className="mt-1 text-[9px] font-semibold text-red-500 flex items-center gap-0.5 leading-none truncate">
-                        {weightDiff > 0 ? "↗" : "↘"} {weightDiff > 0 ? "+" : ""}{weightDiff} kg <span className="text-zinc-500 font-normal normal-case">desde la anterior</span>
-                      </p>
-                    ) : (
-                      <p className="mt-1 text-[9px] text-zinc-500 leading-none">Sin cambios</p>
-                    )}
-                  </div>
+            {/* ── RESUMEN ACTUAL (Lista vertical elegante adaptativa) ── */}
+            {metricsList.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 border-l-2 border-red-600 pl-2">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Resumen actual</h3>
                 </div>
-
-                {/* Card 2: Métrica priorizada (Brazo, Pecho, Cintura, etc.) */}
-                <div className="flex items-center gap-3.5 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-4 shadow-lg">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5">
-                    <BodyIcon className="size-5 text-red-500" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 leading-none mb-1">{bodyLabel}</p>
-                    <div className="flex items-baseline gap-0.5 leading-none">
-                      <span className="font-bebas text-3xl tracking-wide text-white">{latestBodyValue ?? "—"}</span>
-                      {latestBodyValue != null && <span className="text-[10px] text-zinc-500">{bodyUnit}</span>}
-                    </div>
-                    {bodyDiff !== null && bodyDiff !== 0 ? (
-                      <p className="mt-1 text-[9px] font-semibold text-red-500 flex items-center gap-0.5 leading-none truncate">
-                        {bodyDiff > 0 ? "↗" : "↘"} {bodyDiff > 0 ? "+" : ""}{bodyDiff} {bodyUnit} <span className="text-zinc-500 font-normal normal-case">desde la anterior</span>
-                      </p>
-                    ) : (
-                      <p className="mt-1 text-[9px] text-zinc-500 leading-none">Sin cambios</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Card 3: IMC */}
-                <div className="flex items-center gap-3.5 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-4 shadow-lg">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5">
-                    <span className="text-[11px] font-black text-red-500">IMC</span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 leading-none mb-1">IMC</p>
-                    <div className="flex items-baseline gap-0.5 leading-none">
-                      <span className="font-bebas text-3xl tracking-wide text-white">
-                        {latest?.bmi != null ? latest.bmi.toFixed(1) : "—"}
-                      </span>
-                    </div>
-                    {bmiInfo ? (
-                      <p className={`mt-1 text-[9px] font-bold uppercase leading-none truncate ${bmiInfo.color}`}>
-                        {bmiInfo.label} <span className="text-zinc-500 font-normal normal-case block mt-0.5">Categoría actual</span>
-                      </p>
-                    ) : (
-                      <p className="mt-1 text-[9px] text-zinc-500 leading-none">Sin datos</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Card 4: Actividad (Este mes / Racha) */}
-                <div className="flex items-center gap-3.5 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-4 shadow-lg">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5">
-                    <Flame className="size-5 text-red-500" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 leading-none mb-1.5">Actividad</p>
-                    <div className="flex items-start justify-between gap-1">
-                      <div>
-                        <p className="text-[8px] text-zinc-500 font-medium uppercase tracking-wide">Este mes</p>
-                        <p className="font-bebas text-xl text-white tracking-wide leading-none my-0.5">{monthlyCount}</p>
-                        <p className="text-[7.5px] text-zinc-500 leading-none whitespace-nowrap">días entr.</p>
+                
+                <div className="overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] divide-y divide-white/5">
+                  {metricsList.map(({ label, data, Icon }) => {
+                    const { val, diff, unit } = data
+                    return (
+                      <div key={label} className="flex items-center justify-between gap-4 px-5 py-4.5">
+                        {/* Icono a la izquierda */}
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-red-500/20 bg-red-500/5 text-red-500">
+                          <Icon className="size-5" />
+                        </div>
+                        
+                        {/* Información del delta en el medio */}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-zinc-200 leading-tight">{label}</p>
+                          {diff !== null && diff !== 0 ? (
+                            <p className={`mt-1 text-[11px] font-semibold flex items-center gap-1 ${diff > 0 ? "text-red-500" : "text-green-500"}`}>
+                              <span>{diff > 0 ? "↑" : "↓"} {diff > 0 ? "+" : ""}{diff} {unit}</span>
+                              <span className="text-zinc-500 font-normal normal-case">desde la anterior</span>
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-[11px] text-zinc-500 font-medium leading-none">
+                              — sin cambio
+                            </p>
+                          )}
+                        </div>
+                        
+                        {/* Valor final a la derecha */}
+                        <div className="flex items-baseline gap-0.5 shrink-0 leading-none">
+                          <span className="font-bebas text-3xl tracking-wide text-white">{val}</span>
+                          <span className="text-[10px] text-zinc-500 font-bold uppercase">{unit}</span>
+                        </div>
                       </div>
-                      <div className="h-6 w-px bg-white/10 shrink-0 self-center" />
-                      <div>
-                        <p className="text-[8px] text-zinc-500 font-medium uppercase tracking-wide">Racha</p>
-                        <p className="font-bebas text-xl text-white tracking-wide leading-none my-0.5">{streak}</p>
-                        <p className="text-[8px] text-zinc-500 leading-none">días</p>
-                      </div>
-                    </div>
-                  </div>
+                    )
+                  })}
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* ── ESTADO CORPORAL (IMC Slider Visual estilo mockup) ── */}
+            {/* ── ÍNDICE DE MASA CORPORAL (IMC Slider Visual estilo mockup) ── */}
             {latest?.bmi != null && bmiInfo && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 border-l-2 border-red-600 pl-2">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Estado corporal</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Índice de masa corporal</h3>
                 </div>
                 
                 <Card className="border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.65)] space-y-5">
@@ -274,6 +260,32 @@ export default async function ClienteProgresoPage() {
                 </Card>
               </div>
             )}
+
+            {/* ── ACTIVIDAD (Barra horizontal estilo mockup) ── */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 border-l-2 border-red-600 pl-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Actividad</h3>
+              </div>
+              
+              <div className="flex items-center gap-4 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-4 shadow-lg">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5">
+                  <Flame className="size-5 text-red-500" />
+                </div>
+                <div className="flex-1 grid grid-cols-2 gap-4 text-xs md:text-sm">
+                  <div>
+                    <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wide">Este mes</p>
+                    <p className="font-bold text-white mt-0.5">{monthlyCount} {monthlyCount === 1 ? "día entrenado" : "días entrenados"}</p>
+                  </div>
+                  <div className="border-l border-white/10 pl-4">
+                    <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wide">Racha</p>
+                    <p className="font-bold text-white mt-0.5">{streak} {streak === 1 ? "día" : "días"}</p>
+                  </div>
+                </div>
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/5 bg-zinc-950/50">
+                  <Calendar className="size-4.5 text-zinc-500" />
+                </div>
+              </div>
+            </div>
 
             {/* Mensajes de seguimiento (lenguaje neutral) */}
             {daysSinceLast !== null && daysSinceLast > 0 && (
