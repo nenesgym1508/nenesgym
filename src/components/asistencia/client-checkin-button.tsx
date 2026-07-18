@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { Play, Check, AlertTriangle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SuccessToast } from "@/components/ui/success-toast"
@@ -84,20 +85,20 @@ export function ClientCheckInButton({
           )}
         </div>
       ) : (
-        <Button
+        <button
           onClick={() => setConfirmOpen(true)}
           disabled={loading}
-          className="w-full h-14 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-base transition-colors flex items-center justify-center gap-2 shadow-lg shadow-red-600/10"
+          className="w-full text-left block -mt-[2%] -mb-[4%] animate-btn-heartbeat cursor-pointer outline-none focus:outline-none border-none bg-transparent p-0 disabled:opacity-50"
         >
-          {loading ? (
-            <Loader2 className="size-5 animate-spin" />
-          ) : (
-            <>
-              <Play className="size-5 fill-current" />
-              Registrar entrada
-            </>
-          )}
-        </Button>
+          <Image
+            src="/btn-registrar.webp"
+            alt="Registrar entrada"
+            width={2172}
+            height={724}
+            className="w-full h-auto"
+            priority
+          />
+        </button>
       )}
 
       {/* Mensaje de error amigable */}
