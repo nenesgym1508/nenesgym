@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { GYM_ID } from "@/constants/plans"
@@ -24,6 +24,15 @@ const STANDARD_BLOCK_TITLES = [
   "Abdomen / cardio",
   "Estiramiento",
 ]
+
+function revalidateClasses(classId?: string) {
+  revalidateTag("daily-classes", "max")
+  revalidatePath(ROUTES.ADMIN_CLASES)
+  if (classId) {
+    revalidatePath(adminClaseDetalle(classId))
+  }
+}
+
 
 export async function createClassAction(data: ClassData) {
   const supabase = await createClient()
@@ -57,7 +66,7 @@ export async function createClassAction(data: ClassData) {
     }))
   )
 
-  revalidatePath(ROUTES.ADMIN_CLASES)
+  revalidateClasses()
   return { success: true, id: newClass.id }
 }
 
@@ -79,7 +88,7 @@ export async function scaffoldStandardBlocksAction(classId: string) {
     .select("id, title, position")
 
   if (error) return { error: error.message }
-  revalidatePath(adminClaseDetalle(classId))
+  revalidateClasses(classId)
   return { success: true, blocks: rows }
 }
 
@@ -96,8 +105,7 @@ export async function updateClassAction(id: string, data: Partial<ClassData> & {
     .eq("gym_id", GYM_ID)
 
   if (error) return { error: error.message }
-  revalidatePath(adminClaseDetalle(id))
-  revalidatePath(ROUTES.ADMIN_CLASES)
+  revalidateClasses(id)
   return { success: true }
 }
 
@@ -110,7 +118,7 @@ export async function deleteClassAction(id: string) {
     .eq("gym_id", GYM_ID)
 
   if (error) return { error: error.message }
-  revalidatePath(ROUTES.ADMIN_CLASES)
+  revalidateClasses()
   return { success: true }
 }
 
@@ -125,7 +133,7 @@ export async function addBlockAction(classId: string, title: string, position: n
     .single()
 
   if (error) return { error: error.message }
-  revalidatePath(adminClaseDetalle(classId))
+  revalidateClasses(classId)
   return { success: true, id: data.id }
 }
 
@@ -137,7 +145,7 @@ export async function updateBlockTitleAction(blockId: string, classId: string, t
     .eq("id", blockId)
 
   if (error) return { error: error.message }
-  revalidatePath(adminClaseDetalle(classId))
+  revalidateClasses(classId)
   return { success: true }
 }
 
@@ -145,7 +153,7 @@ export async function deleteBlockAction(blockId: string, classId: string) {
   const supabase = await createClient()
   const { error } = await supabase.from("class_blocks").delete().eq("id", blockId)
   if (error) return { error: error.message }
-  revalidatePath(adminClaseDetalle(classId))
+  revalidateClasses(classId)
   return { success: true }
 }
 
@@ -173,7 +181,7 @@ export async function moveBlockAction(
   await supabase.from("class_blocks").update({ position: swap.position }).eq("id", current.id)
   await supabase.from("class_blocks").update({ position: current.position }).eq("id", swap.id)
 
-  revalidatePath(adminClaseDetalle(classId))
+  revalidateClasses(classId)
   return { success: true }
 }
 
@@ -209,7 +217,7 @@ export async function addExerciseToBlockAction(
   })
 
   if (error) return { error: error.message }
-  revalidatePath(adminClaseDetalle(classId))
+  revalidateClasses(classId)
   return { success: true }
 }
 
@@ -243,7 +251,7 @@ export async function updateBlockExerciseAction(
     .eq("id", id)
 
   if (error) return { error: error.message }
-  revalidatePath(adminClaseDetalle(classId))
+  revalidateClasses(classId)
   return { success: true }
 }
 
@@ -251,7 +259,7 @@ export async function removeExerciseFromBlockAction(id: string, classId: string)
   const supabase = await createClient()
   const { error } = await supabase.from("class_block_exercises").delete().eq("id", id)
   if (error) return { error: error.message }
-  revalidatePath(adminClaseDetalle(classId))
+  revalidateClasses(classId)
   return { success: true }
 }
 
@@ -280,7 +288,7 @@ export async function moveBlockExerciseAction(
   await supabase.from("class_block_exercises").update({ position: swap.position }).eq("id", current.id)
   await supabase.from("class_block_exercises").update({ position: current.position }).eq("id", swap.id)
 
-  revalidatePath(adminClaseDetalle(classId))
+  revalidateClasses(classId)
   return { success: true }
 }
 
@@ -360,6 +368,6 @@ export async function duplicateClassAction(
     }
   }
 
-  revalidatePath(ROUTES.ADMIN_CLASES)
+  revalidateClasses()
   return { success: true, id: newClass.id }
 }

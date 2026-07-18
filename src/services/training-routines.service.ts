@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { GYM_ID } from "@/constants/plans"
 import type { RoutineGoal, RoutineLevel, Weekday } from "@/types/routine"
 import type { MuscleGroup, Equipment } from "@/types/exercise"
+import { unstable_cache } from "next/cache"
 
 export interface TrainingRoutine {
   id: string
@@ -20,6 +21,7 @@ export interface TrainingRoutine {
   assigned_count?: number
   scheduled_count?: number
 }
+
 
 export interface TrainingRoutineDay {
   id: string
@@ -61,88 +63,94 @@ export interface TrainingRoutineExercise {
   }
 }
 
-export async function getTrainingRoutines(search?: string): Promise<TrainingRoutine[]> {
-  const supabase = await createClient()
-  let query = supabase
-    .from("training_routines")
-    .select("*")
-    .eq("gym_id", GYM_ID)
-    .order("name")
+export function getTrainingRoutines(search?: string): Promise<TrainingRoutine[]> {
+  return unstable_cache(
+    async () => {
+      const supabase = await createClient()
+      let query = supabase
+        .from("training_routines")
+        .select("*")
+        .eq("gym_id", GYM_ID)
+        .order("name")
 
-  if (search?.trim()) {
-    query = query.ilike("name", `%${search.trim()}%`)
-  }
+      if (search?.trim()) {
+        query = query.ilike("name", `%${search.trim()}%`)
+      }
 
-  const { data } = await query
-  const routines = (data ?? []) as TrainingRoutine[]
-  if (routines.length === 0) return routines
+      const { data } = await query
+      const routines = (data ?? []) as TrainingRoutine[]
+      if (routines.length === 0) return routines
 
-  const routineIds = routines.map((r) => r.id)
+      const routineIds = routines.map((r) => r.id)
 
-  const [{ data: days }, { data: assignments }, { data: scheduled }] = await Promise.all([
-    supabase.from("training_routine_days").select("id, routine_id").in("routine_id", routineIds),
-    supabase.from("client_routines").select("id, source_id").eq("source_type", "training_routine").in("source_id", routineIds),
-    supabase.from("daily_classes").select("id, source_routine_id").in("source_routine_id", routineIds),
-  ])
+      const [{ data: days }, { data: assignments }, { data: scheduled }] = await Promise.all([
+        supabase.from("training_routine_days").select("id, routine_id").in("routine_id", routineIds),
+        supabase.from("client_routines").select("id, source_id").eq("source_type", "training_routine").in("source_id", routineIds),
+        supabase.from("daily_classes").select("id, source_routine_id").in("source_routine_id", routineIds),
+      ])
 
-  const assignedCounts = new Map<string, number>()
-  for (const a of (assignments ?? []) as any[]) {
-    assignedCounts.set(a.source_id, (assignedCounts.get(a.source_id) ?? 0) + 1)
-  }
-  const scheduledCounts = new Map<string, number>()
-  for (const s of (scheduled ?? []) as any[]) {
-    scheduledCounts.set(s.source_routine_id, (scheduledCounts.get(s.source_routine_id) ?? 0) + 1)
-  }
+      const assignedCounts = new Map<string, number>()
+      for (const a of (assignments ?? []) as any[]) {
+        assignedCounts.set(a.source_id, (assignedCounts.get(a.source_id) ?? 0) + 1)
+      }
+      const scheduledCounts = new Map<string, number>()
+      for (const s of (scheduled ?? []) as any[]) {
+        scheduledCounts.set(s.source_routine_id, (scheduledCounts.get(s.source_routine_id) ?? 0) + 1)
+      }
 
-  if (!days || days.length === 0) {
-    return routines.map((r) => ({
-      ...r,
-      exercise_count: 0,
-      assigned_count: assignedCounts.get(r.id) ?? 0,
-      scheduled_count: scheduledCounts.get(r.id) ?? 0,
-    }))
-  }
+      if (!days || days.length === 0) {
+        return routines.map((r) => ({
+          ...r,
+          exercise_count: 0,
+          assigned_count: assignedCounts.get(r.id) ?? 0,
+          scheduled_count: scheduledCounts.get(r.id) ?? 0,
+        }))
+      }
 
-  const { data: blocks } = await supabase
-    .from("training_routine_blocks")
-    .select("id, routine_day_id")
-    .in("routine_day_id", (days as any[]).map((d: any) => d.id))
+      const { data: blocks } = await supabase
+        .from("training_routine_blocks")
+        .select("id, routine_day_id")
+        .in("routine_day_id", (days as any[]).map((d: any) => d.id))
 
-  const dayToRoutine = new Map<string, string>()
-  for (const d of days as any[]) dayToRoutine.set(d.id, d.routine_id)
+      const dayToRoutine = new Map<string, string>()
+      for (const d of days as any[]) dayToRoutine.set(d.id, d.routine_id)
 
-  if (!blocks || blocks.length === 0) {
-    return routines.map((r) => ({
-      ...r,
-      exercise_count: 0,
-      assigned_count: assignedCounts.get(r.id) ?? 0,
-      scheduled_count: scheduledCounts.get(r.id) ?? 0,
-    }))
-  }
+      if (!blocks || blocks.length === 0) {
+        return routines.map((r) => ({
+          ...r,
+          exercise_count: 0,
+          assigned_count: assignedCounts.get(r.id) ?? 0,
+          scheduled_count: scheduledCounts.get(r.id) ?? 0,
+        }))
+      }
 
-  const { data: exercises } = await supabase
-    .from("training_routine_exercises")
-    .select("id, block_id")
-    .in("block_id", (blocks as any[]).map((b: any) => b.id))
+      const { data: exercises } = await supabase
+        .from("training_routine_exercises")
+        .select("id, block_id")
+        .in("block_id", (blocks as any[]).map((b: any) => b.id))
 
-  const blockToRoutine = new Map<string, string>()
-  for (const b of blocks as any[]) {
-    const rId = dayToRoutine.get(b.routine_day_id)
-    if (rId) blockToRoutine.set(b.id, rId)
-  }
+      const blockToRoutine = new Map<string, string>()
+      for (const b of blocks as any[]) {
+        const rId = dayToRoutine.get(b.routine_day_id)
+        if (rId) blockToRoutine.set(b.id, rId)
+      }
 
-  const exerciseCounts = new Map<string, number>()
-  for (const ex of (exercises ?? []) as any[]) {
-    const rId = blockToRoutine.get(ex.block_id)
-    if (rId) exerciseCounts.set(rId, (exerciseCounts.get(rId) ?? 0) + 1)
-  }
+      const exerciseCounts = new Map<string, number>()
+      for (const ex of (exercises ?? []) as any[]) {
+        const rId = blockToRoutine.get(ex.block_id)
+        if (rId) exerciseCounts.set(rId, (exerciseCounts.get(rId) ?? 0) + 1)
+      }
 
-  return routines.map((r) => ({
-    ...r,
-    exercise_count: exerciseCounts.get(r.id) ?? 0,
-    assigned_count: assignedCounts.get(r.id) ?? 0,
-    scheduled_count: scheduledCounts.get(r.id) ?? 0,
-  }))
+      return routines.map((r) => ({
+        ...r,
+        exercise_count: exerciseCounts.get(r.id) ?? 0,
+        assigned_count: assignedCounts.get(r.id) ?? 0,
+        scheduled_count: scheduledCounts.get(r.id) ?? 0,
+      }))
+    },
+    ["training-routines", search || ""],
+    { revalidate: 3600, tags: ["training-routines"] }
+  )()
 }
 
 export interface TrainingRoutineWithDayOptions extends TrainingRoutine {

@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, updateTag } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { computeEffectiveStatus, searchAdminClients } from "@/services/memberships.service"
@@ -55,7 +55,7 @@ export async function updateGymSettingsAction(input: {
   if (error) return { error: error.message }
 
   // Config del gym cacheada (tag "gym"): invalidar para que el cambio aparezca al abrir.
-  updateTag("gym")
+  revalidateTag("gym", "max")
   revalidatePath(ROUTES.ADMIN_MAS)
   return { success: true }
 }
@@ -121,7 +121,7 @@ export async function savePlanAction(input: {
   if (error) return { error: error.message }
 
   // Planes cacheados (tag "plans"): invalidar para que el cambio aparezca al abrir.
-  updateTag("plans")
+  revalidateTag("plans", "max")
   revalidatePath(ROUTES.ADMIN_MAS)
   return { success: true }
 }
@@ -134,10 +134,30 @@ export async function setPlanActiveAction(planId: string, isActive: boolean) {
     .update({ is_active: isActive })
     .eq("id", planId)
   if (error) return { error: error.message }
-  updateTag("plans")
+  revalidateTag("plans", "max")
   revalidatePath(ROUTES.ADMIN_MAS)
   return { success: true }
 }
+
+export async function deletePlanAction(planId: string) {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error }
+  const { error } = await ctx.supabase
+    .from("plans")
+    .delete()
+    .eq("id", planId)
+  if (error) {
+    // Código de violación de clave foránea en Postgres: 23503
+    if (error.code === "23503") {
+      return { error: "No se puede eliminar este plan porque tiene membresías o pagos asociados. Prueba desactivándolo en su lugar." }
+    }
+    return { error: error.message }
+  }
+  revalidateTag("plans", "max")
+  revalidatePath(ROUTES.ADMIN_MAS)
+  return { success: true }
+}
+
 
 export async function approvePaymentAction(
   paymentId: string,

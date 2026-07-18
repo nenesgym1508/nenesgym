@@ -11,13 +11,15 @@ const TABS: { value: EntrenamientoTab; label: string }[] = [
 
 export function EntrenamientoTabs({ active }: { active: EntrenamientoTab }) {
   return (
-    <div className="flex gap-1 rounded-2xl border border-white/8 bg-zinc-900/60 p-1">
+    <div className="flex bg-[#0a0a0a] border border-[#222] rounded-xl p-1">
       {TABS.map((tab) => (
         <Link
           key={tab.value}
           href={tab.value === "rutinas" ? ROUTES.ADMIN_ENTRENAMIENTO : `${ROUTES.ADMIN_ENTRENAMIENTO}?tab=${tab.value}`}
-          className={`flex-1 rounded-xl py-2 text-center text-sm font-semibold transition-colors ${
-            active === tab.value ? "bg-red-600 text-white" : "text-zinc-400 hover:text-zinc-200"
+          className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors cursor-pointer text-center ${
+            active === tab.value
+              ? "text-red-500 border-b-2 border-red-500 bg-zinc-900/60"
+              : "text-zinc-400 hover:text-white"
           }`}
         >
           {tab.label}

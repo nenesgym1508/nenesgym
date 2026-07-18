@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { GYM_ID } from "@/constants/plans"
@@ -11,6 +11,14 @@ const STANDARD_BLOCK_TITLES = [
   "Calentamiento",
   "Trabajo principal"
 ]
+
+function revalidateRoutines(routineId?: string) {
+  revalidateTag("training-routines", "max")
+  revalidatePath(ROUTES.ADMIN_ENTRENAMIENTO)
+  if (routineId) {
+    revalidatePath(adminRutinaBibliotecaDetalle(routineId))
+  }
+}
 
 export async function createTrainingRoutineAction(data: {
   name: string
@@ -70,7 +78,7 @@ export async function createTrainingRoutineAction(data: {
     }
   }
 
-  revalidatePath(ROUTES.ADMIN_ENTRENAMIENTO)
+  revalidateRoutines()
   return { success: true, id: routine.id }
 }
 
@@ -96,8 +104,7 @@ export async function updateTrainingRoutineMetaAction(id: string, data: {
     .eq("id", id)
 
   if (error) return { error: error.message }
-  revalidatePath(adminRutinaBibliotecaDetalle(id))
-  revalidatePath(ROUTES.ADMIN_ENTRENAMIENTO)
+  revalidateRoutines(id)
   return { success: true }
 }
 
@@ -112,7 +119,7 @@ export async function deleteTrainingRoutineAction(id: string) {
     .eq("gym_id", GYM_ID)
 
   if (error) return { error: error.message }
-  revalidatePath(ROUTES.ADMIN_ENTRENAMIENTO)
+  revalidateRoutines()
   return { success: true }
 }
 
@@ -206,7 +213,7 @@ export async function duplicateTrainingRoutineAction(id: string) {
     }
   }
 
-  revalidatePath(ROUTES.ADMIN_ENTRENAMIENTO)
+  revalidateRoutines()
   return { success: true, id: newRoutine.id }
 }
 
@@ -283,7 +290,7 @@ export async function saveClassAsTrainingRoutineAction(classId: string, name: st
     }
   }
 
-  revalidatePath(ROUTES.ADMIN_ENTRENAMIENTO)
+  revalidateRoutines()
   return { success: true, id: newRoutine.id }
 }
 
@@ -378,7 +385,7 @@ export async function saveAsTrainingRoutineAction(routineId: string, name: strin
     }
   }
 
-  revalidatePath(ROUTES.ADMIN_ENTRENAMIENTO)
+  revalidateRoutines()
   return { success: true, id: newRoutine.id }
 }
 
@@ -481,8 +488,9 @@ export async function assignTrainingRoutineToClientAction(routineId: string, cli
     }
   }
 
+  revalidateRoutines()
+  revalidateTag("admin-routines", "max")
   revalidatePath(ROUTES.ADMIN_RUTINAS)
-  revalidatePath(ROUTES.ADMIN_ENTRENAMIENTO)
   return { success: true, id: newRoutine.id }
 }
 
@@ -586,8 +594,9 @@ export async function scheduleTrainingRoutineAsClassAction(
     }
   }
 
+  revalidateRoutines()
+  revalidateTag("daily-classes", "max")
   revalidatePath(ROUTES.ADMIN_CLASES)
-  revalidatePath(ROUTES.ADMIN_ENTRENAMIENTO)
   return { success: true, id: newClass.id }
 }
 
@@ -613,7 +622,7 @@ export async function addTrainingRoutineDayAction(routineId: string, title: stri
     )
     .select("id, title, position")
 
-  revalidatePath(adminRutinaBibliotecaDetalle(routineId))
+  revalidateRoutines(routineId)
   return { success: true, id: data.id, blocks: blocksData ?? [] }
 }
 
@@ -625,7 +634,7 @@ export async function updateTrainingRoutineDayAction(dayId: string, routineId: s
     .eq("id", dayId)
 
   if (error) return { error: error.message }
-  revalidatePath(adminRutinaBibliotecaDetalle(routineId))
+  revalidateRoutines(routineId)
   return { success: true }
 }
 
@@ -637,7 +646,7 @@ export async function deleteTrainingRoutineDayAction(dayId: string, routineId: s
     .eq("id", dayId)
 
   if (error) return { error: error.message }
-  revalidatePath(adminRutinaBibliotecaDetalle(routineId))
+  revalidateRoutines(routineId)
   return { success: true }
 }
 
@@ -647,7 +656,7 @@ export async function moveTrainingRoutineDayAction(routineId: string, orderedIds
     supabase.from("training_routine_days").update({ position: index }).eq("id", id)
   )
   await Promise.all(promises)
-  revalidatePath(adminRutinaBibliotecaDetalle(routineId))
+  revalidateRoutines(routineId)
   return { success: true }
 }
 
@@ -661,7 +670,7 @@ export async function addTrainingRoutineBlockAction(dayId: string, routineId: st
     .single()
 
   if (error) return { error: error.message }
-  revalidatePath(adminRutinaBibliotecaDetalle(routineId))
+  revalidateRoutines(routineId)
   return { success: true, id: data.id }
 }
 
@@ -673,7 +682,7 @@ export async function updateTrainingRoutineBlockTitleAction(blockId: string, rou
     .eq("id", blockId)
 
   if (error) return { error: error.message }
-  revalidatePath(adminRutinaBibliotecaDetalle(routineId))
+  revalidateRoutines(routineId)
   return { success: true }
 }
 
@@ -681,7 +690,7 @@ export async function deleteTrainingRoutineBlockAction(blockId: string, routineI
   const supabase = await createClient()
   const { error } = await supabase.from("training_routine_blocks").delete().eq("id", blockId)
   if (error) return { error: error.message }
-  revalidatePath(adminRutinaBibliotecaDetalle(routineId))
+  revalidateRoutines(routineId)
   return { success: true }
 }
 
@@ -691,7 +700,7 @@ export async function moveTrainingRoutineBlockAction(dayId: string, routineId: s
     supabase.from("training_routine_blocks").update({ position: index }).eq("id", id)
   )
   await Promise.all(promises)
-  revalidatePath(adminRutinaBibliotecaDetalle(routineId))
+  revalidateRoutines(routineId)
   return { success: true }
 }
 
@@ -711,7 +720,7 @@ export async function addExerciseToTrainingRoutineBlockAction(blockId: string, r
     .single()
 
   if (error) return { error: error.message }
-  revalidatePath(adminRutinaBibliotecaDetalle(routineId))
+  revalidateRoutines(routineId)
   return { success: true, id: data.id }
 }
 
@@ -730,7 +739,7 @@ export async function updateTrainingRoutineBlockExerciseAction(exerciseRowId: st
     .eq("id", exerciseRowId)
 
   if (error) return { error: error.message }
-  revalidatePath(adminRutinaBibliotecaDetalle(routineId))
+  revalidateRoutines(routineId)
   return { success: true }
 }
 
@@ -738,7 +747,7 @@ export async function removeExerciseFromTrainingRoutineBlockAction(exerciseRowId
   const supabase = await createClient()
   const { error } = await supabase.from("training_routine_exercises").delete().eq("id", exerciseRowId)
   if (error) return { error: error.message }
-  revalidatePath(adminRutinaBibliotecaDetalle(routineId))
+  revalidateRoutines(routineId)
   return { success: true }
 }
 

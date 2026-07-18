@@ -82,3 +82,17 @@ Next.js autogenera definiciones de tipo dinámicas para las rutas declarativas e
    npx.cmd next build
    ```
 3. Esto restablece la sincronización de tipos y permite que la compilación de TypeScript finalice exitosamente.
+
+---
+
+## Error: Next.js Cache Invalidation no refresca la UI usando updateTag
+
+### Sntoma
+Al crear, editar o cambiar el estado de un plan, as como al actualizar configuraciones del gimnasio, los cambios se guardaban correctamente en la base de datos (Supabase), pero la interfaz de usuario segua mostrando datos antiguos (ej: "An no hay planes creados").
+
+### Anlisis Tcnico y Leccin
+En la versin 1.5.0 se introdujo la invalidacin mediante `updateTag(tag)` para intentar forzar la lectura del cach modificado. Sin embargo, los datos estaban cacheados utilizando `unstable_cache` de Next.js, el cual est estrictamente ligado a la funcin de revalidacin tradicional `revalidateTag(tag)`. La llamada a `updateTag` (introducida experimentalmente en Next 16) no elimina limpiamente las entradas almacenadas por `unstable_cache`, provocando que la UI siga sirviendo respuestas stale (viejas).
+
+### Solucin Aplicada
+1. Se modificaron los Server Actions (`savePlanAction`, `setPlanActiveAction`, `updateGymSettingsAction`) en `src/actions/admin.actions.ts` para que importen y utilicen `revalidateTag` en lugar de `updateTag.
+2. Ahora las cachs vinculadas a `unstable_cache` se purgan correctamente en Vercel/Next.js, refrescando la interfaz en la siguiente navegacin inmediatamente.

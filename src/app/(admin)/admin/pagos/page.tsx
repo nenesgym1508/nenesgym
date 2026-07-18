@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { getAuthenticatedSession } from "@/lib/auth/session"
 import { getAllPayments, getPendingPayments } from "@/services/payments.service"
+import { getGymSettings } from "@/services/gym.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { PendingPaymentCard } from "@/components/admin/pending-payment-card"
 import { Card } from "@/components/ui/card"
@@ -18,7 +19,7 @@ export default async function AdminPagosPage() {
 
   if (session.profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
 
-  const [pending, allPayments] = await Promise.all([getPendingPayments(), getAllPayments()])
+  const [pending, allPayments, gym] = await Promise.all([getPendingPayments(), getAllPayments(), getGymSettings()])
 
   return (
     <div className="md:max-w-6xl md:mx-auto">
@@ -31,6 +32,31 @@ export default async function AdminPagosPage() {
       </header>
 
       <div className="px-6 pb-24 md:px-10 space-y-6">
+        {/* Medios de pago habilitados */}
+        {(gym?.nequi_number || gym?.daviplata_number) && (
+          <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-4 md:p-5">
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-3">
+              Medios de pago habilitados
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              {gym.nequi_number && (
+                <div className="flex items-center gap-2.5 bg-black/40 px-3.5 py-2.5 rounded-xl border border-white/5">
+                  <span className="text-fuchsia-500 font-bold text-sm">Nequi</span>
+                  <div className="w-px h-4 bg-white/10" />
+                  <span className="text-zinc-200 text-sm tracking-wide">{gym.nequi_number}</span>
+                </div>
+              )}
+              {gym.daviplata_number && (
+                <div className="flex items-center gap-2.5 bg-black/40 px-3.5 py-2.5 rounded-xl border border-white/5">
+                  <span className="text-red-500 font-bold text-sm">Daviplata</span>
+                  <div className="w-px h-4 bg-white/10" />
+                  <span className="text-zinc-200 text-sm tracking-wide">{gym.daviplata_number}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {pending.length > 0 ? (
           <div className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { GYM_ID } from "@/constants/plans"
 import { getAllClients } from "@/services/clients.service"
+import { unstable_cache } from "next/cache"
 import type {
   ClientRoutine,
   ClientRoutineWithDays,
@@ -11,26 +12,33 @@ import type {
   Weekday,
 } from "@/types/routine"
 
-export async function getAdminRoutines(
+
+export function getAdminRoutines(
   options?: { status?: RoutineStatus; clientId?: string }
 ): Promise<(ClientRoutine & { client: { id: string; profile: { full_name: string | null } | null } | null })[]> {
-  const supabase = await createClient()
-  let query = supabase
-    .from("client_routines")
-    .select("*, client:clients(id, profile:profiles(full_name))")
-    .eq("gym_id", GYM_ID)
-    .eq("created_by_role", "admin")
-    .order("updated_at", { ascending: false })
+  return unstable_cache(
+    async () => {
+      const supabase = await createClient()
+      let query = supabase
+        .from("client_routines")
+        .select("*, client:clients(id, profile:profiles(full_name))")
+        .eq("gym_id", GYM_ID)
+        .eq("created_by_role", "admin")
+        .order("updated_at", { ascending: false })
 
-  if (options?.status) {
-    query = query.eq("status", options.status)
-  }
-  if (options?.clientId) {
-    query = query.eq("client_id", options.clientId)
-  }
+      if (options?.status) {
+        query = query.eq("status", options.status)
+      }
+      if (options?.clientId) {
+        query = query.eq("client_id", options.clientId)
+      }
 
-  const { data } = await query
-  return (data ?? []) as any[]
+      const { data } = await query
+      return (data ?? []) as any[]
+    },
+    ["admin-routines", options?.status || "", options?.clientId || ""],
+    { revalidate: 3600, tags: ["admin-routines"] }
+  )()
 }
 
 export async function getRoutineWithDays(id: string): Promise<ClientRoutineWithDays | null> {
@@ -107,17 +115,23 @@ export async function getActiveRoutineForClient(clientId: string): Promise<Clien
   return data[0] as ClientRoutine
 }
 
-export async function getClientsWithoutRoutine(): Promise<
+export function getClientsWithoutRoutine(): Promise<
   { id: string; profile: { full_name: string | null } | null }[]
 > {
-  const supabase = await createClient()
-  const [clients, { data: withRoutine }] = await Promise.all([
-    getAllClients(),
-    supabase.from("client_routines").select("client_id").eq("gym_id", GYM_ID).eq("created_by_role", "admin").neq("status", "archived"),
-  ])
+  return unstable_cache(
+    async () => {
+      const supabase = await createClient()
+      const [clients, { data: withRoutine }] = await Promise.all([
+        getAllClients(),
+        supabase.from("client_routines").select("client_id").eq("gym_id", GYM_ID).eq("created_by_role", "admin").neq("status", "archived"),
+      ])
 
-  const clientIdsWithRoutine = new Set((withRoutine ?? []).map((r) => r.client_id).filter(Boolean))
-  return (clients as any[]).filter((c) => !clientIdsWithRoutine.has(c.id))
+      const clientIdsWithRoutine = new Set((withRoutine ?? []).map((r) => r.client_id).filter(Boolean))
+      return (clients as any[]).filter((c) => !clientIdsWithRoutine.has(c.id))
+    },
+    ["clients-without-routine"],
+    { revalidate: 3600, tags: ["admin-routines"] }
+  )()
 }
 
 export async function getRoutineSessionForDate(routineId: string, date: string): Promise<RoutineSession | null> {

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { formatCOP } from "@/lib/utils"
-import { savePlanAction, setPlanActiveAction } from "@/actions/admin.actions"
+import { savePlanAction, setPlanActiveAction, deletePlanAction } from "@/actions/admin.actions"
 
 interface Plan {
   id: string
@@ -28,6 +28,7 @@ export function PlansManager({ plans }: { plans: Plan[] }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   function openNew() {
     setError(null)
@@ -70,6 +71,20 @@ export function PlansManager({ plans }: { plans: Plan[] }) {
     setTogglingId(p.id)
     await setPlanActiveAction(p.id, !p.is_active)
     setTogglingId(null)
+    router.refresh()
+  }
+
+  async function handleDelete(p: Plan) {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar el plan "${p.name}"?`)) {
+      return
+    }
+    setDeletingId(p.id)
+    const result = await deletePlanAction(p.id)
+    setDeletingId(null)
+    if (result?.error) {
+      alert(result.error)
+      return
+    }
     router.refresh()
   }
 
@@ -118,7 +133,7 @@ export function PlansManager({ plans }: { plans: Plan[] }) {
                 <button
                   type="button"
                   onClick={() => handleToggle(p)}
-                  disabled={togglingId === p.id}
+                  disabled={togglingId === p.id || deletingId === p.id}
                   className="text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-50"
                 >
                   {togglingId === p.id ? (
@@ -127,6 +142,18 @@ export function PlansManager({ plans }: { plans: Plan[] }) {
                     "Desactivar"
                   ) : (
                     "Activar"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(p)}
+                  disabled={togglingId === p.id || deletingId === p.id}
+                  className="text-xs text-red-500/70 hover:text-red-400 disabled:opacity-50"
+                >
+                  {deletingId === p.id ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    "Eliminar"
                   )}
                 </button>
                 <button
@@ -146,9 +173,31 @@ export function PlansManager({ plans }: { plans: Plan[] }) {
       {/* Formulario nuevo / editar */}
       {editing && (
         <form onSubmit={handleSave} className="space-y-3">
-          <p className="text-sm font-semibold text-zinc-200">
-            {editing.id ? "Editar plan" : "Nuevo plan"}
-          </p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-sm font-semibold text-zinc-200">
+              {editing.id ? "Editar plan" : "Nuevo plan"}
+            </p>
+            {!editing.id && (
+              <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-xl border border-white/5">
+                <span className="text-[10px] text-zinc-500 font-medium px-1 uppercase tracking-wider">Plantilla:</span>
+                {[3, 4, 5, 6].map(days => (
+                  <button
+                    key={days}
+                    type="button"
+                    onClick={() => setEditing({
+                      ...editing,
+                      name: `Mensual (${days} días/semana) (${days * 4} días)`,
+                      days: String(days * 4),
+                      duration: "30"
+                    })}
+                    className="px-2 py-1 bg-zinc-800/80 hover:bg-zinc-700 text-xs text-zinc-300 rounded-lg transition-colors border border-white/10"
+                  >
+                    {days}x sem
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <Input
             id="plan_name"
             value={editing.name}
@@ -165,25 +214,31 @@ export function PlansManager({ plans }: { plans: Plan[] }) {
             label="Precio (COP)"
             placeholder="80000"
           />
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              id="plan_days"
-              type="number"
-              min={1}
-              value={editing.days}
-              onChange={(e) => setEditing({ ...editing, days: e.target.value })}
-              label="Días incluidos"
-              placeholder="20"
-            />
-            <Input
-              id="plan_duration"
-              type="number"
-              min={1}
-              value={editing.duration}
-              onChange={(e) => setEditing({ ...editing, duration: e.target.value })}
-              label="Vigencia (días)"
-              placeholder="30"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3.5 bg-white/[0.02] border border-white/5 rounded-xl">
+            <div className="space-y-1">
+              <Input
+                id="plan_days"
+                type="number"
+                min={1}
+                value={editing.days}
+                onChange={(e) => setEditing({ ...editing, days: e.target.value })}
+                label="Asistencias (Clases)"
+                placeholder="Ej. 16"
+              />
+              <p className="text-xs text-zinc-500 leading-tight">Veces que el cliente puede entrar al gym.</p>
+            </div>
+            <div className="space-y-1">
+              <Input
+                id="plan_duration"
+                type="number"
+                min={1}
+                value={editing.duration}
+                onChange={(e) => setEditing({ ...editing, duration: e.target.value })}
+                label="Vencimiento (Días)"
+                placeholder="Ej. 30"
+              />
+              <p className="text-xs text-zinc-500 leading-tight">Días calendario hasta que el plan expire.</p>
+            </div>
           </div>
           {error && (
             <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-400">
@@ -211,3 +266,5 @@ export function PlansManager({ plans }: { plans: Plan[] }) {
     </Card>
   )
 }
+
+// force recompile
