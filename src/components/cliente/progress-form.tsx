@@ -85,16 +85,10 @@ export function ProgressForm({ todayRecord, latestHeightCm }: ProgressFormProps)
       {/* Trigger */}
       <button
         onClick={() => setOpen(true)}
-        className="group flex w-full items-center justify-center gap-2.5 rounded-2xl border border-dashed border-white/12 bg-white/[0.02] py-4 text-sm font-medium text-zinc-500 transition-colors hover:border-red-600/40 hover:bg-red-950/20 hover:text-zinc-300"
+        className="flex items-center gap-1.5 bg-transparent border border-red-500/30 text-red-500 rounded-full px-4.5 py-1.5 text-xs font-semibold hover:bg-red-950/20 transition-colors cursor-pointer shrink-0"
       >
-        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-800 transition-colors group-hover:bg-red-600/20">
-          {isEdit ? (
-            <Pencil className="size-3.5 transition-colors group-hover:text-red-400" />
-          ) : (
-            <Plus className="size-3.5 transition-colors group-hover:text-red-400" />
-          )}
-        </div>
-        {isEdit ? "Editar medición de hoy" : "Registrar medición"}
+        <Plus className="size-3.5 text-red-500" />
+        <span>{isEdit ? "Modificar hoy" : "Registrar medición"}</span>
       </button>
 
       {/* Modal */}

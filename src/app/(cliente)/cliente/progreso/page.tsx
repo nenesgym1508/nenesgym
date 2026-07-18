@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation"
+import { Scale, Dumbbell, Flame, Ruler } from "lucide-react"
 import { getCurrentClientData } from "@/services/clients.service"
 import { getClientProgress, getActiveGoal } from "@/services/progress.service"
 import { getMonthlyAttendance } from "@/services/attendance.service"
-import { PageHeader } from "@/components/layout/page-header"
 import { ProgressForm } from "@/components/cliente/progress-form"
 import { ProgressHistory } from "@/components/cliente/progress-history"
 import { GoalCard } from "@/components/cliente/progress-goal-card"
+import { Card } from "@/components/ui/card"
 import { ROUTES } from "@/constants/routes"
 import { nowInBogota, todayInBogota } from "@/lib/dates"
 import { getBmiCategory } from "@/lib/utils"
@@ -29,19 +30,7 @@ function shiftDate(dateStr: string, days: number): string {
   return d.toISOString().split("T")[0]!
 }
 
-// Última medida no-nula de una columna + su variación contra la anterior no-nula.
-function latestMetric(
-  records: ProgressRecord[],
-  col: keyof ProgressRecord
-): { value: number; delta: number | null } | null {
-  const vals = records.filter((r) => r[col] != null)
-  if (vals.length === 0) return null
-  const value = vals[0]![col] as number
-  const prev = vals[1] ? (vals[1]![col] as number) : null
-  return { value, delta: prev != null ? +(value - prev).toFixed(1) : null }
-}
-
-const BODY_KEYS: ProgressMetricKey[] = ["weight", "waist", "chest", "arm", "leg"]
+const BODY_KEYS: BodyMetricKey[] = ["weight", "waist", "chest", "arm", "leg"]
 
 export default async function ClienteProgresoPage() {
   const clientData = await getCurrentClientData()
@@ -64,10 +53,7 @@ export default async function ClienteProgresoPage() {
   const monthlyCount = attendanceDates.size
   const latest = records[0] ?? null
 
-  // Racha (días seguidos) y últimos 7 días
-  const last7 = Array.from({ length: 7 }, (_, i) => shiftDate(today, -i)).filter((d) =>
-    attendanceDates.has(d)
-  ).length
+  // Racha (días seguidos)
   let streak = 0
   let i = attendanceDates.has(today) ? 0 : 1
   while (attendanceDates.has(shiftDate(today, -i))) {
@@ -85,87 +71,209 @@ export default async function ClienteProgresoPage() {
       )
     : null
 
-  // Métricas priorizadas por objetivo — solo se muestran las que tienen dato real.
+  // Métricas priorizadas por objetivo
   const highlightKeys = goal ? GOAL_HIGHLIGHT_METRICS[goal.goal_type] : DEFAULT_HIGHLIGHT_METRICS
 
-  type Card = { key: string; label: string; value: string; unit: string; delta: number | null; sub?: string }
-  const cards: Card[] = []
-  for (const key of highlightKeys) {
-    if (BODY_KEYS.includes(key)) {
-      const bk = key as BodyMetricKey
-      const m = latestMetric(records, BODY_METRIC_COLUMN[bk])
-      if (!m) continue // sin dato → no se muestra la tarjeta
-      cards.push({
-        key,
-        label: BODY_METRIC_LABELS[bk],
-        value: String(m.value),
-        unit: BODY_METRIC_UNIT[bk],
-        delta: m.delta,
-      })
-    } else if (key === "last7") {
-      cards.push({ key, label: "Últimos 7 días", value: String(last7), unit: "días", delta: null })
-    } else if (key === "measurements") {
-      cards.push({ key, label: "Mediciones", value: String(records.length), unit: "", delta: null, sub: "registradas" })
-    }
-  }
+  // 1. Peso (Weight)
+  const latestWeightRec = records.find((r) => r.weight_kg != null)
+  const latestWeight = latestWeightRec?.weight_kg ?? null
+  const prevWeightRec = records.filter((r) => r.weight_kg != null)[1] ?? null
+  const prevWeight = prevWeightRec?.weight_kg ?? null
+  const weightDiff = latestWeight != null && prevWeight != null
+    ? +(latestWeight - prevWeight).toFixed(1)
+    : null
+
+  // 2. Métrica física priorizada según el objetivo (excluyendo peso)
+  const prioritizedBodyKey = (highlightKeys.find((k) => k !== "weight" && BODY_KEYS.includes(k as any)) as BodyMetricKey) || "arm"
+  const bodyLabel = BODY_METRIC_LABELS[prioritizedBodyKey]
+  const bodyUnit = BODY_METRIC_UNIT[prioritizedBodyKey]
+  const bodyCol = BODY_METRIC_COLUMN[prioritizedBodyKey]
+  
+  const latestBodyRec = records.find((r) => r[bodyCol] != null)
+  const latestBodyValue = latestBodyRec ? (latestBodyRec[bodyCol] as number) : null
+  const prevBodyRec = records.filter((r) => r[bodyCol] != null)[1] ?? null
+  const prevBodyValue = prevBodyRec ? (prevBodyRec[bodyCol] as number) : null
+  const bodyDiff = latestBodyValue != null && prevBodyValue != null
+    ? +(latestBodyValue - prevBodyValue).toFixed(1)
+    : null
+
+  const BodyIcon = prioritizedBodyKey === "waist" ? Ruler : Dumbbell
 
   return (
     <div>
-      <PageHeader title="Mi progreso" />
-      <div className="p-4 md:px-10 md:py-8 space-y-4">
-
-        {/* CTA */}
+      {/* Cabecera unificada estilo mockup */}
+      <div className="flex items-start justify-between mb-6 px-6 pt-12 md:px-10 md:pt-10">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bebas font-bold mb-1 tracking-wide uppercase text-white">Mi progreso</h1>
+          <p className="text-zinc-500 text-sm">Tu constancia, tu transformación.</p>
+        </div>
         <ProgressForm todayRecord={todayRecord} latestHeightCm={latest?.height_cm} />
+      </div>
 
+      <div className="p-4 md:px-10 md:py-8 space-y-6">
         {/* Objetivo */}
         <GoalCard goal={goal} />
 
         {records.length > 0 && (
           <>
-            {/* Métricas priorizadas por objetivo */}
-            {cards.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {cards.map((c) => (
-                  <div key={c.key} className="rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-3.5 shadow-[0_4px_25px_rgba(0,0,0,0.65)]">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1">
-                      {c.label}
-                    </p>
-                    <div className="flex items-end gap-1 leading-none">
-                      <span className="font-bebas text-3xl tracking-wide text-white">{c.value}</span>
-                      {c.unit && <span className="mb-0.5 text-[11px] text-zinc-500">{c.unit}</span>}
-                    </div>
-                    {c.delta != null && c.delta !== 0 ? (
-                      <p className="mt-1 text-[11px] font-medium text-zinc-400">
-                        {c.delta > 0 ? "+" : ""}
-                        {c.delta} {c.unit} desde la anterior
-                      </p>
-                    ) : c.sub ? (
-                      <p className="mt-1 text-[11px] text-zinc-600">{c.sub}</p>
-                    ) : null}
+            {/* ── RESUMEN ACTUAL (Cuadrícula 2x2 estilo mockup) ── */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 border-l-2 border-red-600 pl-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Resumen actual</h3>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                {/* Card 1: Peso */}
+                <div className="flex items-center gap-3.5 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-4 shadow-lg">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5">
+                    <Scale className="size-5 text-red-500" />
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 leading-none mb-1">Peso</p>
+                    <div className="flex items-baseline gap-0.5 leading-none">
+                      <span className="font-bebas text-3xl tracking-wide text-white">{latestWeight ?? "—"}</span>
+                      {latestWeight != null && <span className="text-[10px] text-zinc-500">{BODY_METRIC_UNIT["weight"]}</span>}
+                    </div>
+                    {weightDiff !== null && weightDiff !== 0 ? (
+                      <p className="mt-1 text-[9px] font-semibold text-red-500 flex items-center gap-0.5 leading-none truncate">
+                        {weightDiff > 0 ? "↗" : "↘"} {weightDiff > 0 ? "+" : ""}{weightDiff} kg <span className="text-zinc-500 font-normal normal-case">desde la anterior</span>
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-[9px] text-zinc-500 leading-none">Sin cambios</p>
+                    )}
+                  </div>
+                </div>
 
+                {/* Card 2: Métrica priorizada (Brazo, Pecho, Cintura, etc.) */}
+                <div className="flex items-center gap-3.5 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-4 shadow-lg">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5">
+                    <BodyIcon className="size-5 text-red-500" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 leading-none mb-1">{bodyLabel}</p>
+                    <div className="flex items-baseline gap-0.5 leading-none">
+                      <span className="font-bebas text-3xl tracking-wide text-white">{latestBodyValue ?? "—"}</span>
+                      {latestBodyValue != null && <span className="text-[10px] text-zinc-500">{bodyUnit}</span>}
+                    </div>
+                    {bodyDiff !== null && bodyDiff !== 0 ? (
+                      <p className="mt-1 text-[9px] font-semibold text-red-500 flex items-center gap-0.5 leading-none truncate">
+                        {bodyDiff > 0 ? "↗" : "↘"} {bodyDiff > 0 ? "+" : ""}{bodyDiff} {bodyUnit} <span className="text-zinc-500 font-normal normal-case">desde la anterior</span>
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-[9px] text-zinc-500 leading-none">Sin cambios</p>
+                    )}
+                  </div>
+                </div>
 
+                {/* Card 3: IMC */}
+                <div className="flex items-center gap-3.5 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-4 shadow-lg">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5">
+                    <span className="text-[11px] font-black text-red-500">IMC</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 leading-none mb-1">IMC</p>
+                    <div className="flex items-baseline gap-0.5 leading-none">
+                      <span className="font-bebas text-3xl tracking-wide text-white">
+                        {latest?.bmi != null ? latest.bmi.toFixed(1) : "—"}
+                      </span>
+                    </div>
+                    {bmiInfo ? (
+                      <p className={`mt-1 text-[9px] font-bold uppercase leading-none truncate ${bmiInfo.color}`}>
+                        {bmiInfo.label} <span className="text-zinc-500 font-normal normal-case block mt-0.5">Categoría actual</span>
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-[9px] text-zinc-500 leading-none">Sin datos</p>
+                    )}
+                  </div>
+                </div>
 
-            {/* Asistencias y Racha — nuevo bloque horizontal similar al IMC */}
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 px-4 py-2.5 text-xs">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-zinc-500 shrink-0">Este mes:</span>
-                <span className="font-bold text-zinc-200 truncate">
-                  {monthlyCount} {monthlyCount === 1 ? "día" : "días"} entrenados
-                </span>
-              </div>
-              <div className="h-4 w-px bg-white/10 shrink-0" />
-              <div className="flex items-center gap-1.5 ml-auto shrink-0">
-                <span className="text-zinc-500">Racha:</span>
-                <span className="font-bold text-zinc-200 flex items-center gap-1">
-                  {streak} {streak === 1 ? "día" : "días"}
-                  {streak > 0 && <span>🔥</span>}
-                </span>
+                {/* Card 4: Actividad (Este mes / Racha) */}
+                <div className="flex items-center gap-3.5 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-4 shadow-lg">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5">
+                    <Flame className="size-5 text-red-500" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 leading-none mb-1.5">Actividad</p>
+                    <div className="flex items-start justify-between gap-1">
+                      <div>
+                        <p className="text-[8px] text-zinc-500 font-medium uppercase tracking-wide">Este mes</p>
+                        <p className="font-bebas text-xl text-white tracking-wide leading-none my-0.5">{monthlyCount}</p>
+                        <p className="text-[7.5px] text-zinc-500 leading-none whitespace-nowrap">días entr.</p>
+                      </div>
+                      <div className="h-6 w-px bg-white/10 shrink-0 self-center" />
+                      <div>
+                        <p className="text-[8px] text-zinc-500 font-medium uppercase tracking-wide">Racha</p>
+                        <p className="font-bebas text-xl text-white tracking-wide leading-none my-0.5">{streak}</p>
+                        <p className="text-[8px] text-zinc-500 leading-none">días</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* ── ESTADO CORPORAL (IMC Slider Visual estilo mockup) ── */}
+            {latest?.bmi != null && bmiInfo && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 border-l-2 border-red-600 pl-2">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Estado corporal</h3>
+                </div>
+                
+                <Card className="border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.65)] space-y-5">
+                  <div className="flex items-center gap-6">
+                    {/* IMC actual (grande, izquierda) */}
+                    <div className="shrink-0 pr-6 border-r border-white/5">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-0.5">IMC Actual</p>
+                      <p className="font-bebas text-5xl font-bold text-red-500 tracking-wide leading-none">{latest.bmi.toFixed(1)}</p>
+                    </div>
+                    
+                    {/* Categoría y consejo (derecha) */}
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-lg font-bold tracking-wide uppercase leading-tight ${bmiInfo.color}`}>
+                        {bmiInfo.label} ({latest.bmi.toFixed(1)})
+                      </p>
+                      <p className="mt-1 text-xs text-zinc-400">
+                        Tu progreso depende de tu constancia y fuerza.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Barra de progreso deslizante */}
+                  <div className="space-y-2">
+                    <div className="relative h-2 w-full overflow-hidden rounded-full">
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            "linear-gradient(to right, #3b82f6 0%, #22c55e 30%, #eab308 60%, #ef4444 100%)",
+                        }}
+                      />
+                      <div
+                        className="absolute top-1/2 h-4 w-1.5 -translate-y-1/2 rounded-full bg-white shadow-lg border border-black/20"
+                        style={{
+                          left: `${Math.min(Math.max(((latest.bmi - 15) / 25) * 100, 2), 97)}%`,
+                        }}
+                      />
+                    </div>
+                    {/* Valores numéricos de escala */}
+                    <div className="flex justify-between text-[10px] font-semibold text-zinc-600 px-1 leading-none">
+                      <span>15</span>
+                      <span className="text-blue-400">18.5</span>
+                      <span className="text-green-400">25</span>
+                      <span className="text-yellow-400">30</span>
+                      <span className="text-red-400">40</span>
+                    </div>
+                    {/* Categorías textuales alineadas */}
+                    <div className="flex justify-between text-[9px] font-bold text-zinc-500 uppercase tracking-wider px-1 pt-0.5 leading-none">
+                      <span>Bajo peso</span>
+                      <span>Normal</span>
+                      <span>Sobrepeso</span>
+                      <span>Obesidad</span>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
 
             {/* Mensajes de seguimiento (lenguaje neutral) */}
             {daysSinceLast !== null && daysSinceLast > 0 && (
@@ -177,17 +285,10 @@ export default async function ClienteProgresoPage() {
                 . Registra hoy para ver tu avance.
               </p>
             )}
-            {records.length >= 3 && (
-              <p className="text-[11px] text-zinc-600 text-center">
-                Llevas{" "}
-                <span className="text-zinc-400 font-medium">{records.length} mediciones</span>{" "}
-                registradas. Sigue así.
-              </p>
-            )}
           </>
         )}
 
-        {/* Gráfica e historial */}
+        {/* Gráfica e historial (Evolución e Historial) */}
         <ProgressHistory records={records} />
       </div>
     </div>
