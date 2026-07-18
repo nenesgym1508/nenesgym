@@ -124,9 +124,11 @@ export async function uploadExerciseImageAction(
   const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`
   const path = `${GYM_ID}/${fileName}`
 
+  const buffer = Buffer.from(await file.arrayBuffer())
+
   const { error: uploadError } = await supabase.storage
     .from("exercises")
-    .upload(path, file, { contentType: file.type, upsert: false })
+    .upload(path, buffer, { contentType: file.type, upsert: false })
 
   if (uploadError) {
     return { error: "Error al subir la imagen: " + uploadError.message }

@@ -39,9 +39,10 @@ export async function uploadPaymentAction(formData: FormData) {
     const fileName = `${Date.now()}.${ext}`
     const path = `${GYM_ID}/${client.id}/${fileName}`
 
+    const buffer = Buffer.from(await file.arrayBuffer())
     const { error: uploadError } = await adminClient.storage
       .from("receipts")
-      .upload(path, file, { contentType: file.type, upsert: false })
+      .upload(path, buffer, { contentType: file.type, upsert: false })
 
     if (uploadError) return { error: "Error al subir el comprobante: " + uploadError.message }
     receiptPath = path
