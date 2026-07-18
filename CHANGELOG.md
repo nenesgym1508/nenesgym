@@ -10,6 +10,7 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 
 
 ### Características y Mejoras
+- **Rediseño estético de Escáner QR**: Se quitó la visualización de la caja blanca rectangular y el fondo opaco que dibuja por defecto `html5-qrcode` (que se deformaba según la resolución del video). Se inyectó CSS dinámico para forzar el video a un contenedor cuadrado perfecto (`aspect-square`) usando `object-fit: cover` similar a una app de cámara nativa. El visor ahora cuenta únicamente con un marco cuadrado de esquinas rojas gruesas y redondeadas (`border-4 rounded-xl`) que late suavemente (`animate-pulse`) de forma muy premium y limpia.
 - **Rediseño Premium de Medios de Pago**: Tarjetas con gradientes temáticos oscuros y bordes brillantes de color de marca (Nequi y Daviplata). Adicionalmente, ahora se muestra de forma prominente el **Titular de la cuenta** en cada tarjeta, simplificando la verificación de transferencias.
 - **Navegación por Pestañas (Tabs) en Pagos**: Se dividió la pantalla de Pagos en dos pestañas navegables independientes y persistentes en la URL (`?tab=por-aprobar` y `?tab=historial`):
   - **Por aprobar**: Muestra los medios de pago configurados y la lista de pagos pendientes.
