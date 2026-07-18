@@ -102,10 +102,6 @@ export default async function ClienteProgresoPage() {
         unit: BODY_METRIC_UNIT[bk],
         delta: m.delta,
       })
-    } else if (key === "consistency") {
-      cards.push({ key, label: "Este mes", value: String(monthlyCount), unit: "días", delta: null, sub: "entrenados" })
-    } else if (key === "streak") {
-      cards.push({ key, label: "Racha", value: String(streak), unit: "días", delta: null, sub: "seguidos" })
     } else if (key === "last7") {
       cards.push({ key, label: "Últimos 7 días", value: String(last7), unit: "días", delta: null })
     } else if (key === "measurements") {
@@ -161,6 +157,24 @@ export default async function ClienteProgresoPage() {
                 </span>
               </div>
             )}
+
+            {/* Asistencias y Racha — nuevo bloque horizontal similar al IMC */}
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 px-4 py-2.5 text-xs">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-zinc-500 shrink-0">Este mes:</span>
+                <span className="font-bold text-zinc-200 truncate">
+                  {monthlyCount} {monthlyCount === 1 ? "día" : "días"} entrenados
+                </span>
+              </div>
+              <div className="h-4 w-px bg-white/10 shrink-0" />
+              <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                <span className="text-zinc-500">Racha:</span>
+                <span className="font-bold text-zinc-200 flex items-center gap-1">
+                  {streak} {streak === 1 ? "día" : "días"}
+                  {streak > 0 && <span>🔥</span>}
+                </span>
+              </div>
+            </div>
 
             {/* Mensajes de seguimiento (lenguaje neutral) */}
             {daysSinceLast !== null && daysSinceLast > 0 && (
