@@ -3,8 +3,6 @@ import { getGymSettings } from "@/services/gym.service"
 import { searchAdminClients, type ClientStatusFilter } from "@/services/memberships.service"
 import { getAvailablePlans } from "@/services/payments.service"
 import { ClientsList } from "@/components/admin/clients-list"
-import dynamicImport from "next/dynamic"
-const GymQrModal = dynamicImport(() => import("@/components/admin/gym-qr-modal").then(m => m.GymQrModal))
 
 export const dynamic = "force-dynamic"
 
@@ -47,7 +45,6 @@ export default async function AdminClientesPage({
           <h1 className="text-3xl md:text-4xl font-bebas font-bold mb-1 tracking-wide uppercase text-white">Clientes</h1>
           <p className="text-zinc-500 text-sm">Gestiona ingresos y membresías</p>
         </div>
-        {gym && <GymQrModal token={gym.checkin_token} gymName={gym.name} />}
       </header>
 
       <div className="px-6 pb-24 md:px-10">

@@ -7,7 +7,6 @@ import { getAllClients } from "@/services/clients.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
 import dynamicImport from "next/dynamic"
-const GymQrModal = dynamicImport(() => import("@/components/admin/gym-qr-modal").then(m => m.GymQrModal))
 const ManualCheckInModal = dynamicImport(() => import("@/components/admin/manual-checkin-modal").then(m => m.ManualCheckInModal))
 import { formatDatetime } from "@/lib/dates"
 import { GYM_ID } from "@/constants/plans"
@@ -58,7 +57,6 @@ export default async function AdminAsistenciasPage() {
 
         {/* Acciones */}
         <div className="flex flex-wrap gap-2">
-          {gym && <GymQrModal token={gym.checkin_token} gymName={gym.name} />}
           <ManualCheckInModal clients={clientOptions} />
         </div>
 
@@ -78,7 +76,7 @@ export default async function AdminAsistenciasPage() {
                   </div>
                   <div>
                     <p className="font-bebas text-lg tracking-wide uppercase text-white">{att.client?.profile?.full_name ?? "Cliente"}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">{formatDatetime(a.checked_in_at)} · {a.session === "am" ? "Mañana" : "Tarde"} · {a.source === "qr" ? "QR" : "Manual"}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">{formatDatetime(a.checked_in_at)} · {a.session === "am" ? "Mañana" : "Tarde"} · {a.source === "client_self" ? "Autoregistro" : a.source === "admin_manual" ? "Manual" : a.source === "qr" ? "QR" : "Manual"}</p>
                   </div>
                 </div>
               )

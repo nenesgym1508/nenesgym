@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useLinkStatus } from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, CreditCard, QrCode, TrendingUp, Users, Dumbbell, ClipboardList, MoreHorizontal } from "lucide-react"
+import { Home, CreditCard, LogIn, TrendingUp, Users, Dumbbell, ClipboardList, MoreHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ROUTES } from "@/constants/routes"
 
@@ -14,7 +14,7 @@ const clienteLeft: NavItem[] = [
   { href: ROUTES.CLIENTE_DASHBOARD, label: "Inicio", icon: Home },
   { href: ROUTES.CLIENTE_PAGOS, label: "Pagos", icon: CreditCard },
 ]
-const clienteCenter: NavItem = { href: ROUTES.CLIENTE_ASISTENCIA, label: "Entrada", icon: QrCode }
+const clienteCenter: NavItem = { href: ROUTES.CLIENTE_ASISTENCIA, label: "Entrada", icon: LogIn }
 const clienteRight: NavItem[] = [
   { href: ROUTES.CLIENTE_RUTINAS, label: "Rutinas", icon: ClipboardList },
   { href: ROUTES.CLIENTE_PROGRESO, label: "Progreso", icon: TrendingUp },

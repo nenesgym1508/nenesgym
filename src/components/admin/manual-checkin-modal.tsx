@@ -42,9 +42,9 @@ export function ManualCheckInModal({ clients }: { clients: ClientOption[] }) {
         className="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-900/60 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
       >
         <UserPlus className="size-4" />
-        Ingreso manual
+        Registrar ingreso
       </button>
-
+ 
       {open && (
         <div
           className="fixed inset-0 z-[100] flex items-end justify-center bg-black/80 p-0 sm:items-center sm:p-4"
@@ -55,7 +55,7 @@ export function ManualCheckInModal({ clients }: { clients: ClientOption[] }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-white/8 p-4">
-              <h3 className="text-base font-bold text-zinc-100">Registrar ingreso manual</h3>
+              <h3 className="text-base font-bold text-zinc-100">Registrar ingreso</h3>
               <button onClick={() => setOpen(false)} className="text-zinc-500 hover:text-zinc-300">
                 <X className="size-5" />
               </button>

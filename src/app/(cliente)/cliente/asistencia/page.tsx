@@ -4,7 +4,7 @@ import { getCurrentClientData } from "@/services/clients.service"
 import { getClientAttendance } from "@/services/attendance.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
-import { EntradaWrapper } from "@/components/qr/entrada-wrapper"
+import { ClientCheckInButton } from "@/components/asistencia/client-checkin-button"
 import { formatDate, formatDatetime, todayInBogota } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 
@@ -38,7 +38,10 @@ export default async function ClienteAsistenciaPage() {
           </p>
         </Card>
 
-        <EntradaWrapper />
+        <ClientCheckInButton
+          alreadyToday={alreadyToday}
+          lastCheckedInAt={recent[0]?.checked_in_at}
+        />
 
         {/* Últimos 3 ingresos */}
         {recent.length > 0 && (

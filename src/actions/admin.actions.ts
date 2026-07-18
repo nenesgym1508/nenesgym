@@ -261,7 +261,7 @@ export async function manualCheckInAction(clientId: string) {
     client_id: clientId,
     membership_id: membership.id,
     check_in_date: today,
-    source: "manual",
+    source: "admin_manual",
     session,
   })
   if (insertError) return { error: insertError.message }
