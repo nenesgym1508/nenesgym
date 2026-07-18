@@ -1,11 +1,19 @@
 import { redirect } from "next/navigation"
-import { CheckCircle2, CircleDashed, Clock } from "lucide-react"
+import Link from "next/link"
+import { CheckCircle2, CircleDashed, Clock, AlertTriangle } from "lucide-react"
 import { getCurrentClientData } from "@/services/clients.service"
 import { getClientAttendance } from "@/services/attendance.service"
+import { getActiveMembership, computeEffectiveStatus } from "@/services/memberships.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
 import { ClientCheckInButton } from "@/components/asistencia/client-checkin-button"
-import { formatDate, formatDatetime, todayInBogota } from "@/lib/dates"
+import {
+  formatDate,
+  formatDatetime,
+  todayInBogota,
+  daysPerWeekForPlan,
+  eligibleDaysElapsed,
+} from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 
 export const dynamic = "force-dynamic"
@@ -15,35 +23,81 @@ export default async function ClienteAsistenciaPage() {
   if (!clientData) redirect(ROUTES.LOGIN)
 
   const { client } = clientData
-  const recent = client ? await getClientAttendance(client.id, 15) : []
-  const alreadyToday = recent[0]?.check_in_date === todayInBogota()
+  
+  const [recent, membership] = await Promise.all([
+    client ? getClientAttendance(client.id, 15) : Promise.resolve([]),
+    client ? getActiveMembership(client.id) : Promise.resolve(null),
+  ])
+
+  const today = todayInBogota()
+  const daysPerWeek = membership
+    ? daysPerWeekForPlan(membership.plan?.days ?? membership.total_days)
+    : 6
+  const elapsedDays = membership
+    ? eligibleDaysElapsed(membership.start_date, today, daysPerWeek)
+    : 0
+
+  const effectiveStatus = membership
+    ? computeEffectiveStatus(
+        elapsedDays,
+        membership.total_days,
+        membership.end_date,
+        membership.grace_days,
+        membership.status
+      )
+    : null
+
+  const hasActivePlan = effectiveStatus === "active" || effectiveStatus === "grace"
+  const alreadyToday = recent[0]?.check_in_date === today
 
   return (
     <div>
       <PageHeader title="Entrada" />
       <div className="p-4 md:px-10 md:py-8 space-y-4">
-        {/* Estado del día */}
-        <Card
-          className={`flex items-center gap-3 p-3.5 ${
-            alreadyToday ? "border-green-700/40 bg-green-500/5" : "border-white/8"
-          }`}
-        >
-          {alreadyToday ? (
-            <CheckCircle2 className="size-5 shrink-0 text-green-400" />
-          ) : (
-            <CircleDashed className="size-5 shrink-0 text-zinc-400" />
-          )}
-          <p className="text-sm font-medium text-zinc-200">
-            {alreadyToday ? "Ya registraste tu ingreso hoy" : "Aún no has registrado tu ingreso hoy"}
-          </p>
-        </Card>
+        {!hasActivePlan ? (
+          <Card className="flex flex-col items-center justify-center p-8 text-center border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] space-y-4">
+            <div className="flex size-14 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10 animate-pulse">
+              <AlertTriangle className="size-6 text-red-500" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="font-bebas text-2xl tracking-wide uppercase text-white">No tienes un plan activo</h3>
+              <p className="text-sm text-zinc-400 max-w-[280px] mx-auto">
+                Para registrar tus ingresos al gimnasio necesitas activar o renovar una membresía.
+              </p>
+            </div>
+            <Link
+              href={ROUTES.CLIENTE_PAGOS}
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-red-600 hover:bg-red-700 text-sm font-bold text-white px-6 transition-colors shadow-lg shadow-red-600/10 cursor-pointer"
+            >
+              Ver planes de pago
+            </Link>
+          </Card>
+        ) : (
+          <>
+            {/* Estado del día */}
+            <Card
+              className={`flex items-center gap-3 p-3.5 ${
+                alreadyToday ? "border-green-700/40 bg-green-500/5" : "border-white/8"
+              }`}
+            >
+              {alreadyToday ? (
+                <CheckCircle2 className="size-5 shrink-0 text-green-400" />
+              ) : (
+                <CircleDashed className="size-5 shrink-0 text-zinc-400" />
+              )}
+              <p className="text-sm font-medium text-zinc-200">
+                {alreadyToday ? "Ya registraste tu ingreso hoy" : "Aún no has registrado tu ingreso hoy"}
+              </p>
+            </Card>
 
-        <ClientCheckInButton
-          alreadyToday={alreadyToday}
-          lastCheckedInAt={recent[0]?.checked_in_at}
-        />
+            <ClientCheckInButton
+              alreadyToday={alreadyToday}
+              lastCheckedInAt={recent[0]?.checked_in_at}
+            />
+          </>
+        )}
 
-        {/* Últimos 3 ingresos */}
+        {/* Últimos ingresos */}
         {recent.length > 0 && (
           <div>
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">

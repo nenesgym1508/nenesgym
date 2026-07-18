@@ -173,6 +173,7 @@ export default async function ClienteDashboardPage() {
                 lastCheckInAt={lastCheckInAt}
                 paymentAlert={paymentAlert}
                 showRegisterCta={!bothSessionsDone}
+                hasActivePlan={effectiveStatus === "active" || effectiveStatus === "grace"}
               />
               <TodayRoutineCard hasRoutine={!!activeRoutine} />
             </div>
