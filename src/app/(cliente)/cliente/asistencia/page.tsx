@@ -15,7 +15,7 @@ export default async function ClienteAsistenciaPage() {
   if (!clientData) redirect(ROUTES.LOGIN)
 
   const { client } = clientData
-  const recent = client ? await getClientAttendance(client.id, 3) : []
+  const recent = client ? await getClientAttendance(client.id, 15) : []
   const alreadyToday = recent[0]?.check_in_date === todayInBogota()
 
   return (
