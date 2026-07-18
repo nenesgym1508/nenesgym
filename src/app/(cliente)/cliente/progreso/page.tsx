@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { Flame, Calendar } from "lucide-react"
+import { Flame, Calendar, ChevronRight } from "lucide-react"
 import { getCurrentClientData } from "@/services/clients.service"
 import { getClientProgress, getActiveGoal } from "@/services/progress.service"
 import { getMonthlyAttendance } from "@/services/attendance.service"
@@ -140,56 +140,67 @@ export default async function ClienteProgresoPage() {
   return (
     <div>
       {/* Cabecera unificada estilo mockup */}
-      <div className="flex items-start justify-between mb-6 px-6 pt-12 md:px-10 md:pt-10">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-bebas font-bold mb-1 tracking-wide uppercase text-white">Mi progreso</h1>
-          <p className="text-zinc-500 text-sm">Tu constancia, tu transformación.</p>
-        </div>
-        <ProgressForm todayRecord={todayRecord} latestHeightCm={latest?.height_cm} />
+      <div className="mb-6 px-6 pt-12 md:px-10 md:pt-10">
+        <h1 className="text-3xl md:text-4xl font-bebas font-bold mb-1 tracking-wide uppercase text-white">Mi progreso</h1>
+        <p className="text-zinc-500 text-sm">Tu constancia, tu transformación.</p>
       </div>
 
       <div className="p-4 md:px-10 md:py-8 space-y-6">
         {/* Objetivo */}
         <GoalCard goal={goal} />
 
+        {/* CTA (Botón registrar de ancho completo abajo del objetivo) */}
+        <ProgressForm todayRecord={todayRecord} latestHeightCm={latest?.height_cm} />
+
         {records.length > 0 && (
           <>
-            {/* ── RESUMEN ACTUAL (Lista vertical elegante adaptativa) ── */}
+            {/* ── RESUMEN ACTUAL (Lista vertical elegante adaptativa con Flexbox robusto) ── */}
             {metricsList.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 border-l-2 border-red-600 pl-2">
+                <div className="flex items-center justify-between border-l-2 border-red-600 pl-2">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Resumen actual</h3>
+                  <span className="text-[10px] text-zinc-500 italic">vs. medición anterior</span>
                 </div>
                 
                 <div className="overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] divide-y divide-white/5">
                   {metricsList.map(({ label, data, Icon }) => {
                     const { val, diff, unit } = data
                     return (
-                      <div key={label} className="flex items-center justify-between gap-4 px-5 py-4.5">
-                        {/* Icono a la izquierda */}
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-red-500/20 bg-red-500/5 text-red-500">
-                          <Icon className="size-5" />
+                      <div key={label} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-white/[0.02] transition-colors">
+                        {/* Izquierda: Icono y Nombre */}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5 text-red-500">
+                            <Icon className="size-5" />
+                          </div>
+                          <span className="text-sm font-semibold text-zinc-200 truncate">{label}</span>
                         </div>
                         
-                        {/* Información del delta en el medio */}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-zinc-200 leading-tight">{label}</p>
-                          {diff !== null && diff !== 0 ? (
-                            <p className={`mt-1 text-[11px] font-semibold flex items-center gap-1 ${diff > 0 ? "text-red-500" : "text-green-500"}`}>
-                              <span>{diff > 0 ? "↑" : "↓"} {diff > 0 ? "+" : ""}{diff} {unit}</span>
-                              <span className="text-zinc-500 font-normal normal-case">desde la anterior</span>
-                            </p>
-                          ) : (
-                            <p className="mt-1 text-[11px] text-zinc-500 font-medium leading-none">
-                              — sin cambio
-                            </p>
-                          )}
-                        </div>
-                        
-                        {/* Valor final a la derecha */}
-                        <div className="flex items-baseline gap-0.5 shrink-0 leading-none">
-                          <span className="font-bebas text-3xl tracking-wide text-white">{val}</span>
-                          <span className="text-[10px] text-zinc-500 font-bold uppercase">{unit}</span>
+                        {/* Derecha: Valor, Delta y Chevron */}
+                        <div className="flex items-center gap-3 shrink-0">
+                          {/* Cifra */}
+                          <div className="flex items-baseline gap-0.5">
+                            <span className="font-bebas text-2xl tracking-wide text-white">{val}</span>
+                            <span className="text-[10px] text-zinc-500 lowercase">{unit}</span>
+                          </div>
+                          
+                          {/* Divisor vertical sutil */}
+                          <div className="h-3.5 w-px bg-white/10" />
+                          
+                          {/* Delta de cambio */}
+                          <div className="min-w-[68px] text-right">
+                            {diff !== null && diff !== 0 ? (
+                              <span className={`text-[11px] font-bold ${diff > 0 ? "text-red-500" : "text-green-500"}`}>
+                                {diff > 0 ? "↑" : "↓"} {Math.abs(diff)} {unit}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-bold text-zinc-500">
+                                — sin cambio
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Chevron */}
+                          <ChevronRight className="size-4 text-zinc-600" />
                         </div>
                       </div>
                     )
@@ -211,6 +222,7 @@ export default async function ClienteProgresoPage() {
                     <div className="shrink-0 pr-6 border-r border-white/5">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-0.5">IMC Actual</p>
                       <p className="font-bebas text-5xl font-bold text-red-500 tracking-wide leading-none">{latest.bmi.toFixed(1)}</p>
+                      <p className="text-xs font-bold text-red-500 mt-1">{bmiInfo.label}</p>
                     </div>
                     
                     {/* Categoría y consejo (derecha) */}
