@@ -4,6 +4,25 @@ Registro de lecciones de valor técnico, retos arquitectónicos y soluciones com
 
 ---
 
+## [2026-07-18] - Fallo del Escáner QR en PC/Laptops por Inexistencia de Cámara Trasera (facingMode: environment)
+
+### Contexto del Error
+Al intentar activar el escáner QR en ordenadores de escritorio o laptops, el lector fallaba de inmediato arrojando una excepción en consola (`TypeError` o error de dispositivo) y mostrando el mensaje rojo *"No se pudo acceder a la cámara"*.
+
+### Análisis Técnico y Lección
+El lector QR estaba configurado con `{ facingMode: "environment" }` de manera estricta para forzar el uso de la cámara trasera en dispositivos móviles (que es el caso de uso principal). 
+
+Sin embargo, los ordenadores de escritorio y portátiles comunes no poseen una cámara trasera (environment), sino únicamente una cámara frontal o webcam (`user`). Cuando se solicita un `facingMode` restrictivo que no existe en el sistema, la API WebRTC / `getUserMedia` falla y el SDK de `html5-qrcode` arroja un error que detiene el flujo de la cámara.
+
+**Lección general:** En interfaces web que requieran captura multimedia (video/audio), no se debe asumir que el dispositivo final contará con múltiples cámaras. Siempre se debe diseñar una cadena de promesas tolerant a fallos (fallback) que intente con la opción óptima (`environment`), y en caso de error, disminuya la restricción a la cámara predeterminada o frontal (`user`).
+
+### Solución Aplicada
+1. Se modificó el método `startScanner` en `qr-scanner.tsx` para envolver la llamada inicial en un bloque `try-catch`.
+2. Si falla el inicio con `{ facingMode: "environment" }`, el bloque `catch` reintenta automáticamente la inicialización usando `{ facingMode: "user" }`.
+3. Se agregaron validaciones para detectar de manera amigable si el navegador se encuentra en un contexto HTTP inseguro (donde la API de cámara está deshabilitada por diseño del navegador) e instruir adecuadamente al usuario.
+
+---
+
 ## [2026-07-18] - Caída en Producción (Crash de Next.js) por Lectura de Cookies dentro de unstable_cache
 
 ### Contexto del Error
