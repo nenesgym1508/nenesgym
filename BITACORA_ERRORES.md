@@ -4,6 +4,25 @@ Registro de lecciones de valor técnico, retos arquitectónicos y soluciones com
 
 ---
 
+## [2026-07-18] - Caída en Producción (Crash de Next.js) por Lectura de Cookies dentro de unstable_cache
+
+### Contexto del Error
+Tras subir a producción optimizaciones de rendimiento basadas en `unstable_cache`, la pantalla de configuración del administrador (`/admin/mas`) arrojaba un error crítico en tiempo de ejecución ("Algo salió mal") y no lograba renderizar, bloqueando por completo la interfaz de administración.
+
+### Análisis Técnico y Lección
+Para encapsular el caché en consultas a tablas con políticas de RLS, usamos `createClient()` (cliente de servidor de Supabase) dentro de las funciones callbacks de `unstable_cache`. 
+
+Sin embargo, `createClient()` lee dinámicamente las cookies y cabeceras de la petición usando hooks internos de Next.js (`next/headers`). Next.js **prohíbe estrictamente** cualquier dependencia de cabeceras o cookies dinámicas dentro de funciones de caché de servidor (`unstable_cache`), ya que el motor de renderizado asume que la función de caché es estática/desacoplada del usuario individual en la compilación inicial. Al ejecutarse en producción, esto dispara un error crítico en tiempo de ejecución (`DYNAMIC_SERVER_USAGE` o excepciones similares).
+
+**Lección general:** Todas las llamadas a bases de datos dentro de `unstable_cache` deben realizarse con clientes completamente desacoplados de cookies o cabeceras del usuario (como `createAdminClient()`). La seguridad y el aislamiento de datos (multi-tenant) se deben garantizar inyectando explícitamente variables/filtros estáticos (como `GYM_ID` o `client_id`) en las condiciones `.eq()` de SQL, en lugar de confiar en políticas de RLS implícitas del cliente HTTP.
+
+### Solución Aplicada
+1. Se reemplazó el cliente de cookies `createClient()` por el cliente de servicio administrativo `createAdminClient()` en todas las funciones envueltas en `unstable_cache` (`getGymSettings`, `getTrainingRoutines`, `getAdminRoutines`, `getClientsWithoutRoutine`, `getDailyClasses`, `getWeekMuscleBalance`, `getAvailablePlans`, `getPendingPayments`, `getAllPayments`).
+2. Se mantuvieron las cláusulas estrictas de validación de inquilino (`.eq("gym_id", GYM_ID)`) para asegurar que un gimnasio no tenga acceso a los datos de otro en el backend.
+3. Se verificó localmente la compilación de producción ejecutando `next build`, resultando en un proceso exitoso y estable.
+
+---
+
 ## [2026-07-17] - Consultas anónimas bloqueadas silenciosamente por RLS en Supabase (Planes)
 
 ### Contexto del Error

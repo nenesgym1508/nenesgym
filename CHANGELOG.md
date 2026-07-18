@@ -2,6 +2,22 @@
 
 Todos los cambios notables en este proyecto serán documentados en este archivo.
 
+## [1.7.0] - 2026-07-18
+
+### Solución de Errores e Infraestructura
+- **Hotfix de Producción para Caché (`unstable_cache` vs `createClient`)**: Se solucionó la caída en producción de la pestaña "Más" y otras vistas del administrador. Next.js restringe estrictamente el uso de cookies y cabeceras dinámicas dentro del callback de `unstable_cache`. Se migraron todas las consultas cacheadas (`getGymSettings`, `getTrainingRoutines`, `getAdminRoutines`, `getClientsWithoutRoutine`, `getDailyClasses`, `getWeekMuscleBalance`, `getAvailablePlans`) para que utilicen `createAdminClient()`. Esto elimina la lectura implícita de cookies/headers, preserva el caché y mantiene los filtros del gimnasio (`gym_id`) 100% seguros y aislados.
+
+### Características y Mejoras
+- **Rediseño Premium de Medios de Pago**: Tarjetas con gradientes temáticos oscuros y bordes brillantes de color de marca (Nequi y Daviplata). Adicionalmente, ahora se muestra de forma prominente el **Titular de la cuenta** en cada tarjeta, simplificando la verificación de transferencias.
+- **Navegación por Pestañas (Tabs) en Pagos**: Se dividió la pantalla de Pagos en dos pestañas navegables independientes y persistentes en la URL (`?tab=por-aprobar` y `?tab=historial`):
+  - **Por aprobar**: Muestra los medios de pago configurados y la lista de pagos pendientes.
+  - **Historial de pagos**: Muestra el histórico completo de transacciones formateadas en una grilla responsiva de dos columnas en computadoras.
+- **Caché Inteligente e Invalidación Reactiva en Historial**: Se envolvieron las consultas de historial (`getAllPayments`) y pendientes (`getPendingPayments`) en `unstable_cache` bajo el tag `"admin-payments"`. El caché se revalida de manera automática y reactiva en tiempo real en los siguientes escenarios:
+  - Cuando el cliente sube un nuevo comprobante de pago.
+  - Cuando el administrador aprueba un pago.
+  - Cuando el administrador rechaza un pago.
+  - Cuando el administrador registra un pago manual rápido.
+
 ## [1.6.0] - 2026-07-17
 
 ### Solución de Errores e Infraestructura

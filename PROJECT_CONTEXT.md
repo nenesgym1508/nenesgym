@@ -58,8 +58,10 @@ graph TD
     E -->|Puebla bloques| C
 ```
 
-### Rendimiento, Caché y Mejoras de Usabilidad (Sesión 10, 2026-07-17)
-- **Sistemas de Caché en Servidor**: Se introdujo caching de alto rendimiento a través de `unstable_cache` para la sección de entrenamientos (rutinas de biblioteca, asignaciones, agenda de clases y balance muscular) y la configuración global del gimnasio (`getGymSettings`). La invalidación se realiza selectivamente en tiempo real en los server actions (`revalidateTag`), reduciendo drásticamente las consultas a Supabase.
+### Rendimiento, Caché y Mejoras de Usabilidad (Sesión 10 y 11, 2026-07-17 y 2026-07-18)
+- **Sistemas de Caché en Servidor y Hotfix de Producción**: Se introdujo caching de alto rendimiento a través de `unstable_cache` para la sección de entrenamientos, la configuración global del gimnasio y el listado/pendientes de pagos (`admin-payments`). Se resolvió un crash crítico de Next.js en producción reemplazando `createClient()` (cliente de cookies) por `createAdminClient()` (cliente de service role) en todos los callbacks de caché, aislando inquilinos (`gym_id`) de manera estática y segura.
+- **Rediseño y Pestañas en Pagos de Administrador**: Se reestructuró la pantalla `/admin/pagos` usando pestañas navegables persistentes en la URL (`?tab=por-aprobar` y `?tab=historial`). El historial de pagos se optimizó en una grilla responsiva de dos columnas en computadoras. Adicionalmente, las tarjetas de medios de pago (Nequi y Daviplata) se rediseñaron con gradientes temáticos premium de marca e incorporan el titular de la cuenta correspondiente.
 - **Formulario de Planes Autocompletado**: Integración de plantillas rápidas de autocompletado (`3x/4x/5x/6x sem`) en el formulario de nuevos planes para autocompletar la vigencia (30 días), asistencias totales y formato del nombre del plan automáticamente en un clic.
 - **Eliminación Segura de Planes**: Botón de borrado directo de planes con confirmación emergente, controlado en base de datos mediante la interceptación del código de error Postgres `23503` (Foreign Key Constraint) para sugerir la desactivación en lugar de la eliminación si el plan ya está en uso por miembros.
 - **Compatibilidad Binaria en Subidas**: Optimización de subidas a Supabase Storage convirtiendo los objetos `File` provenientes de Server Actions a `Buffer` en Node.js, solucionando bloqueos y archivos vacíos (0 bytes) en la subida de imágenes de ejercicios y comprobantes de membresías.
+
