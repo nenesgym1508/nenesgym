@@ -109,12 +109,26 @@ export async function updateProfilePhoneAction(phone: string) {
   return { success: true }
 }
 
-export async function updatePasswordAction(newPassword: string) {
+export async function updatePasswordAction(newPassword: string, currentPassword: string) {
   if (newPassword.length < 6)
     return { error: "La contraseña debe tener al menos 6 caracteres" }
+  if (!currentPassword)
+    return { error: "Debes ingresar tu contraseña actual" }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "No autenticado" }
+  if (!user.email) return { error: "El usuario no tiene un correo configurado" }
+
+  // Verificar la contraseña actual haciendo login temporal
+  const { error: verifyError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  })
+  if (verifyError) {
+    return { error: "La contraseña actual es incorrecta" }
+  }
+
   const { error } = await supabase.auth.updateUser({ password: newPassword })
   if (error) return { error: traducirErrorAuth(error.message) }
   return { success: true }

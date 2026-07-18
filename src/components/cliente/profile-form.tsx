@@ -46,6 +46,7 @@ export function ClientProfileForm({ currentName, currentPhone, currentEmail }: C
   const [emailLoading, setEmailLoading] = useState(false)
   const [emailMsg, setEmailMsg] = useState<Msg>(null)
 
+  const [currentPw, setCurrentPw] = useState("")
   const [pw, setPw] = useState("")
   const [pw2, setPw2] = useState("")
   const [pwLoading, setPwLoading] = useState(false)
@@ -87,6 +88,10 @@ export function ClientProfileForm({ currentName, currentPhone, currentEmail }: C
 
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault()
+    if (!currentPw) {
+      setPwMsg({ type: "err", text: "Debes ingresar tu contraseña actual" })
+      return
+    }
     if (!pw) return
     if (pw !== pw2) {
       setPwMsg({ type: "err", text: "Las contraseñas no coinciden" })
@@ -94,11 +99,12 @@ export function ClientProfileForm({ currentName, currentPhone, currentEmail }: C
     }
     setPwLoading(true)
     setPwMsg(null)
-    const result = await updatePasswordAction(pw)
+    const result = await updatePasswordAction(pw, currentPw)
     setPwLoading(false)
     if (result?.error) setPwMsg({ type: "err", text: result.error })
     else {
       setPwMsg({ type: "ok", text: "Contraseña actualizada correctamente" })
+      setCurrentPw("")
       setPw("")
       setPw2("")
     }
@@ -177,6 +183,14 @@ export function ClientProfileForm({ currentName, currentPhone, currentEmail }: C
         </div>
         <form onSubmit={handlePasswordChange} className="space-y-3">
           <Input
+            id="current_password"
+            type="password"
+            value={currentPw}
+            onChange={(e) => setCurrentPw(e.target.value)}
+            placeholder="Contraseña actual"
+            label="Contraseña actual"
+          />
+          <Input
             id="new_password"
             type="password"
             value={pw}
@@ -195,7 +209,7 @@ export function ClientProfileForm({ currentName, currentPhone, currentEmail }: C
           <Feedback msg={pwMsg} />
           <Button
             type="submit"
-            disabled={pwLoading || !pw || !pw2}
+            disabled={pwLoading || !currentPw || !pw || !pw2}
             className="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-semibold h-10"
           >
             {pwLoading ? <Loader2 className="size-4 animate-spin" /> : "Actualizar contraseña"}
