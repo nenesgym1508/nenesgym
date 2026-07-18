@@ -9,7 +9,7 @@ import { GoalCard } from "@/components/cliente/progress-goal-card"
 import { Card } from "@/components/ui/card"
 import { ROUTES } from "@/constants/routes"
 import { nowInBogota, todayInBogota } from "@/lib/dates"
-import { getBmiCategory } from "@/lib/utils"
+import { getBmiCategory, getChangeMeaning } from "@/lib/utils"
 import { BMI_CATEGORIES } from "@/constants/plans"
 import { type ProgressRecord } from "@/types/progress"
 
@@ -129,12 +129,12 @@ export default async function ClienteProgresoPage() {
 
   // Filtramos las métricas de forma que solo se muestren las que han sido registradas por el usuario
   const metricsList = [
-    { label: "Peso", data: pesoData, Icon: WeightIcon },
-    { label: "Brazo", data: brazoData, Icon: ArmIcon },
-    { label: "Cintura", data: cinturaData, Icon: WaistIcon },
-    { label: "Pierna", data: piernaData, Icon: LegIcon },
-    { label: "Pecho", data: pechoData, Icon: ChestIcon },
-    { label: "Altura", data: alturaData, Icon: HeightIcon },
+    { key: "weight", label: "Peso", data: pesoData, Icon: WeightIcon },
+    { key: "arm", label: "Brazo", data: brazoData, Icon: ArmIcon },
+    { key: "waist", label: "Cintura", data: cinturaData, Icon: WaistIcon },
+    { key: "leg", label: "Pierna", data: piernaData, Icon: LegIcon },
+    { key: "chest", label: "Pecho", data: pechoData, Icon: ChestIcon },
+    { key: "height", label: "Altura", data: alturaData, Icon: HeightIcon },
   ].filter((m) => m.data.val !== null)
 
   return (
@@ -163,8 +163,13 @@ export default async function ClienteProgresoPage() {
                 </div>
                 
                 <div className="overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] divide-y divide-white/5">
-                  {metricsList.map(({ label, data, Icon }) => {
+                  {metricsList.map(({ key, label, data, Icon }) => {
                     const { val, diff, unit } = data
+                    const meaning = getChangeMeaning(goal?.goal_type, key, diff)
+                    const deltaColor =
+                      meaning === "positive" ? "text-green-500" :
+                      meaning === "negative" ? "text-red-500" :
+                      "text-zinc-500 font-semibold"
                     return (
                       <div key={label} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-white/[0.02] transition-colors">
                         {/* Izquierda: Icono y Nombre */}
@@ -189,7 +194,7 @@ export default async function ClienteProgresoPage() {
                           {/* Delta de cambio */}
                           <div className="min-w-[68px] text-right">
                             {diff !== null && diff !== 0 ? (
-                              <span className={`text-[11px] font-bold ${diff > 0 ? "text-red-500" : "text-green-500"}`}>
+                              <span className={`text-[11px] font-bold ${deltaColor}`}>
                                 {diff > 0 ? "↑" : "↓"} {Math.abs(diff)} {unit}
                               </span>
                             ) : (

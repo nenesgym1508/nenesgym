@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import type { BmiCategory } from "@/types/progress"
+import type { BmiCategory, GoalType } from "@/types/progress"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -37,4 +37,45 @@ export function getBmiCategory(bmi: number): BmiCategory {
   if (bmi < 25) return "normal"
   if (bmi < 30) return "overweight"
   return "obese"
+}
+
+export type ChangeMeaning = "positive" | "negative" | "neutral"
+export type Direction = "increase" | "decrease" | "stable"
+
+export function getChangeMeaning(
+  goal: GoalType | null | undefined,
+  metric: string,
+  diff: number | null
+): ChangeMeaning {
+  if (diff === null || diff === 0) return "neutral"
+  const direction: Direction = diff > 0 ? "increase" : "decrease"
+  const goalType = goal || "general_health"
+
+  // 1. Objetivo: ganar masa
+  if (goalType === "gain_muscle") {
+    if (["arm", "chest", "leg"].includes(metric)) {
+      return direction === "increase" ? "positive" : "negative"
+    }
+    return "neutral"
+  }
+
+  // 2. Objetivo: bajar grasa
+  if (goalType === "lose_fat") {
+    if (["weight", "waist"].includes(metric)) {
+      return direction === "decrease" ? "positive" : "negative"
+    }
+    return "neutral"
+  }
+
+  // 3. Objetivo: mantener
+  if (goalType === "maintain") {
+    const absDiff = Math.abs(diff)
+    if (metric === "weight") {
+      return absDiff > 2.0 ? "negative" : "neutral"
+    }
+    return absDiff > 1.5 ? "negative" : "neutral"
+  }
+
+  // 4. Otros objetivos
+  return "neutral"
 }
