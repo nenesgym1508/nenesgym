@@ -157,7 +157,7 @@ export default async function ClienteProgresoPage() {
             {/* ── RESUMEN ACTUAL (Lista vertical elegante adaptativa con Flexbox robusto) ── */}
             {metricsList.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between border-l-2 border-red-600 pl-2">
+                <div className="flex items-center justify-between border-l-2 border-red-600 pl-3.5">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Resumen actual</h3>
                   <span className="text-[10px] text-zinc-500 italic">vs. medición anterior</span>
                 </div>
@@ -212,7 +212,7 @@ export default async function ClienteProgresoPage() {
             {/* ── ÍNDICE DE MASA CORPORAL (IMC Slider Visual estilo mockup) ── */}
             {latest?.bmi != null && bmiInfo && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 border-l-2 border-red-600 pl-2">
+                <div className="flex items-center gap-2 border-l-2 border-red-600 pl-3.5">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Índice de masa corporal</h3>
                 </div>
                 
@@ -274,7 +274,7 @@ export default async function ClienteProgresoPage() {
 
             {/* ── ACTIVIDAD (Barra horizontal estilo mockup) ── */}
             <div className="space-y-3">
-              <div className="flex items-center gap-2 border-l-2 border-red-600 pl-2">
+              <div className="flex items-center gap-2 border-l-2 border-red-600 pl-3.5">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Actividad</h3>
               </div>
               
@@ -282,14 +282,21 @@ export default async function ClienteProgresoPage() {
                 <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5">
                   <Flame className="size-5 text-red-500" />
                 </div>
-                <div className="flex-1 grid grid-cols-2 gap-4 text-xs md:text-sm">
-                  <div>
-                    <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wide">Este mes</p>
-                    <p className="font-bold text-white mt-0.5">{monthlyCount} {monthlyCount === 1 ? "día entrenado" : "días entrenados"}</p>
+                <div className="flex-1 flex items-center justify-around gap-2 text-xs md:text-sm min-w-0">
+                  <div className="min-w-0">
+                    <p className="text-[9px] sm:text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Este mes</p>
+                    <p className="font-bold text-white mt-0.5 text-xs sm:text-sm">
+                      {monthlyCount} {monthlyCount === 1 ? "día entrenado" : "días entrenados"}
+                    </p>
                   </div>
-                  <div className="border-l border-white/10 pl-4">
-                    <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wide">Racha</p>
-                    <p className="font-bold text-white mt-0.5">{streak} {streak === 1 ? "día" : "días"}</p>
+                  
+                  <div className="h-6 w-px bg-white/10 shrink-0" />
+                  
+                  <div className="min-w-0">
+                    <p className="text-[9px] sm:text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Racha</p>
+                    <p className="font-bold text-white mt-0.5 text-xs sm:text-sm">
+                      {streak} {streak === 1 ? "día" : "días"}
+                    </p>
                   </div>
                 </div>
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/5 bg-zinc-950/50">

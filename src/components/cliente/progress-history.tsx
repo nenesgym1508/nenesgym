@@ -68,7 +68,7 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
       {/* ── EVOLUCIÓN ── */}
       <div className="space-y-3">
         {/* Cabecera estilo mockup */}
-        <div className="flex items-center justify-between border-l-2 border-red-600 pl-2">
+        <div className="flex items-center justify-between border-l-2 border-red-600 pl-3.5">
           <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
             Evolución
           </h3>
@@ -129,7 +129,7 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
       {/* ── HISTORIAL ── */}
       <div className="space-y-3">
         {/* Cabecera estilo mockup */}
-        <div className="flex items-center border-l-2 border-red-600 pl-2">
+        <div className="flex items-center border-l-2 border-red-600 pl-3.5">
           <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
             Historial
           </h3>
