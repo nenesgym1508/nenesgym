@@ -88,7 +88,7 @@ export function ClientCheckInButton({
         <button
           onClick={() => setConfirmOpen(true)}
           disabled={loading}
-          className="w-full text-left block -mt-[2%] -mb-[4%] animate-btn-heartbeat cursor-pointer outline-none focus:outline-none border-none bg-transparent p-0 disabled:opacity-50"
+          className="w-full text-left block -mt-[7%] -mb-[8%] animate-btn-heartbeat cursor-pointer outline-none focus:outline-none border-none bg-transparent p-0 disabled:opacity-50"
         >
           <Image
             src="/btn-registrar.webp"
