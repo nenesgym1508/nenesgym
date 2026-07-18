@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { GYM_ID } from "@/constants/plans"
@@ -60,6 +60,7 @@ export async function uploadPaymentAction(formData: FormData) {
 
   if (paymentError) return { error: "Error al registrar el pago: " + paymentError.message }
 
+  revalidateTag("admin-payments", "max")
   revalidatePath(ROUTES.CLIENTE_PAGOS)
   revalidatePath(ROUTES.CLIENTE_DASHBOARD)
   return { success: true }

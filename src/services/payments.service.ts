@@ -13,42 +13,50 @@ export async function getClientPayments(clientId: string) {
   return data ?? []
 }
 
-export async function getPendingPayments() {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from("payments")
-    .select(
-      `
-      *,
-      plan:plans(name, days, duration_days),
-      client:clients(
-        id,
-        profile:profiles(full_name, email, phone)
-      )
-    `
-    )
-    .eq("status", "pending")
-    .order("created_at", { ascending: false })
-  return data ?? []
+export function getPendingPayments() {
+  return unstable_cache(
+    async () => {
+      const supabase = createAdminClient()
+      const { data } = await supabase
+        .from("payments")
+        .select(`
+          *,
+          plan:plans(name, days, duration_days),
+          client:clients(
+            id,
+            profile:profiles(full_name, email, phone)
+          )
+        `)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+      return data ?? []
+    },
+    ["admin-pending-payments"],
+    { revalidate: 3600, tags: ["admin-payments"] }
+  )()
 }
 
-export async function getAllPayments() {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from("payments")
-    .select(
-      `
-      *,
-      plan:plans(name),
-      client:clients(
-        id,
-        profile:profiles(full_name, email)
-      )
-    `
-    )
-    .order("created_at", { ascending: false })
-    .limit(100)
-  return data ?? []
+export function getAllPayments() {
+  return unstable_cache(
+    async () => {
+      const supabase = createAdminClient()
+      const { data } = await supabase
+        .from("payments")
+        .select(`
+          *,
+          plan:plans(name),
+          client:clients(
+            id,
+            profile:profiles(full_name, email)
+          )
+        `)
+        .order("created_at", { ascending: false })
+        .limit(100)
+      return data ?? []
+    },
+    ["admin-all-payments"],
+    { revalidate: 3600, tags: ["admin-payments"] }
+  )()
 }
 
 export async function getReceiptSignedUrl(path: string) {

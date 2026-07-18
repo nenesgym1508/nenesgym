@@ -177,6 +177,7 @@ export async function approvePaymentAction(
   const result = data as { ok: boolean; code?: string; message?: string }
   if (!result?.ok) return { error: result?.message ?? "Error al aprobar" }
 
+  revalidateTag("admin-payments", "max")
   revalidatePath(ROUTES.ADMIN_PAGOS)
   revalidatePath(ROUTES.ADMIN_DASHBOARD)
   return { success: true }
@@ -195,6 +196,7 @@ export async function rejectPaymentAction(paymentId: string, note: string) {
   const result = data as { ok: boolean; message?: string }
   if (!result?.ok) return { error: result?.message ?? "Error al rechazar" }
 
+  revalidateTag("admin-payments", "max")
   revalidatePath(ROUTES.ADMIN_PAGOS)
   return { success: true }
 }
