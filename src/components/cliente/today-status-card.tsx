@@ -140,21 +140,23 @@ export function TodayStatusCard({
         </Link>
       ) : (
         /* Mensaje de plan inactivo con botón para dirigir a pagos */
-        <div className="flex flex-col items-center justify-center p-6 text-center space-y-4">
-          <div className="flex size-12 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10 animate-pulse">
-            <AlertTriangle className="size-6 text-red-500" />
-          </div>
-          <div className="space-y-1">
-            <p className="font-bebas text-lg tracking-wide uppercase text-white">No tienes un plan activo</p>
-            <p className="text-xs text-zinc-500 max-w-[240px] mx-auto">
-              Para poder registrar tus ingresos al gimnasio necesitas activar o renovar una membresía.
-            </p>
+        <div className="flex items-center justify-between gap-4 p-4 text-left">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10">
+              <AlertTriangle className="size-5 text-red-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-bebas text-base tracking-wide uppercase text-white">No tienes un plan activo</p>
+              <p className="text-xs text-zinc-500 leading-tight">
+                Activa o renueva tu membresía para poder registrar tus ingresos.
+              </p>
+            </div>
           </div>
           <Link
             href={ROUTES.CLIENTE_PAGOS}
-            className="inline-flex h-10 items-center justify-center rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white px-5 transition-colors shadow-lg shadow-red-600/10 cursor-pointer"
+            className="shrink-0 inline-flex h-9 items-center justify-center rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white px-4 transition-colors shadow-lg shadow-red-600/10 cursor-pointer"
           >
-            Ver planes de pago
+            Ver planes
           </Link>
         </div>
       )}

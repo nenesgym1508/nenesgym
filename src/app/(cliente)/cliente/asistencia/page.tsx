@@ -55,21 +55,23 @@ export default async function ClienteAsistenciaPage() {
       <PageHeader title="Entrada" />
       <div className="p-4 md:px-10 md:py-8 space-y-4">
         {!hasActivePlan ? (
-          <Card className="flex flex-col items-center justify-center p-8 text-center border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] space-y-4">
-            <div className="flex size-14 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10 animate-pulse">
-              <AlertTriangle className="size-6 text-red-500" />
-            </div>
-            <div className="space-y-1.5">
-              <h3 className="font-bebas text-2xl tracking-wide uppercase text-white">No tienes un plan activo</h3>
-              <p className="text-sm text-zinc-400 max-w-[280px] mx-auto">
-                Para registrar tus ingresos al gimnasio necesitas activar o renovar una membresía.
-              </p>
+          <Card className="flex items-center justify-between gap-4 p-4 border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)]">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10">
+                <AlertTriangle className="size-5 text-red-500" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-bebas text-base tracking-wide uppercase text-white">No tienes un plan activo</h3>
+                <p className="text-xs text-zinc-500 leading-tight">
+                  Activa o renueva tu membresía para poder registrar tus ingresos.
+                </p>
+              </div>
             </div>
             <Link
               href={ROUTES.CLIENTE_PAGOS}
-              className="inline-flex h-11 items-center justify-center rounded-xl bg-red-600 hover:bg-red-700 text-sm font-bold text-white px-6 transition-colors shadow-lg shadow-red-600/10 cursor-pointer"
+              className="shrink-0 inline-flex h-9 items-center justify-center rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white px-4 transition-colors shadow-lg shadow-red-600/10 cursor-pointer"
             >
-              Ver planes de pago
+              Ver planes
             </Link>
           </Card>
         ) : (
