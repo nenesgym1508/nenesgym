@@ -2,6 +2,19 @@
 
 Todos los cambios notables en este proyecto serán documentados en este archivo.
 
+## [1.6.0] - 2026-07-17
+
+### Solución de Errores e Infraestructura
+- **Corrección de lectura de Planes (Fallo de RLS)**: Se cambió el cliente de base de datos de `getAdminPlans` de anónimo (`getCacheSafeClient`) a autenticado (`createClient` desde el servidor). El cliente anónimo no enviaba las cookies del administrador, lo que provocaba que las políticas RLS de Supabase bloquearan la consulta y devolvieran silenciosamente una lista vacía `[]`, mostrando "Aún no hay planes creados".
+- **Corrección de subida de imágenes (File a Buffer)**: Se solucionó el fallo de carga de imágenes en la biblioteca de ejercicios. Los objetos `File` web que viajan en Server Actions a veces pierden serialización binaria al subirse directamente con el SDK de Supabase en Node.js. Se lee ahora el archivo como `ArrayBuffer` y se convierte a `Buffer` antes de la subida a Storage. Se aplicó de forma preventiva en la subida de comprobantes de pago también.
+
+### Características y Mejoras
+- **Plantillas rápidas de autocompletado en Planes**: Se agregaron botones de plantilla rápidos (`3x sem`, `4x sem`, `5x sem`, `6x sem`) en la esquina superior del formulario de nuevos planes para autocompletar automáticamente el nombre (formato elegante), días incluidos y vencimiento (30 días).
+- **Eliminación definitiva de Planes**: Se implementó el botón "Eliminar" al lado de activar/desactivar, con confirmación rápida integrada en UI. Cuenta con validación contra la clave foránea en Supabase para evitar eliminar planes con pagos o membresías activas asociadas, sugiriendo desactivarlos en su lugar.
+- **Caché Inteligente en Entrenamientos y Configuración**:
+  - Toda la sección de Entrenamiento (Rutinas de biblioteca, Asignaciones de clientes, Agenda de clases y Balance muscular) ahora usa caching en servidor con `unstable_cache`. Se revalida de manera automática e instantánea solo cuando el administrador agrega, edita, elimina o duplica registros de entrenamiento o clases.
+  - La configuración general del gimnasio (`getGymSettings`) ahora está cacheada bajo el tag `"gym"` y se revalida únicamente al editar los datos en el menú "Más", reduciendo consultas de base de datos a cero en navegaciones comunes.
+
 ## [1.5.0] - 2026-07-17
 
 ### Rendimiento — Bloque 1 (navegación inmediata)

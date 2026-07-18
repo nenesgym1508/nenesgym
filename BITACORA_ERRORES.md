@@ -4,6 +4,41 @@ Registro de lecciones de valor técnico, retos arquitectónicos y soluciones com
 
 ---
 
+## [2026-07-17] - Consultas anónimas bloqueadas silenciosamente por RLS en Supabase (Planes)
+
+### Contexto del Error
+Al intentar listar los planes creados por el gimnasio en el panel del administrador, la pantalla mostraba de forma persistente "Aún no hay planes creados" a pesar de que los planes sí se estaban insertando correctamente en la base de datos de Supabase.
+
+### Análisis Técnico y Lección
+Para evitar bugs de cacheado al renderizar la página, el servicio `getAdminPlans()` hacía la petición usando un cliente de Supabase seguro para caché (`getCacheSafeClient`). Este cliente se crea sin cookies del navegador, comportándose como un usuario anónimo (unauthenticated). 
+
+Sin embargo, las políticas de Row-Level Security (RLS) de la tabla `plans` restringen las lecturas únicamente a usuarios autenticados del gimnasio correspondiente. Supabase, al procesar una petición que viola políticas de lectura (SELECT), no arroja un error 400 o una excepción, sino que por diseño del motor Postgres **devuelve un conjunto de datos vacío `[]` de forma silenciosa**. 
+
+**Lección general:** En peticiones donde el caché esté inhabilitado o no sea estático, no se debe usar un cliente anónimo si las tablas están protegidas por RLS. Se debe usar el cliente de servidor autenticado (`createClient` de `@/lib/supabase/server`) que lee y propaga las cookies de sesión del usuario logueado en la cabecera de la petición a Supabase.
+
+### Solución Aplicada
+1. Se reemplazó el cliente anónimo en `getAdminPlans` y `getGymSettings` por el cliente del servidor `createClient()`.
+2. Se desactivó el uso de `unstable_cache` en estos puntos para asegurar que la revalidación fuera directa y evitar que las peticiones se quedaran congeladas con datos antiguos durante el desarrollo en caliente.
+
+---
+
+## [2026-07-17] - Fallo en la serialización de objetos File en Next.js Server Actions al subir archivos a Storage
+
+### Contexto del Error
+Al intentar crear un nuevo ejercicio en la biblioteca y subir una imagen (de hasta 4MB), la carga fallaba y no se obtenía URL pública ni respuesta exitosa de Supabase Storage.
+
+### Análisis Técnico y Lección
+Next.js Server Actions procesa los datos del formulario binarios enviando un objeto `File` nativo de la API Web. Sin embargo, en el entorno de backend de Node.js donde corren estas acciones del servidor, pasar este objeto `File` directamente a `supabase.storage.from(...).upload(path, file)` puede causar problemas de serialización en el multipart body builder interno de Supabase JS SDK, provocando cargas incompletas (0 bytes) o fallos de conexión por formato de datos no compatible.
+
+**Lección general:** En el backend de Node.js (incluyendo API Routes y Server Actions), la forma universalmente segura y compatible de subir archivos a buckets de almacenamiento es leerlos y transmitirlos como flujos de datos (`Buffer` o `ArrayBuffer`), no como el objeto `File` del frontend de navegador.
+
+### Solución Aplicada
+1. Se modificó `uploadExerciseImageAction` en `exercises.actions.ts` para leer el archivo binario: `const buffer = Buffer.from(await file.arrayBuffer())`.
+2. Se pasó el `buffer` resultante a la función de subida en lugar del objeto `file` crudo.
+3. Se aplicó preventivamente el mismo fix en la acción de subida de comprobantes de membresía del cliente (`payments.actions.ts`) para evitar fallos futuros en dispositivos móviles.
+
+---
+
 ## [2026-07-13] - Diagnóstico de Rendimiento Basado en Código vs. Estado Real de la Base de Datos
 
 ### Contexto
