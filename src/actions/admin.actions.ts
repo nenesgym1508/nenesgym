@@ -40,17 +40,20 @@ export async function updateGymSettingsAction(input: {
     return { error: "Los días de gracia deben estar entre 0 y 60" }
 
   const adminClient = createAdminClient()
+  const updatePayload: Record<string, any> = {
+    name: input.name.trim(),
+    grace_days: input.graceDays,
+  }
+
+  if (input.nequiNumber !== undefined) updatePayload.nequi_number = input.nequiNumber.trim() || null
+  if (input.nequiTitular !== undefined) updatePayload.nequi_titular = input.nequiTitular.trim() || null
+  if (input.daviplataNumber !== undefined) updatePayload.daviplata_number = input.daviplataNumber.trim() || null
+  if (input.davaplataTitular !== undefined) updatePayload.daviplata_titular = input.davaplataTitular.trim() || null
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (adminClient as any)
     .from("gyms")
-    .update({
-      name: input.name.trim(),
-      grace_days: input.graceDays,
-      nequi_number: input.nequiNumber?.trim() || null,
-      nequi_titular: input.nequiTitular?.trim() || null,
-      daviplata_number: input.daviplataNumber?.trim() || null,
-      daviplata_titular: input.davaplataTitular?.trim() || null,
-    })
+    .update(updatePayload)
     .eq("id", ctx.gymId)
   if (error) return { error: error.message }
 

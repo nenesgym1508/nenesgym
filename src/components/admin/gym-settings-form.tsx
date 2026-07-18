@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, CheckCircle, Building2, Smartphone } from "lucide-react"
+import { Loader2, CheckCircle, Building2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -10,26 +10,14 @@ import { updateGymSettingsAction } from "@/actions/admin.actions"
 interface GymSettingsFormProps {
   initialName: string
   initialGraceDays: number
-  initialNequiNumber?: string | null
-  initialNequiTitular?: string | null
-  initialDaviplataNumber?: string | null
-  initialDavaplataTitular?: string | null
 }
 
 export function GymSettingsForm({
   initialName,
   initialGraceDays,
-  initialNequiNumber,
-  initialNequiTitular,
-  initialDaviplataNumber,
-  initialDavaplataTitular,
 }: GymSettingsFormProps) {
   const [name, setName] = useState(initialName)
   const [graceDays, setGraceDays] = useState(String(initialGraceDays))
-  const [nequiNumber, setNequiNumber] = useState(initialNequiNumber ?? "")
-  const [nequiTitular, setNequiTitular] = useState(initialNequiTitular ?? "")
-  const [daviplataNumber, setDaviplataNumber] = useState(initialDaviplataNumber ?? "")
-  const [davaplataTitular, setDavaplataTitular] = useState(initialDavaplataTitular ?? "")
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null)
 
@@ -40,10 +28,6 @@ export function GymSettingsForm({
     const result = await updateGymSettingsAction({
       name: name.trim(),
       graceDays: Number(graceDays),
-      nequiNumber,
-      nequiTitular,
-      daviplataNumber,
-      davaplataTitular,
     })
     setLoading(false)
     if (result?.error) setMsg({ type: "err", text: result.error })
@@ -79,47 +63,6 @@ export function GymSettingsForm({
           <p className="text-xs text-zinc-600">
             Días extra que un cliente puede seguir entrando después de que vence su membresía.
           </p>
-
-          {/* Cuentas de pago */}
-          <div className="pt-2 border-t border-white/5">
-            <div className="flex items-center gap-2 mb-3">
-              <Smartphone className="size-4 text-zinc-400" />
-              <h4 className="text-sm font-semibold text-zinc-200">Cuentas de pago</h4>
-            </div>
-            <p className="text-xs text-zinc-600 mb-3">
-              La IA verifica que los comprobantes sean enviados a estas cuentas.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                id="nequi_number"
-                value={nequiNumber}
-                onChange={(e) => setNequiNumber(e.target.value)}
-                label="Número Nequi"
-                placeholder="3001234567"
-              />
-              <Input
-                id="nequi_titular"
-                value={nequiTitular}
-                onChange={(e) => setNequiTitular(e.target.value)}
-                label="Titular Nequi"
-                placeholder="Nombre completo"
-              />
-              <Input
-                id="daviplata_number"
-                value={daviplataNumber}
-                onChange={(e) => setDaviplataNumber(e.target.value)}
-                label="Número Daviplata"
-                placeholder="3001234567"
-              />
-              <Input
-                id="daviplata_titular"
-                value={davaplataTitular}
-                onChange={(e) => setDavaplataTitular(e.target.value)}
-                label="Titular Daviplata"
-                placeholder="Nombre completo"
-              />
-            </div>
-          </div>
 
           {msg && (
             <p

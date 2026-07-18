@@ -69,10 +69,6 @@ export default async function AdminMasPage({
             <GymSettingsForm
               initialName={gym?.name ?? "NENE'S GYM"}
               initialGraceDays={gym?.grace_days ?? GRACE_DAYS_DEFAULT}
-              initialNequiNumber={gym?.nequi_number}
-              initialNequiTitular={gym?.nequi_titular}
-              initialDaviplataNumber={gym?.daviplata_number}
-              initialDavaplataTitular={gym?.daviplata_titular}
             />
 
             <PlansManager plans={plans} />
