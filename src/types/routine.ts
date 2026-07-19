@@ -5,13 +5,11 @@ import { CLASS_OBJECTIVE_LABELS, CLASS_LEVEL_LABELS, type ClassObjective, type C
 // (chips en "Nueva rutina" y en "Editar datos" cuando la rutina es propia).
 // "otro" es un valor controlado más — el texto real que escribe el cliente
 // se guarda aparte en la columna `custom_goal` (ver ClientRoutine), no aquí.
-export type ClientRoutineGoal = "ganar_musculo" | "bajar_peso" | "mejorar_resistencia" | "tonificar" | "mantenerse_activo" | "otro"
+export type ClientRoutineGoal = "ganar_musculo" | "bajar_peso" | "mantenerse_activo" | "otro"
 export const CLIENT_ROUTINE_GOAL_LABELS: Record<ClientRoutineGoal, string> = {
-  ganar_musculo: "Ganar músculo",
+  ganar_musculo: "Ganar masa",
   bajar_peso: "Bajar grasa",
-  mejorar_resistencia: "Mejorar resistencia",
-  tonificar: "Tonificar",
-  mantenerse_activo: "Mantenerme activo",
+  mantenerse_activo: "Mantenerme",
   otro: "Otro",
 }
 

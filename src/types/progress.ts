@@ -33,9 +33,6 @@ export type GoalType =
   | 'gain_muscle'
   | 'lose_fat'
   | 'maintain'
-  | 'improve_strength'
-  | 'improve_consistency'
-  | 'general_health'
 
 export interface ProgressGoal {
   id: string
@@ -55,10 +52,7 @@ export interface ProgressGoal {
 export const GOAL_LABELS: Record<GoalType, string> = {
   gain_muscle: 'Ganar masa',
   lose_fat: 'Bajar grasa',
-  maintain: 'Mantener',
-  improve_strength: 'Mejorar fuerza',
-  improve_consistency: 'Mejorar constancia',
-  general_health: 'Bienestar general',
+  maintain: 'Mantenerme',
 }
 
 // Métricas que cada objetivo prioriza en la pantalla principal de progreso.
@@ -78,9 +72,6 @@ export const GOAL_HIGHLIGHT_METRICS: Record<GoalType, ProgressMetricKey[]> = {
   gain_muscle: ['weight', 'chest', 'arm', 'leg', 'consistency'],
   lose_fat: ['weight', 'waist', 'consistency'],
   maintain: ['weight', 'waist', 'consistency'],
-  general_health: ['weight', 'waist', 'consistency'],
-  improve_consistency: ['consistency', 'streak', 'last7', 'measurements'],
-  improve_strength: ['weight', 'consistency'],
 }
 
 // Objetivo por defecto cuando el cliente no ha definido uno.

@@ -10,9 +10,6 @@ const GOAL_OPTIONS: GoalType[] = [
   "gain_muscle",
   "lose_fat",
   "maintain",
-  "improve_strength",
-  "improve_consistency",
-  "general_health",
 ]
 
 interface GoalCardProps {
