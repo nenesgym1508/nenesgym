@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2, CheckCircle, Plus, X, Pencil, ChevronDown, ChevronUp } from "lucide-react"
@@ -28,14 +28,8 @@ export function ProgressForm({ todayRecord, latestHeightCm }: ProgressFormProps)
 
   const isEdit = !!todayRecord
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<ProgressInput>({
-    resolver: zodResolver(progressRecordSchema),
-    defaultValues: todayRecord
+  const buildDefaultValues = (): ProgressInput | undefined =>
+    todayRecord
       ? {
           weight_kg: todayRecord.weight_kg ?? undefined,
           height_cm: todayRecord.height_cm ?? undefined,
@@ -47,8 +41,24 @@ export function ProgressForm({ todayRecord, latestHeightCm }: ProgressFormProps)
         }
       : latestHeightCm != null
         ? { height_cm: latestHeightCm }
-        : undefined,
+        : undefined
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<ProgressInput>({
+    resolver: zodResolver(progressRecordSchema),
+    defaultValues: buildDefaultValues(),
   })
+
+  // Resincroniza el formulario con los datos más recientes cada vez que se abre el modal,
+  // porque react-hook-form no re-lee defaultValues cuando cambian las props tras un guardado.
+  useEffect(() => {
+    if (open) reset(buildDefaultValues())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, todayRecord])
 
   const onSubmit = async (data: ProgressInput) => {
     setServerError(null)

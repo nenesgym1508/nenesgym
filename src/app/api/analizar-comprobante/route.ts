@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createHash } from "crypto"
 import { GoogleGenerativeAI } from "@google/generative-ai"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { GYM_ID } from "@/constants/plans"
@@ -604,6 +604,7 @@ export async function POST(req: NextRequest) {
           .update({ auto_aprobado: true } as never)
           .eq("id", (payment as { id: string }).id)
 
+        revalidateTag("admin-payments", "max")
         revalidatePath(ROUTES.CLIENTE_PAGOS)
         revalidatePath(ROUTES.CLIENTE_DASHBOARD)
 
@@ -611,6 +612,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    revalidateTag("admin-payments", "max")
     revalidatePath(ROUTES.CLIENTE_PAGOS)
 
     return NextResponse.json({ aprobado: false })

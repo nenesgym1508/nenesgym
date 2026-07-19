@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react"
 import {
   Upload, CheckCircle, Loader2, ImageIcon, AlertCircle,
-  AlertTriangle, ChevronRight, ShieldCheck, Copy, Check, X, Calendar, Star,
+  AlertTriangle, ChevronRight, ShieldCheck, Copy, Check, X, Calendar, Star, Banknote,
 } from "lucide-react"
 import { uploadPaymentAction } from "@/actions/payments.actions"
 import { formatCOP, formatPesos, computePlanDiscount } from "@/lib/utils"
@@ -747,15 +747,21 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
       {paso === "pendiente" && (
         <div className="text-center py-6 space-y-4">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-yellow-900/20">
-            <Upload className="size-7 text-yellow-400" />
+            {method === "cash"
+              ? <Banknote className="size-7 text-yellow-400" />
+              : <Upload className="size-7 text-yellow-400" />}
           </div>
           <div>
-            <h3 className="text-base font-bold text-yellow-400 mb-1">Comprobante enviado</h3>
+            <h3 className="text-base font-bold text-yellow-400 mb-1">
+              {method === "cash" ? "Pago en efectivo registrado" : "Comprobante enviado"}
+            </h3>
             <p className="text-sm text-zinc-400">
               Monto: <strong className="text-zinc-200">{formatCOP(amountCents)}</strong>
             </p>
             <p className="text-xs text-zinc-500 mt-1">
-              El administrador revisará tu comprobante y activará tu membresía pronto.
+              {method === "cash"
+                ? "El administrador confirmará tu pago en efectivo y activará tu membresía pronto."
+                : "El administrador revisará tu comprobante y activará tu membresía pronto."}
             </p>
           </div>
           <div className="flex gap-2 justify-center">

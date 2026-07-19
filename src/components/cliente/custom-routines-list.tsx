@@ -50,17 +50,8 @@ function CustomRoutineCard({ routine: r }: CustomRoutineCardProps) {
   return (
     <>
       <div className="relative rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] overflow-hidden hover:border-red-600/40 transition-colors">
-        {/* Botón eliminar — esquina superior derecha */}
-        <button
-          onClick={(e) => { e.preventDefault(); setConfirmOpen(true) }}
-          className="absolute top-3 right-3 z-10 flex size-8 items-center justify-center rounded-xl bg-zinc-900/80 border border-white/5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
-          aria-label="Eliminar rutina"
-        >
-          <Trash2 className="size-3.5" />
-        </button>
-
         <Link href={`/cliente/rutinas/${r.id}`} className="block p-5 space-y-3.5">
-          <div className="flex items-center justify-between gap-3 pr-8">
+          <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-12 h-12 rounded-full border border-zinc-600 flex items-center justify-center bg-zinc-950 shrink-0">
                 <Dumbbell className="size-5 text-zinc-400" />
@@ -78,8 +69,11 @@ function CustomRoutineCard({ routine: r }: CustomRoutineCardProps) {
           </div>
 
           <div className="border-t border-white/5" />
+        </Link>
 
-          <div className="flex items-center gap-3">
+        {/* Fila objetivo/frecuencia + botón eliminar */}
+        <div className="flex items-center justify-between gap-3 px-5 pb-5">
+          <Link href={`/cliente/rutinas/${r.id}`} className="flex items-center gap-3 min-w-0 flex-1">
             <div className="w-11 h-11 rounded-xl border border-white/5 bg-zinc-950 flex items-center justify-center shrink-0">
               <Calendar className="size-5 text-red-500" />
             </div>
@@ -93,8 +87,15 @@ function CustomRoutineCard({ routine: r }: CustomRoutineCardProps) {
                 {r.days_per_week ? `${r.days_per_week} días/sem` : "Sin definir"}
               </p>
             </div>
-          </div>
-        </Link>
+          </Link>
+          <button
+            onClick={() => setConfirmOpen(true)}
+            className="flex size-8 items-center justify-center rounded-xl bg-zinc-900/80 border border-white/5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all shrink-0"
+            aria-label="Eliminar rutina"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Modal de confirmación */}
