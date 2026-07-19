@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { PaymentBadge } from "@/components/ui/badge"
 import { MediosDePagoForm } from "@/components/admin/medios-de-pago-form"
 import { RefreshButton } from "@/components/ui/refresh-button"
+import { AdminPaymentsRealtime } from "@/components/admin/admin-payments-realtime"
 import { formatCOP } from "@/lib/utils"
 import { formatDate } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
@@ -32,6 +33,7 @@ export default async function AdminPagosPage({
 
   return (
     <div className="md:max-w-6xl md:mx-auto">
+      <AdminPaymentsRealtime />
       {/* Header unificado estilo cliente */}
       <header className="flex items-start justify-between mb-6 px-6 pt-12 md:px-10 md:pt-10">
         <div>

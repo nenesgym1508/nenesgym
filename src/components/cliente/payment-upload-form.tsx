@@ -785,7 +785,7 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado, clientId }: Pay
           </div>
           <div>
             <h3 className="text-base font-bold text-yellow-400 mb-1">
-              {method === "cash" ? "Pago en efectivo registrado" : "Comprobante enviado"}
+              {method === "cash" ? "Pago en efectivo pendiente de confirmación" : "Comprobante enviado"}
             </h3>
             <p className="text-sm text-zinc-400">
               Monto: <strong className="text-zinc-200">{formatCOP(amountCents)}</strong>
