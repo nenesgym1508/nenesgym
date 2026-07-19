@@ -157,175 +157,175 @@ export default async function ClienteProgresoPage() {
               <ProgressForm todayRecord={todayRecord} latestHeightCm={latest?.height_cm} />
 
               {records.length > 0 && (
-          <>
-            {/* ── RESUMEN ACTUAL (Lista vertical elegante adaptativa con Flexbox robusto) ── */}
-            {metricsList.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between border-l-2 border-red-600 pl-3.5">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Resumen actual</h3>
-                  <span className="text-[10px] text-zinc-500 italic">vs. medición anterior</span>
-                </div>
-                
-                <div className="overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] divide-y divide-white/5">
-                  {metricsList.map(({ key, label, data, Icon }) => {
-                    const { val, diff, unit } = data
-                    const meaning = getChangeMeaning(goal?.goal_type, key, diff)
-                    const deltaColor =
-                      meaning === "positive" ? "text-green-500" :
-                      meaning === "negative" ? "text-red-500" :
-                      "text-zinc-500 font-semibold"
-                    return (
-                      <div key={label} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-white/[0.02] transition-colors">
-                        {/* Izquierda: Icono y Nombre */}
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5 text-red-500">
-                            <Icon className="size-5" />
+                <>
+                  {/* ── RESUMEN ACTUAL (Lista vertical elegante adaptativa con Flexbox robusto) ── */}
+                  {metricsList.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between border-l-2 border-red-600 pl-3.5">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Resumen actual</h3>
+                        <span className="text-[10px] text-zinc-500 italic">vs. medición anterior</span>
+                      </div>
+                      
+                      <div className="overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] divide-y divide-white/5">
+                        {metricsList.map(({ key, label, data, Icon }) => {
+                          const { val, diff, unit } = data
+                          const meaning = getChangeMeaning(goal?.goal_type, key, diff)
+                          const deltaColor =
+                            meaning === "positive" ? "text-green-500" :
+                            meaning === "negative" ? "text-red-500" :
+                            "text-zinc-500 font-semibold"
+                          return (
+                            <div key={label} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-white/[0.02] transition-colors">
+                              {/* Izquierda: Icono y Nombre */}
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5 text-red-500">
+                                  <Icon className="size-5" />
+                                </div>
+                                <span className="text-sm font-semibold text-zinc-200 truncate">{label}</span>
+                              </div>
+                              
+                              {/* Derecha: Valor, Delta y Chevron */}
+                              <div className="flex items-center gap-3 shrink-0">
+                                {/* Cifra */}
+                                <div className="flex items-baseline gap-0.5">
+                                  <span className="font-bebas text-2xl tracking-wide text-white">{val}</span>
+                                  <span className="text-[10px] text-zinc-500 lowercase">{unit}</span>
+                                </div>
+                                
+                                {/* Divisor vertical sutil */}
+                                <div className="h-3.5 w-px bg-white/10" />
+                                
+                                {/* Delta de cambio */}
+                                <div className="min-w-[68px] text-right">
+                                  {diff !== null && diff !== 0 ? (
+                                    <span className={`text-[11px] font-bold ${deltaColor}`}>
+                                      {diff > 0 ? "↑" : "↓"} {Math.abs(diff)} {unit}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[11px] font-bold text-zinc-500">
+                                      — sin cambio
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                {/* Chevron */}
+                                <ChevronRight className="size-4 text-zinc-600" />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── ÍNDICE DE MASA CORPORAL (IMC Slider Visual estilo mockup) ── */}
+                  {latest?.bmi != null && bmiInfo && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 border-l-2 border-red-600 pl-3.5">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Índice de masa corporal</h3>
+                      </div>
+                      
+                      <Card className="border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.65)] space-y-5">
+                        <div className="flex items-center gap-3 sm:gap-6">
+                          {/* IMC actual (grande, izquierda) */}
+                          <div className="shrink-0 pr-4 sm:pr-6 border-r border-white/5">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-0.5">IMC Actual</p>
+                            <p className="font-bebas text-4xl sm:text-5xl font-bold text-red-500 tracking-wide leading-none">{latest.bmi.toFixed(1)}</p>
                           </div>
-                          <span className="text-sm font-semibold text-zinc-200 truncate">{label}</span>
+                          
+                          {/* Categoría y consejo (derecha) */}
+                          <div className="min-w-0 flex-1 pl-1">
+                            <p className={`text-base sm:text-lg font-bold tracking-wide uppercase leading-tight ${bmiInfo.color}`}>
+                              {bmiInfo.label} ({latest.bmi.toFixed(1)})
+                            </p>
+                            <p className="mt-1 text-xs text-zinc-400">
+                              Tu progreso depende de tu constancia y fuerza.
+                            </p>
+                          </div>
                         </div>
                         
-                        {/* Derecha: Valor, Delta y Chevron */}
-                        <div className="flex items-center gap-3 shrink-0">
-                          {/* Cifra */}
-                          <div className="flex items-baseline gap-0.5">
-                            <span className="font-bebas text-2xl tracking-wide text-white">{val}</span>
-                            <span className="text-[10px] text-zinc-500 lowercase">{unit}</span>
+                        {/* Barra de progreso deslizante */}
+                        <div className="space-y-2">
+                          <div className="relative h-2 w-full overflow-hidden rounded-full">
+                            <div
+                              className="absolute inset-0"
+                              style={{
+                                background:
+                                  "linear-gradient(to right, #3b82f6 0%, #22c55e 30%, #eab308 60%, #ef4444 100%)",
+                              }}
+                            />
+                            <div
+                              className="absolute top-1/2 h-4 w-1.5 -translate-y-1/2 rounded-full bg-white shadow-lg border border-black/20"
+                              style={{
+                                left: `${Math.min(Math.max(((latest.bmi - 15) / 25) * 100, 2), 97)}%`,
+                              }}
+                            />
                           </div>
-                          
-                          {/* Divisor vertical sutil */}
-                          <div className="h-3.5 w-px bg-white/10" />
-                          
-                          {/* Delta de cambio */}
-                          <div className="min-w-[68px] text-right">
-                            {diff !== null && diff !== 0 ? (
-                              <span className={`text-[11px] font-bold ${deltaColor}`}>
-                                {diff > 0 ? "↑" : "↓"} {Math.abs(diff)} {unit}
-                              </span>
-                            ) : (
-                              <span className="text-[11px] font-bold text-zinc-500">
-                                — sin cambio
-                              </span>
-                            )}
+                          {/* Valores numéricos de escala */}
+                          <div className="flex justify-between text-[10px] font-semibold text-zinc-600 px-1 leading-none">
+                            <span>15</span>
+                            <span className="text-blue-400">18.5</span>
+                            <span className="text-green-400">25</span>
+                            <span className="text-yellow-400">30</span>
+                            <span className="text-red-400">40</span>
                           </div>
-                          
-                          {/* Chevron */}
-                          <ChevronRight className="size-4 text-zinc-600" />
+                          {/* Categorías textuales alineadas */}
+                          <div className="flex justify-between text-[9px] font-bold text-zinc-500 uppercase tracking-wider px-1 pt-0.5 leading-none">
+                            <span>Bajo peso</span>
+                            <span>Normal</span>
+                            <span>Sobrepeso</span>
+                            <span>Obesidad</span>
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+                      </Card>
+                    </div>
+                  )}
 
-            {/* ── ÍNDICE DE MASA CORPORAL (IMC Slider Visual estilo mockup) ── */}
-            {latest?.bmi != null && bmiInfo && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 border-l-2 border-red-600 pl-3.5">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Índice de masa corporal</h3>
-                </div>
-                
-                <Card className="border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.65)] space-y-5">
-                  <div className="flex items-center gap-3 sm:gap-6">
-                    {/* IMC actual (grande, izquierda) */}
-                    <div className="shrink-0 pr-4 sm:pr-6 border-r border-white/5">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-0.5">IMC Actual</p>
-                      <p className="font-bebas text-4xl sm:text-5xl font-bold text-red-500 tracking-wide leading-none">{latest.bmi.toFixed(1)}</p>
+                  {/* ── ACTIVIDAD (Barra horizontal estilo mockup) ── */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 border-l-2 border-red-600 pl-3.5">
+                      <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Actividad</h3>
                     </div>
                     
-                    {/* Categoría y consejo (derecha) */}
-                    <div className="min-w-0 flex-1 pl-1">
-                      <p className={`text-base sm:text-lg font-bold tracking-wide uppercase leading-tight ${bmiInfo.color}`}>
-                        {bmiInfo.label} ({latest.bmi.toFixed(1)})
-                      </p>
-                      <p className="mt-1 text-xs text-zinc-400">
-                        Tu progreso depende de tu constancia y fuerza.
-                      </p>
+                    <div className="flex items-center gap-4 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-4 shadow-lg">
+                      <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5">
+                        <Flame className="size-5 text-red-500" />
+                      </div>
+                      <div className="flex-1 flex items-center justify-around gap-2 text-xs md:text-sm min-w-0">
+                        <div className="min-w-0">
+                          <p className="text-[9px] sm:text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Este mes</p>
+                          <p className="font-bold text-white mt-0.5 text-xs sm:text-sm">
+                            {monthlyCount} {monthlyCount === 1 ? "día entrenado" : "días entrenados"}
+                          </p>
+                        </div>
+                        
+                        <div className="h-6 w-px bg-white/10 shrink-0" />
+                        
+                        <div className="min-w-0">
+                          <p className="text-[9px] sm:text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Racha</p>
+                          <p className="font-bold text-white mt-0.5 text-xs sm:text-sm">
+                            {streak} {streak === 1 ? "día" : "días"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/5 bg-zinc-950/50">
+                        <Calendar className="size-4.5 text-zinc-500" />
+                      </div>
                     </div>
                   </div>
-                  
-                  {/* Barra de progreso deslizante */}
-                  <div className="space-y-2">
-                    <div className="relative h-2 w-full overflow-hidden rounded-full">
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          background:
-                            "linear-gradient(to right, #3b82f6 0%, #22c55e 30%, #eab308 60%, #ef4444 100%)",
-                        }}
-                      />
-                      <div
-                        className="absolute top-1/2 h-4 w-1.5 -translate-y-1/2 rounded-full bg-white shadow-lg border border-black/20"
-                        style={{
-                          left: `${Math.min(Math.max(((latest.bmi - 15) / 25) * 100, 2), 97)}%`,
-                        }}
-                      />
-                    </div>
-                    {/* Valores numéricos de escala */}
-                    <div className="flex justify-between text-[10px] font-semibold text-zinc-600 px-1 leading-none">
-                      <span>15</span>
-                      <span className="text-blue-400">18.5</span>
-                      <span className="text-green-400">25</span>
-                      <span className="text-yellow-400">30</span>
-                      <span className="text-red-400">40</span>
-                    </div>
-                    {/* Categorías textuales alineadas */}
-                    <div className="flex justify-between text-[9px] font-bold text-zinc-500 uppercase tracking-wider px-1 pt-0.5 leading-none">
-                      <span>Bajo peso</span>
-                      <span>Normal</span>
-                      <span>Sobrepeso</span>
-                      <span>Obesidad</span>
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            )}
 
-            {/* ── ACTIVIDAD (Barra horizontal estilo mockup) ── */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 border-l-2 border-red-600 pl-3.5">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Actividad</h3>
-              </div>
-              
-              <div className="flex items-center gap-4 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-4 shadow-lg">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5">
-                  <Flame className="size-5 text-red-500" />
-                </div>
-                <div className="flex-1 flex items-center justify-around gap-2 text-xs md:text-sm min-w-0">
-                  <div className="min-w-0">
-                    <p className="text-[9px] sm:text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Este mes</p>
-                    <p className="font-bold text-white mt-0.5 text-xs sm:text-sm">
-                      {monthlyCount} {monthlyCount === 1 ? "día entrenado" : "días entrenados"}
+                  {/* Mensajes de seguimiento (lenguaje neutral) */}
+                  {daysSinceLast !== null && daysSinceLast > 0 && (
+                    <p className="text-[11px] text-zinc-600 text-center">
+                      Tu última medición fue hace{" "}
+                      <span className="text-zinc-400 font-medium">
+                        {daysSinceLast} {daysSinceLast === 1 ? "día" : "días"}
+                      </span>
+                      . Registra hoy para ver tu avance.
                     </p>
-                  </div>
-                  
-                  <div className="h-6 w-px bg-white/10 shrink-0" />
-                  
-                  <div className="min-w-0">
-                    <p className="text-[9px] sm:text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Racha</p>
-                    <p className="font-bold text-white mt-0.5 text-xs sm:text-sm">
-                      {streak} {streak === 1 ? "día" : "días"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/5 bg-zinc-950/50">
-                  <Calendar className="size-4.5 text-zinc-500" />
-                </div>
-              </div>
-            </div>
-
-            {/* Mensajes de seguimiento (lenguaje neutral) */}
-            {daysSinceLast !== null && daysSinceLast > 0 && (
-              <p className="text-[11px] text-zinc-600 text-center">
-                Tu última medición fue hace{" "}
-                <span className="text-zinc-400 font-medium">
-                  {daysSinceLast} {daysSinceLast === 1 ? "día" : "días"}
-                </span>
-                . Registra hoy para ver tu avance.
-              </p>
-            )}
-          </>
-        )}
+                  )}
+                </>
+              )}
             </div>
           }
           historialContent={
@@ -336,3 +336,4 @@ export default async function ClienteProgresoPage() {
     </div>
   )
 }
+
