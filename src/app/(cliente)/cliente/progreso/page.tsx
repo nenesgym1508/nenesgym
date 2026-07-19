@@ -6,6 +6,7 @@ import { getMonthlyAttendance } from "@/services/attendance.service"
 import { ProgressForm } from "@/components/cliente/progress-form"
 import { ProgressHistory } from "@/components/cliente/progress-history"
 import { GoalCard } from "@/components/cliente/progress-goal-card"
+import { ProgresoTabs } from "@/components/cliente/progreso-tabs"
 import { Card } from "@/components/ui/card"
 import { ROUTES } from "@/constants/routes"
 import { nowInBogota, todayInBogota } from "@/lib/dates"
@@ -146,13 +147,16 @@ export default async function ClienteProgresoPage() {
       </div>
 
       <div className="p-4 md:px-10 md:py-8 space-y-6">
-        {/* Objetivo */}
-        <GoalCard goal={goal} />
+        <ProgresoTabs 
+          progresoContent={
+            <div className="space-y-6">
+              {/* Objetivo */}
+              <GoalCard goal={goal} />
 
-        {/* CTA (Botón registrar de ancho completo abajo del objetivo) */}
-        <ProgressForm todayRecord={todayRecord} latestHeightCm={latest?.height_cm} />
+              {/* CTA (Botón registrar de ancho completo abajo del objetivo) */}
+              <ProgressForm todayRecord={todayRecord} latestHeightCm={latest?.height_cm} />
 
-        {records.length > 0 && (
+              {records.length > 0 && (
           <>
             {/* ── RESUMEN ACTUAL (Lista vertical elegante adaptativa con Flexbox robusto) ── */}
             {metricsList.length > 0 && (
@@ -322,9 +326,12 @@ export default async function ClienteProgresoPage() {
             )}
           </>
         )}
-
-        {/* Gráfica e historial (Evolución e Historial) */}
-        <ProgressHistory records={records} />
+            </div>
+          }
+          historialContent={
+            <ProgressHistory records={records} />
+          }
+        />
       </div>
     </div>
   )
