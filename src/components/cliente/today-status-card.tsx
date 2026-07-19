@@ -154,19 +154,9 @@ export function TodayStatusCard({
           </div>
           <Link
             href={ROUTES.CLIENTE_PAGOS}
-            className="relative shrink-0 inline-flex h-9 items-center justify-center rounded-xl overflow-hidden px-4 text-xs font-bold text-white cursor-pointer shadow-[0_4px_18px_rgba(220,38,38,0.45)] transition-all duration-300 hover:shadow-[0_4px_24px_rgba(220,38,38,0.7)] hover:scale-[1.03] active:scale-[0.97]"
-            style={{
-              background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 60%, #7f1d1d 100%)",
-            }}
+            className="btn-glossy-red shrink-0 inline-flex items-center justify-center gap-2 rounded-xl h-10 px-5 text-sm font-bold text-white cursor-pointer"
           >
-            {/* Reflejo interno tipo gloss */}
-            <span
-              className="pointer-events-none absolute inset-x-0 top-0 h-[48%] rounded-t-xl"
-              style={{
-                background: "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 100%)",
-              }}
-            />
-            <span className="relative z-10 drop-shadow-sm">Ver planes</span>
+            Ver planes
           </Link>
         </div>
       )}
