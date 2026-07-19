@@ -5,6 +5,7 @@ const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(), // Opcional en el cliente por seguridad
   NEXT_PUBLIC_APP_URL: z.string().url(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(), // Opcional: sin esto, Sentry no envía nada
 })
 
 const cleanEnvVar = (val: string | undefined): string | undefined => {
