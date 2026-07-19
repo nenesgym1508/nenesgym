@@ -37,6 +37,7 @@ export default async function ClientePagosPage() {
         <PaymentUploadForm
           plans={plans}
           comprobanteBloqueado={bloqueado}
+          clientId={client?.id ?? null}
         />
         <PaymentHistory payments={payments} />
       </div>

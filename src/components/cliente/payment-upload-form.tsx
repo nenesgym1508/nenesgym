@@ -6,6 +6,7 @@ import {
   AlertTriangle, ChevronRight, ShieldCheck, Copy, Check, X, Calendar, Star, Banknote,
 } from "lucide-react"
 import { uploadPaymentAction } from "@/actions/payments.actions"
+import { createClient } from "@/lib/supabase/client"
 import { formatCOP, formatPesos, computePlanDiscount } from "@/lib/utils"
 import { PAYMENT_METHOD_LABELS } from "@/constants/plans"
 import type { Plan } from "@/types/payment"
@@ -13,6 +14,7 @@ import type { Plan } from "@/types/payment"
 interface PaymentUploadFormProps {
   plans: Plan[]
   comprobanteBloqueado?: boolean
+  clientId: string | null
 }
 
 type Paso =
@@ -24,6 +26,7 @@ type Paso =
   | "enviando"
   | "aprobado"
   | "pendiente"
+  | "rechazado"
   | "error"
 
 interface DatosIA {
@@ -96,7 +99,7 @@ const comprimirImagen = (file: File): Promise<{ base64: string; dataUrl: string 
     reader.readAsDataURL(file)
   })
 
-export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUploadFormProps) {
+export function PaymentUploadForm({ plans, comprobanteBloqueado, clientId }: PaymentUploadFormProps) {
   const [paso, setPaso] = useState<Paso>("plan")
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [method, setMethod] = useState("nequi")
@@ -107,7 +110,35 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
   const [strikeCount, setStrikeCount] = useState(0)
   const [cuentas, setCuentas] = useState<{ metodo: string; valor: string; titular: string }[]>([])
   const [copiado, setCopiado] = useState<string | null>(null)
+  const [rechazoNota, setRechazoNota] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Mientras el cliente espera revisión, escucha en vivo su propio pago: si el admin lo
+  // aprueba o rechaza, la pantalla cambia sola sin que el cliente tenga que refrescar.
+  useEffect(() => {
+    if (paso !== "pendiente" || !clientId) return
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`payments-status-${clientId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "payments", filter: `client_id=eq.${clientId}` },
+        (payload) => {
+          const row = payload.new as { status?: string; note?: string | null }
+          if (row.status === "approved") setPaso("aprobado")
+          else if (row.status === "rejected") {
+            setRechazoNota(row.note ?? null)
+            setPaso("rechazado")
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [paso, clientId])
 
   const amountCents = selectedPlan ? selectedPlan.price_cents : 0
 
@@ -234,6 +265,7 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
     setDatosIA(null)
     setErrorMsg("")
     setStrikeCount(0)
+    setRechazoNota(null)
     if (fileRef.current) fileRef.current.value = ""
   }
 
@@ -770,6 +802,36 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
               className="rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
             >
               Enviar otro
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── RECHAZADO ────────────────────────────────────────────────────────── */}
+      {paso === "rechazado" && (
+        <div className="text-center py-6 space-y-4">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500/10">
+            <AlertCircle className="size-7 text-red-400" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-red-400 mb-1">Pago rechazado</h3>
+            <p className="text-sm text-zinc-400">
+              Monto: <strong className="text-zinc-200">{formatCOP(amountCents)}</strong>
+            </p>
+            {rechazoNota ? (
+              <p className="text-xs text-zinc-500 mt-1">Motivo: {rechazoNota}</p>
+            ) : (
+              <p className="text-xs text-zinc-500 mt-1">
+                Contacta al administrador si tienes dudas sobre el rechazo.
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={reiniciar}
+              className="rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+            >
+              Intentar de nuevo
             </button>
           </div>
         </div>
