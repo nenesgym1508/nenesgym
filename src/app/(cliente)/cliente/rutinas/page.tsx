@@ -6,7 +6,8 @@ import { getClientRoutines, getAssignedRoutine } from "@/services/routines.servi
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
 import { ROUTES } from "@/constants/routes"
-import { formatRoutineGoal, ROUTINE_STATUS_LABELS, type RoutineStatus } from "@/types/routine"
+import { formatRoutineGoal, type RoutineStatus } from "@/types/routine"
+import { CustomRoutinesList } from "@/components/cliente/custom-routines-list"
 
 const STATUS_BADGE_CLASSES: Record<RoutineStatus, string> = {
   active: "text-green-500 bg-green-500/10 border-green-500/20",
@@ -112,56 +113,7 @@ export default async function ClienteRoutinesHubPage() {
           <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
             Mis Planes Personalizados ({customRoutines.length})
           </h3>
-          {customRoutines.length === 0 ? (
-            <Card className="p-8 text-center text-zinc-500 text-xs bg-zinc-900/20">
-              Aún no has creado planes personalizados. ¡Haz clic en el botón de arriba para crear uno!
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {customRoutines.map((r) => (
-                <Link
-                  key={r.id}
-                  href={`/cliente/rutinas/${r.id}`}
-                  className="rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 p-5 shadow-[0_4px_25px_rgba(0,0,0,0.65)] space-y-3.5 hover:border-red-600/40 transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-12 h-12 rounded-full border border-zinc-600 flex items-center justify-center bg-zinc-950 shrink-0">
-                        <Dumbbell className="size-5 text-zinc-400" />
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-bebas font-bold text-xl tracking-wide uppercase text-white truncate">
-                          {r.title}
-                        </h4>
-                        <span className={`text-[10px] rounded-md px-2.5 py-0.5 mt-1 inline-block font-semibold border ${STATUS_BADGE_CLASSES[r.status]}`}>
-                          {ROUTINE_STATUS_LABELS[r.status]}
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight className="size-5 text-zinc-500 shrink-0" />
-                  </div>
-
-                  <div className="border-t border-white/5" />
-
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-xl border border-white/5 bg-zinc-950 flex items-center justify-center shrink-0">
-                      <Calendar className="size-5 text-red-500" />
-                    </div>
-                    <div className="min-w-0 text-xs text-zinc-400 space-y-0.5">
-                      <p className="truncate">
-                        <span className="text-zinc-500 font-medium">Objetivo:</span>{" "}
-                        {r.goal ? formatRoutineGoal(r.goal, r.custom_goal) : "Personalizada"}
-                      </p>
-                      <p className="truncate">
-                        <span className="text-zinc-500 font-medium">Frecuencia:</span>{" "}
-                        {r.days_per_week ? `${r.days_per_week} días/sem` : "Sin definir"}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+          <CustomRoutinesList routines={customRoutines} />
         </div>
       </div>
     </div>
