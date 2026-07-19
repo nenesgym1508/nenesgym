@@ -230,7 +230,7 @@ export default async function ClienteProgresoPage() {
                     {/* IMC actual (grande, izquierda) */}
                     <div className="shrink-0 pr-4 sm:pr-6 border-r border-white/5">
                       <p className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">IMC Actual</p>
-                      <p className="font-bebas text-5xl sm:text-6xl font-bold text-red-500 tracking-wide leading-none">{latest.bmi.toFixed(1)}</p>
+                      <p className="font-bebas text-5xl sm:text-6xl font-bold text-white tracking-wide leading-none">{latest.bmi.toFixed(1)}</p>
                     </div>
                     
                     {/* Categoría y consejo (derecha) */}
