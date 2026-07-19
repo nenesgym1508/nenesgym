@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { CreditCard, ChevronLeft, ChevronRight } from "lucide-react"
 import { PaymentBadge } from "@/components/ui/badge"
+import { RefreshButton } from "@/components/ui/refresh-button"
 import { formatCOP } from "@/lib/utils"
 import { formatDate } from "@/lib/dates"
 import { PAYMENT_METHOD_LABELS } from "@/constants/plans"
@@ -33,13 +34,16 @@ export function PaymentHistory({ payments }: PaymentHistoryProps) {
   return (
     <div className="space-y-3">
       {/* Título de sección con borde rojo */}
-      <div className="flex items-center border-l-2 border-red-600 pl-3.5">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
-          Historial de pagos
-        </h3>
-        <span className="ml-2 text-[10px] text-zinc-600 font-medium">
-          ({payments.length} {payments.length === 1 ? "registro" : "registros"})
-        </span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center border-l-2 border-red-600 pl-3.5">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+            Historial de pagos
+          </h3>
+          <span className="ml-2 text-[10px] text-zinc-600 font-medium">
+            ({payments.length} {payments.length === 1 ? "registro" : "registros"})
+          </span>
+        </div>
+        <RefreshButton />
       </div>
 
       <div className="overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)]">

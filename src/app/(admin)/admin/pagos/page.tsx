@@ -7,6 +7,7 @@ import { PendingPaymentCard } from "@/components/admin/pending-payment-card"
 import { Card } from "@/components/ui/card"
 import { PaymentBadge } from "@/components/ui/badge"
 import { MediosDePagoForm } from "@/components/admin/medios-de-pago-form"
+import { RefreshButton } from "@/components/ui/refresh-button"
 import { formatCOP } from "@/lib/utils"
 import { formatDate } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
@@ -37,6 +38,7 @@ export default async function AdminPagosPage({
           <h1 className="text-3xl md:text-4xl font-bebas font-bold mb-1 tracking-wide uppercase text-white">Pagos</h1>
           <p className="text-zinc-500 text-sm">Gestión de ingresos y cobros</p>
         </div>
+        <RefreshButton />
       </header>
 
       <div className="px-6 pb-24 md:px-10 space-y-6">

@@ -1,5 +1,6 @@
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { ClientSidebar } from "@/components/layout/client-sidebar"
+import { FocusRefresh } from "@/components/layout/focus-refresh"
 import { getAuthenticatedSession } from "@/lib/auth/session"
 
 export default async function ClienteLayout({ children }: { children: React.ReactNode }) {
@@ -8,6 +9,7 @@ export default async function ClienteLayout({ children }: { children: React.Reac
 
   return (
     <div className="min-h-screen flex bg-background">
+      <FocusRefresh />
       <ClientSidebar fullName={fullName} />
       <main className="flex-1 md:ml-64 pb-20 md:pb-10 overflow-y-auto">
         <div className="mx-auto w-full max-w-lg md:max-w-3xl">{children}</div>
