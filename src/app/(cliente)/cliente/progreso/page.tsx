@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import { differenceInDays, parseISO } from "date-fns"
 import { Flame, Calendar, ChevronRight } from "lucide-react"
 import { getCurrentClientData } from "@/services/clients.service"
 import { getClientProgress, getActiveGoal } from "@/services/progress.service"
@@ -105,10 +106,7 @@ export default async function ClienteProgresoPage() {
   const bmiInfo = bmiCategory ? BMI_CATEGORIES[bmiCategory] : null
 
   const daysSinceLast = latest && !todayRecord
-    ? Math.floor(
-        (new Date().getTime() - new Date(latest.measured_date ?? latest.recorded_at).getTime()) /
-          86400000
-      )
+    ? differenceInDays(now, parseISO(latest.measured_date ?? latest.recorded_at))
     : null
 
   // Helper para obtener datos y deltas

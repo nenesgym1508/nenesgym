@@ -1,8 +1,8 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
-import { redirect } from "next/navigation"
+import { revalidatePath, updateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/require-admin"
 import { GYM_ID } from "@/constants/plans"
 import { ROUTES, adminClaseDetalle } from "@/constants/routes"
 import type { ClassObjective, ClassLevel } from "@/services/classes.service"
@@ -26,7 +26,7 @@ const STANDARD_BLOCK_TITLES = [
 ]
 
 function revalidateClasses(classId?: string) {
-  revalidateTag("daily-classes", "max")
+  updateTag("daily-classes")
   revalidatePath(ROUTES.ADMIN_CLASES)
   if (classId) {
     revalidatePath(adminClaseDetalle(classId))
@@ -35,9 +35,9 @@ function revalidateClasses(classId?: string) {
 
 
 export async function createClassAction(data: ClassData) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "No autenticado" }
 
   const { data: newClass, error } = await supabase
     .from("daily_classes")
@@ -50,7 +50,7 @@ export async function createClassAction(data: ClassData) {
       estimated_duration_minutes: data.estimated_duration_minutes ?? null,
       notes: data.notes ?? null,
       status: "draft",
-      created_by: user.id,
+      created_by: guard.user.id,
     })
     .select("id")
     .single()
@@ -72,9 +72,9 @@ export async function createClassAction(data: ClassData) {
 
 // Crea los bloques estándar en una clase existente que no tiene bloques.
 export async function scaffoldStandardBlocksAction(classId: string) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "No autenticado" }
 
   const { data: rows, error } = await supabase
     .from("class_blocks")
@@ -93,6 +93,8 @@ export async function scaffoldStandardBlocksAction(classId: string) {
 }
 
 export async function updateClassAction(id: string, data: Partial<ClassData> & { status?: string }) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase
     .from("daily_classes")
@@ -110,6 +112,8 @@ export async function updateClassAction(id: string, data: Partial<ClassData> & {
 }
 
 export async function deleteClassAction(id: string) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase
     .from("daily_classes")
@@ -125,6 +129,8 @@ export async function deleteClassAction(id: string) {
 // ── Bloques ──────────────────────────────────────────────────
 
 export async function addBlockAction(classId: string, title: string, position: number) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("class_blocks")
@@ -138,6 +144,8 @@ export async function addBlockAction(classId: string, title: string, position: n
 }
 
 export async function updateBlockTitleAction(blockId: string, classId: string, title: string) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase
     .from("class_blocks")
@@ -150,6 +158,8 @@ export async function updateBlockTitleAction(blockId: string, classId: string, t
 }
 
 export async function deleteBlockAction(blockId: string, classId: string) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase.from("class_blocks").delete().eq("id", blockId)
   if (error) return { error: error.message }
@@ -162,6 +172,8 @@ export async function moveBlockAction(
   classId: string,
   direction: "up" | "down"
 ) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { data: blocks } = await supabase
     .from("class_blocks")
@@ -203,6 +215,8 @@ export async function addExerciseToBlockAction(
   classId: string,
   data: BlockExerciseData
 ) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase.from("class_block_exercises").insert({
     block_id: blockId,
@@ -226,6 +240,8 @@ export async function updateBlockExerciseAction(
   classId: string,
   data: Partial<BlockExerciseData>
 ) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
 
   // Solo actualizar las claves provistas (no resetear el resto a null).
@@ -256,6 +272,8 @@ export async function updateBlockExerciseAction(
 }
 
 export async function removeExerciseFromBlockAction(id: string, classId: string) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase.from("class_block_exercises").delete().eq("id", id)
   if (error) return { error: error.message }
@@ -269,6 +287,8 @@ export async function moveBlockExerciseAction(
   classId: string,
   direction: "up" | "down"
 ) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { data: exercises } = await supabase
     .from("class_block_exercises")
@@ -298,9 +318,9 @@ export async function duplicateClassAction(
   sourceId: string,
   targetDate: string
 ): Promise<{ success: boolean; id?: string; error?: string }> {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { success: false, error: guard.error }
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: "No autenticado" }
 
   // Leer clase original
   const { data: source } = await supabase
@@ -322,7 +342,7 @@ export async function duplicateClassAction(
       estimated_duration_minutes: source.estimated_duration_minutes,
       notes: source.notes,
       status: "draft",
-      created_by: user.id,
+      created_by: guard.user.id,
     })
     .select("id")
     .single()

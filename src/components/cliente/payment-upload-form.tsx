@@ -167,14 +167,14 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
       catch { setErrorMsg(`Error de conexión (Status: ${res.status}). Intenta de nuevo.`); setPaso("error"); return }
 
       if (!res.ok) {
-        if (data.strikes) setStrikeCount(data.strikes)
+        if (data.strikes !== undefined) setStrikeCount(data.strikes)
         setErrorMsg(data.error || "Error al analizar.")
         setPaso("error")
         return
       }
 
       setDatosIA(data)
-      if (data.strikes) setStrikeCount(data.strikes)
+      if (data.strikes !== undefined) setStrikeCount(data.strikes)
       setPaso("confirmar")
     } catch {
       setErrorMsg("Error de red. Verifica tu conexión a internet.")
@@ -201,7 +201,7 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado }: PaymentUpload
       catch { setErrorMsg(`Error de conexión (Status: ${res.status}). Intenta de nuevo.`); setPaso("error"); return }
 
       if (!res.ok) {
-        if (data.strikes) setStrikeCount(data.strikes)
+        if (data.strikes !== undefined) setStrikeCount(data.strikes)
         setErrorMsg(data.error || "Error al procesar.")
         setPaso("error")
         return

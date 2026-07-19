@@ -1,7 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { revalidateTag } from "next/cache"
+import { updateTag } from "next/cache"
 import { GYM_ID } from "@/constants/plans"
 import { MUSCLE_GROUP_LABELS } from "@/types/exercise"
 import type { ClassObjective, ClassLevel } from "@/services/classes.service"
@@ -191,6 +191,6 @@ export async function generateTrainingRoutineDraftAction(params: {
     }
   }
 
-  revalidateTag("training-routines", "max")
+  updateTag("training-routines")
   return { success: true, id: newRoutine.id }
 }

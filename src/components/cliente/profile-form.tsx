@@ -39,6 +39,10 @@ interface ClientProfileFormProps {
 export function ClientProfileForm({ currentName, currentPhone, currentEmail }: ClientProfileFormProps) {
   const [name, setName] = useState(currentName)
   const [phone, setPhone] = useState(currentPhone)
+  // Baseline para detectar cambios sin depender de que el server component
+  // vuelva a pasar props frescas después de guardar.
+  const [savedName, setSavedName] = useState(currentName)
+  const [savedPhone, setSavedPhone] = useState(currentPhone)
   const [dataLoading, setDataLoading] = useState(false)
   const [dataMsg, setDataMsg] = useState<Msg>(null)
 
@@ -52,21 +56,28 @@ export function ClientProfileForm({ currentName, currentPhone, currentEmail }: C
   const [pwLoading, setPwLoading] = useState(false)
   const [pwMsg, setPwMsg] = useState<Msg>(null)
 
-  const dataDirty = name.trim() !== currentName || phone.trim() !== currentPhone
+  const dataDirty = name.trim() !== savedName || phone.trim() !== savedPhone
 
   async function handleDataSave(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim() || !dataDirty) return
     setDataLoading(true)
     setDataMsg(null)
+    const nameChanged = name.trim() !== savedName
+    const phoneChanged = phone.trim() !== savedPhone
     const results = await Promise.all([
-      name.trim() !== currentName ? updateProfileNameAction(name.trim()) : Promise.resolve({ success: true }),
-      phone.trim() !== currentPhone ? updateProfilePhoneAction(phone.trim()) : Promise.resolve({ success: true }),
+      nameChanged ? updateProfileNameAction(name.trim()) : Promise.resolve({ success: true }),
+      phoneChanged ? updateProfilePhoneAction(phone.trim()) : Promise.resolve({ success: true }),
     ])
     setDataLoading(false)
     const err = results.find((r) => "error" in r && r.error)
-    if (err && "error" in err) setDataMsg({ type: "err", text: err.error as string })
-    else setDataMsg({ type: "ok", text: "Datos actualizados correctamente" })
+    if (err && "error" in err) {
+      setDataMsg({ type: "err", text: err.error as string })
+    } else {
+      if (nameChanged) setSavedName(name.trim())
+      if (phoneChanged) setSavedPhone(phone.trim())
+      setDataMsg({ type: "ok", text: "Datos actualizados correctamente" })
+    }
   }
 
   async function handleEmailChange(e: React.FormEvent) {

@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { GYM_ID } from "@/constants/plans"
@@ -13,7 +13,7 @@ const STANDARD_BLOCK_TITLES = [
 ]
 
 function revalidateRoutines(routineId?: string) {
-  revalidateTag("training-routines", "max")
+  updateTag("training-routines")
   revalidatePath(ROUTES.ADMIN_ENTRENAMIENTO)
   if (routineId) {
     revalidatePath(adminRutinaBibliotecaDetalle(routineId))
@@ -489,7 +489,7 @@ export async function assignTrainingRoutineToClientAction(routineId: string, cli
   }
 
   revalidateRoutines()
-  revalidateTag("admin-routines", "max")
+  updateTag("admin-routines")
   revalidatePath(ROUTES.ADMIN_RUTINAS)
   return { success: true, id: newRoutine.id }
 }
@@ -595,7 +595,7 @@ export async function scheduleTrainingRoutineAsClassAction(
   }
 
   revalidateRoutines()
-  revalidateTag("daily-classes", "max")
+  updateTag("daily-classes")
   revalidatePath(ROUTES.ADMIN_CLASES)
   return { success: true, id: newClass.id }
 }

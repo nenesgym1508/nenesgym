@@ -22,12 +22,19 @@ export function GoalCard({ goal }: GoalCardProps) {
   const [current, setCurrent] = useState<GoalType | null>(
     goal?.goal_type as GoalType | null ?? null
   )
+  const [error, setError] = useState<string | null>(null)
 
   const select = (type: GoalType) => {
+    const previous = current
     setCurrent(type)
+    setError(null)
     setOpen(false)
-    startTransition(() => {
-      setProgressGoalAction(type)
+    startTransition(async () => {
+      const result = await setProgressGoalAction(type)
+      if (result.error) {
+        setCurrent(previous)
+        setError(result.error)
+      }
     })
   }
 
@@ -69,6 +76,10 @@ export function GoalCard({ goal }: GoalCardProps) {
             </button>
           ))}
         </div>
+      )}
+
+      {error && (
+        <p className="mt-2 text-xs text-red-400">{error}</p>
       )}
     </div>
   )

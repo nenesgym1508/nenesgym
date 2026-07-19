@@ -1,12 +1,15 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { computeEffectiveStatus, searchAdminClients } from "@/services/memberships.service"
 import { todayInBogota, nowInBogota, gymSession, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 import type { MembershipStatus } from "@/types/membership"
+import type { PaymentMethod } from "@/types/payment"
+
+const PAYMENT_METHODS: PaymentMethod[] = ["cash", "transfer", "nequi", "daviplata", "other"]
 
 // Buscador rápido del dashboard: consulta en Postgres (ilike + límite) en vez de
 // descargar toda la lista de clientes al navegador.
@@ -58,7 +61,7 @@ export async function updateGymSettingsAction(input: {
   if (error) return { error: error.message }
 
   // Config del gym cacheada (tag "gym"): invalidar para que el cambio aparezca al abrir.
-  revalidateTag("gym", "max")
+  updateTag("gym")
   revalidatePath(ROUTES.ADMIN_MAS)
   return { success: true }
 }
@@ -124,7 +127,7 @@ export async function savePlanAction(input: {
   if (error) return { error: error.message }
 
   // Planes cacheados (tag "plans"): invalidar para que el cambio aparezca al abrir.
-  revalidateTag("plans", "max")
+  updateTag("plans")
   revalidatePath(ROUTES.ADMIN_MAS)
   return { success: true }
 }
@@ -137,7 +140,7 @@ export async function setPlanActiveAction(planId: string, isActive: boolean) {
     .update({ is_active: isActive })
     .eq("id", planId)
   if (error) return { error: error.message }
-  revalidateTag("plans", "max")
+  updateTag("plans")
   revalidatePath(ROUTES.ADMIN_MAS)
   return { success: true }
 }
@@ -156,7 +159,7 @@ export async function deletePlanAction(planId: string) {
     }
     return { error: error.message }
   }
-  revalidateTag("plans", "max")
+  updateTag("plans")
   revalidatePath(ROUTES.ADMIN_MAS)
   return { success: true }
 }
@@ -180,7 +183,7 @@ export async function approvePaymentAction(
   const result = data as { ok: boolean; code?: string; message?: string }
   if (!result?.ok) return { error: result?.message ?? "Error al aprobar" }
 
-  revalidateTag("admin-payments", "max")
+  updateTag("admin-payments")
   revalidatePath(ROUTES.ADMIN_PAGOS)
   revalidatePath(ROUTES.ADMIN_DASHBOARD)
   return { success: true }
@@ -199,7 +202,7 @@ export async function rejectPaymentAction(paymentId: string, note: string) {
   const result = data as { ok: boolean; message?: string }
   if (!result?.ok) return { error: result?.message ?? "Error al rechazar" }
 
-  revalidateTag("admin-payments", "max")
+  updateTag("admin-payments")
   revalidatePath(ROUTES.ADMIN_PAGOS)
   return { success: true }
 }
@@ -289,6 +292,10 @@ export async function createManualPaymentAction(formData: {
   if ("error" in ctx) return { error: ctx.error }
   const { supabase } = ctx
 
+  if (!PAYMENT_METHODS.includes(formData.method as PaymentMethod)) {
+    return { error: "Método de pago inválido" }
+  }
+
   const { data: payment, error: paymentError } = await supabase
     .from("payments")
     .insert({
@@ -296,7 +303,7 @@ export async function createManualPaymentAction(formData: {
       client_id: formData.clientId,
       plan_id: formData.planId || null,
       amount_cents: formData.amountCents,
-      method: formData.method as "cash",
+      method: formData.method as PaymentMethod,
       status: "pending",
     })
     .select("id")

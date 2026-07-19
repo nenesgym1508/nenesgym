@@ -1,7 +1,9 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/require-admin"
+import { getAuthenticatedSession } from "@/lib/auth/session"
 import { GYM_ID } from "@/constants/plans"
 import { ROUTES, adminRutinaDetalle, clienteRutinaDetalle } from "@/constants/routes"
 import type { RoutineGoal, RoutineLevel, RoutineStatus, RoutineSourceType, RoutineCreatedByRole, RoutineSessionStatus, Weekday } from "@/types/routine"
@@ -12,7 +14,7 @@ const STANDARD_BLOCK_TITLES = [
 ]
 
 function revalidateAdminRoutines(routineId?: string) {
-  revalidateTag("admin-routines", "max")
+  updateTag("admin-routines")
   revalidatePath(ROUTES.ADMIN_RUTINAS)
   revalidatePath(ROUTES.ADMIN_ENTRENAMIENTO)
   if (routineId) {
@@ -34,9 +36,9 @@ interface CreateRoutineInput {
 }
 
 export async function createRoutineAction(data: CreateRoutineInput) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "No autenticado" }
 
   const { data: newRoutine, error } = await supabase
     .from("client_routines")
@@ -54,7 +56,7 @@ export async function createRoutineAction(data: CreateRoutineInput) {
       start_date: data.start_date ?? null,
       end_date: data.end_date ?? null,
       notes: data.notes ?? null,
-      created_by: user.id,
+      created_by: guard.user.id,
       created_by_role: "admin"
     })
     .select("id")
@@ -92,6 +94,8 @@ export async function createRoutineAction(data: CreateRoutineInput) {
 }
 
 export async function updateRoutineMetaAction(id: string, data: Partial<ClientRoutineInput> & { status?: RoutineStatus; days_per_week?: number | null }) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase
     .from("client_routines")
@@ -108,8 +112,29 @@ export async function updateRoutineMetaAction(id: string, data: Partial<ClientRo
   return { success: true }
 }
 
+// Compartida: la usa el admin (routine-editor) y el cliente (borra su propia rutina
+// creada por él mismo), por eso el guard admite ambos casos en vez de requireAdmin().
 export async function deleteRoutineAction(id: string) {
+  const session = await getAuthenticatedSession()
+  if (!session) return { error: "No autenticado" }
   const supabase = await createClient()
+
+  if (session.profile.role !== "admin") {
+    const { data: client } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("profile_id", session.user.id)
+      .single()
+    const { data: routine } = await supabase
+      .from("client_routines")
+      .select("client_id")
+      .eq("id", id)
+      .single()
+    if (!client || !routine || routine.client_id !== client.id) {
+      return { error: "Sin permisos" }
+    }
+  }
+
   const { error } = await supabase
     .from("client_routines")
     .delete()
@@ -118,10 +143,13 @@ export async function deleteRoutineAction(id: string) {
 
   if (error) return { error: error.message }
   revalidateAdminRoutines()
+  revalidatePath(ROUTES.CLIENTE_RUTINAS)
   return { success: true }
 }
 
 export async function duplicateRoutineAction(id: string) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { data: source, error: fetchErr } = await supabase
     .from("client_routines")
@@ -222,6 +250,8 @@ export async function duplicateRoutineAction(id: string) {
 }
 
 export async function assignRoutineToClientAction(routineId: string, clientId: string) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase
     .from("client_routines")
@@ -235,6 +265,8 @@ export async function assignRoutineToClientAction(routineId: string, clientId: s
 
 // ── Días ──────────────────────────────────────────────────
 export async function addRoutineDayAction(routineId: string, title: string, weekday: Weekday | null, position: number) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("client_routine_days")
@@ -262,6 +294,8 @@ export async function addRoutineDayAction(routineId: string, title: string, week
 }
 
 export async function updateRoutineDayAction(dayId: string, routineId: string, title: string, weekday: Weekday | null) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase
     .from("client_routine_days")
@@ -275,6 +309,8 @@ export async function updateRoutineDayAction(dayId: string, routineId: string, t
 }
 
 export async function deleteRoutineDayAction(dayId: string, routineId: string) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase
     .from("client_routine_days")
@@ -288,6 +324,8 @@ export async function deleteRoutineDayAction(dayId: string, routineId: string) {
 }
 
 export async function moveRoutineDayAction(routineId: string, orderedIds: string[]) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const promises = orderedIds.map((id, index) =>
     supabase.from("client_routine_days").update({ position: index }).eq("id", id)
@@ -300,6 +338,8 @@ export async function moveRoutineDayAction(routineId: string, orderedIds: string
 
 // ── Bloques ───────────────────────────────────────────────
 export async function addRoutineBlockAction(dayId: string, routineId: string, title: string, position: number) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("client_routine_blocks")
@@ -314,6 +354,8 @@ export async function addRoutineBlockAction(dayId: string, routineId: string, ti
 }
 
 export async function updateRoutineBlockTitleAction(blockId: string, routineId: string, title: string) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase
     .from("client_routine_blocks")
@@ -327,6 +369,8 @@ export async function updateRoutineBlockTitleAction(blockId: string, routineId: 
 }
 
 export async function deleteRoutineBlockAction(blockId: string, routineId: string) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase.from("client_routine_blocks").delete().eq("id", blockId)
   if (error) return { error: error.message }
@@ -336,6 +380,8 @@ export async function deleteRoutineBlockAction(blockId: string, routineId: strin
 }
 
 export async function moveRoutineBlockAction(dayId: string, routineId: string, orderedIds: string[]) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const promises = orderedIds.map((id, index) =>
     supabase.from("client_routine_blocks").update({ position: index }).eq("id", id)
@@ -354,6 +400,8 @@ export async function addExerciseToRoutineBlockAction(
   position: number,
   overrides?: { sets: number; reps: number; rest_seconds: number }
 ) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("client_routine_exercises")
@@ -382,6 +430,8 @@ export async function updateRoutineBlockExerciseAction(exerciseRowId: string, ro
   suggested_weight?: string | null
   notes?: string | null
 }) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase
     .from("client_routine_exercises")
@@ -395,6 +445,8 @@ export async function updateRoutineBlockExerciseAction(exerciseRowId: string, ro
 }
 
 export async function removeExerciseFromRoutineBlockAction(exerciseRowId: string, routineId: string) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase.from("client_routine_exercises").delete().eq("id", exerciseRowId)
   if (error) return { error: error.message }
@@ -404,6 +456,8 @@ export async function removeExerciseFromRoutineBlockAction(exerciseRowId: string
 }
 
 export async function moveRoutineBlockExerciseAction(blockId: string, routineId: string, orderedIds: string[]) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const promises = orderedIds.map((id, index) =>
     supabase.from("client_routine_exercises").update({ position: index }).eq("id", id)
@@ -494,9 +548,9 @@ export async function createClientRoutineAction(data: {
 
 // ── Fase 5 Actions — crear desde clase / crear desde plantilla ──
 export async function createRoutineFromClassAction(classId: string, clientId: string) {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "No autenticado" }
 
   const { data: dc, error: fetchErr } = await supabase
     .from("daily_classes")
@@ -518,7 +572,7 @@ export async function createRoutineFromClassAction(classId: string, clientId: st
       source_type: "class",
       source_id: classId,
       notes: dc.notes,
-      created_by: user.id,
+      created_by: guard.user.id,
       created_by_role: "admin"
     })
     .select("id")

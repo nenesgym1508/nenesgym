@@ -25,7 +25,10 @@ export function PaymentHistory({ payments }: PaymentHistoryProps) {
   }
 
   const totalPages = Math.ceil(payments.length / itemsPerPage)
-  const paginatedPayments = payments.slice((page - 1) * itemsPerPage, page * itemsPerPage)
+  // Si la lista se redujo (revalidación) y "page" quedó fuera de rango, se recorta
+  // en vez de mostrar una página vacía.
+  const safePage = Math.min(page, totalPages)
+  const paginatedPayments = payments.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage)
 
   return (
     <div className="space-y-3">
@@ -78,12 +81,12 @@ export function PaymentHistory({ payments }: PaymentHistoryProps) {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-5 py-3 border-t border-white/5 bg-zinc-950/40">
             <span className="text-[11px] text-zinc-500 font-medium">
-              Página <span className="text-zinc-300">{page}</span> de <span className="text-zinc-300">{totalPages}</span>
+              Página <span className="text-zinc-300">{safePage}</span> de <span className="text-zinc-300">{totalPages}</span>
             </span>
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
+                disabled={safePage === 1}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 border border-white/5 text-zinc-400 text-[11px] font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-700 hover:text-white transition-all"
               >
                 <ChevronLeft className="size-3.5" />
@@ -91,7 +94,7 @@ export function PaymentHistory({ payments }: PaymentHistoryProps) {
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
+                disabled={safePage === totalPages}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 border border-white/5 text-zinc-400 text-[11px] font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-700 hover:text-white transition-all"
               >
                 Siguiente
