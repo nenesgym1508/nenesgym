@@ -7,7 +7,7 @@ import { Home, CreditCard, LogIn, TrendingUp, Users, Dumbbell, ClipboardList, Mo
 import { cn } from "@/lib/utils"
 import { ROUTES } from "@/constants/routes"
 
-export type NavItem = { href: string; label: string; icon: typeof Home; matchPrefixes?: string[] }
+export type NavItem = { href: string; label: string; icon: typeof Home; matchPrefixes?: string[]; prefetch?: boolean }
 
 // Cliente: la acción central (Entrada) se renderiza elevada como FAB.
 const clienteLeft: NavItem[] = [
@@ -17,7 +17,10 @@ const clienteLeft: NavItem[] = [
 const clienteCenter: NavItem = { href: ROUTES.CLIENTE_ASISTENCIA, label: "Entrada", icon: LogIn }
 const clienteRight: NavItem[] = [
   { href: ROUTES.CLIENTE_RUTINAS, label: "Rutinas", icon: ClipboardList },
-  { href: ROUTES.CLIENTE_PROGRESO, label: "Progreso", icon: TrendingUp },
+  // prefetch=true mete este segmento en el balde "static" del Router Cache (staleTimes.static,
+  // 180s) en vez del balde "dynamic" (30s) — los datos de progreso son casi todos propios del
+  // cliente (nadie más los edita), así que puede quedarse "tibio" más tiempo sin sentirse viejo.
+  { href: ROUTES.CLIENTE_PROGRESO, label: "Progreso", icon: TrendingUp, prefetch: true },
 ]
 
 // Lista plana (para el sidebar de escritorio, sin FAB elevado)
@@ -47,10 +50,10 @@ export function useIsActive() {
 }
 
 function FlatTab({ item, active }: { item: NavItem; active: boolean }) {
-  const { href } = item
+  const { href, prefetch } = item
 
   return (
-    <Link href={href} className="flex flex-1 flex-col items-center justify-center gap-0.5 cursor-pointer">
+    <Link href={href} prefetch={prefetch} className="flex flex-1 flex-col items-center justify-center gap-0.5 cursor-pointer">
       <FlatTabContent item={item} active={active} />
     </Link>
   )
@@ -94,7 +97,7 @@ function FlatTabContent({ item, active }: { item: NavItem; active: boolean }) {
 // Link de sidebar (cliente y admin) con feedback pending inmediato al tocar.
 export function SidebarNavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
-    <Link href={item.href} className="block">
+    <Link href={item.href} prefetch={item.prefetch} className="block">
       <SidebarNavLinkContent item={item} active={active} />
     </Link>
   )
