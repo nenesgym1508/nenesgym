@@ -89,7 +89,7 @@ export function ProgressForm({ todayRecord, latestHeightCm }: ProgressFormProps)
       >
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out" />
         <Plus className="size-5 text-white/90 group-hover:text-white transition-colors" />
-        <span className="relative z-10">{isEdit ? "Modificar medición" : "Registrar medición"}</span>
+        <span className="relative z-10">{isEdit ? "Modificar medición" : "Registrar nueva medición"}</span>
       </button>
 
       {/* Modal */}
