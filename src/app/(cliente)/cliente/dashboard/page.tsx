@@ -243,8 +243,9 @@ export default async function ClienteDashboardPage() {
               <p className="text-zinc-400 text-sm mb-3">No tienes una membresía activa</p>
               <Link
                 href={ROUTES.CLIENTE_PAGOS}
-                className="inline-flex items-center gap-2 rounded-xl btn-glossy-red px-4 py-2.5 text-sm font-semibold text-white transition-colors"
+                className="group relative inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-red-600 via-red-700 to-red-900 px-5 py-3 text-sm font-black uppercase tracking-wider text-white transition-all duration-300 shadow-[0_0_20px_rgba(220,38,38,0.35)] hover:shadow-[0_0_30px_rgba(220,38,38,0.55)] hover:-translate-y-0.5 active:scale-95 overflow-hidden border border-red-500/30"
               >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-700 ease-in-out" />
                 Ver planes
               </Link>
             </div>
