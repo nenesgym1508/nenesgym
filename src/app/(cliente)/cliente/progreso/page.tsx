@@ -229,8 +229,8 @@ export default async function ClienteProgresoPage() {
                   <div className="flex items-center gap-3 sm:gap-6">
                     {/* IMC actual (grande, izquierda) */}
                     <div className="shrink-0 pr-4 sm:pr-6 border-r border-white/5">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-0.5">IMC Actual</p>
-                      <p className="font-bebas text-4xl sm:text-5xl font-bold text-red-500 tracking-wide leading-none">{latest.bmi.toFixed(1)}</p>
+                      <p className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">IMC Actual</p>
+                      <p className="font-bebas text-5xl sm:text-6xl font-bold text-red-500 tracking-wide leading-none">{latest.bmi.toFixed(1)}</p>
                     </div>
                     
                     {/* Categoría y consejo (derecha) */}
