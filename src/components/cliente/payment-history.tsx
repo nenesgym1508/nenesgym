@@ -29,31 +29,14 @@ export function PaymentHistory({ payments }: PaymentHistoryProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+      {/* Título de sección con borde rojo */}
+      <div className="flex items-center border-l-2 border-red-600 pl-3.5">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
           Historial de pagos
         </h3>
-        {totalPages > 1 && (
-          <div className="flex items-center gap-2 text-xs">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="p-1 rounded bg-zinc-900 border border-white/5 text-zinc-400 disabled:opacity-30 disabled:cursor-not-allowed hover:text-white transition-colors"
-            >
-              <ChevronLeft className="size-4" />
-            </button>
-            <span className="text-zinc-500 font-medium min-w-[3rem] text-center">
-              {page} de {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="p-1 rounded bg-zinc-900 border border-white/5 text-zinc-400 disabled:opacity-30 disabled:cursor-not-allowed hover:text-white transition-colors"
-            >
-              <ChevronRight className="size-4" />
-            </button>
-          </div>
-        )}
+        <span className="ml-2 text-[10px] text-zinc-600 font-medium">
+          ({payments.length} {payments.length === 1 ? "registro" : "registros"})
+        </span>
       </div>
 
       <div className="overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)]">
@@ -90,6 +73,33 @@ export function PaymentHistory({ payments }: PaymentHistoryProps) {
             </span>
           </div>
         ))}
+
+        {/* Controles de paginación al pie */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-3 border-t border-white/5 bg-zinc-950/40">
+            <span className="text-[11px] text-zinc-500 font-medium">
+              Página <span className="text-zinc-300">{page}</span> de <span className="text-zinc-300">{totalPages}</span>
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 border border-white/5 text-zinc-400 text-[11px] font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-700 hover:text-white transition-all"
+              >
+                <ChevronLeft className="size-3.5" />
+                Anterior
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 border border-white/5 text-zinc-400 text-[11px] font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-700 hover:text-white transition-all"
+              >
+                Siguiente
+                <ChevronRight className="size-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

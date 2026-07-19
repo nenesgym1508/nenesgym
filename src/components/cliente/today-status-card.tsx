@@ -154,9 +154,8 @@ export function TodayStatusCard({
           </div>
           <Link
             href={ROUTES.CLIENTE_PAGOS}
-            className="group shrink-0 relative inline-flex h-10 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 via-red-700 to-red-900 text-xs font-black uppercase tracking-wider text-white px-5 transition-all duration-300 shadow-[0_0_18px_rgba(220,38,38,0.4)] hover:shadow-[0_0_28px_rgba(220,38,38,0.6)] hover:-translate-y-0.5 active:scale-95 overflow-hidden border border-red-500/30 cursor-pointer"
+            className="shrink-0 inline-flex h-9 items-center justify-center rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white px-4 transition-colors shadow-lg shadow-red-600/10 cursor-pointer"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-700 ease-in-out" />
             Ver planes
           </Link>
         </div>
