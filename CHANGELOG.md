@@ -2,6 +2,32 @@
 
 Todos los cambios notables en este proyecto serán documentados en este archivo.
 
+## [1.8.0] - 2026-07-22
+
+### Características y Mejoras
+- **Selección Múltiple y Configuración Masiva de Ejercicios**:
+  - Implementamos la selección masiva de ejercicios en el modal `ExercisePicker`.
+  - Agregamos un botón flotante dinámico con el contador en tiempo real de los ejercicios elegidos.
+  - Incorporamos la vista de configuración rápida en masa, permitiendo configurar series, repeticiones y descansos de forma agrupada para todos los ejercicios antes de insertarlos.
+  - Modificamos `handleAddExercise` y las acciones backend de base de datos en los 3 flujos principales: Rutinas de clases, Plantillas de rutinas y Rutinas de clientes.
+- **Detalle de Ejercicios mediante Modales (Overlays)**:
+  - Unificamos el comportamiento en las vistas de bloques de ejercicios ya creados y en la configuración rápida para que al tocar la imagen o título se abra el menú de detalles completo (`ExerciseDetailSheet`) superpuesto.
+  - Optimizamos la vista de edición inline (detrás del Chevron) en los bloques de ejercicios para que solo muestre las celdas de inputs (`Series`, `Reps`, etc.), dejando la lectura técnica e imagen exclusiva del modal.
+- **Autenticación con OAuth 2.0 y Páginas de Cumplimiento Legal**:
+  - Creamos las rutas públicas `/privacidad` (`src/app/privacidad/page.tsx`) y `/terminos` (`src/app/terminos/page.tsx`) con diseño profesional, SEO y micro-datos estructurados JSON-LD, requeridos por Google Cloud y Supabase.
+  - Integramos accesos directos legales en el pie de página de autenticación.
+  - Implementamos el botón oficial de inicio de sesión de Google (`GoogleAuthButton`) posicionado en la cabecera prioritaria de los formularios de login y registro.
+  - Creamos la ruta callback `/auth/callback/route.ts` para intercambiar de manera transparente el código de sesión seguro en Supabase.
+- **Seguridad y Administración Exclusiva**:
+  - Creamos la migración SQL `017_exclusive_admin_role.sql` que asigna de forma definitiva y blindada el rol `admin` al correo de la marca (`nenesgym1508@gmail.com`) y desvincula al admin anterior convirtiéndolo a `client`.
+  - Actualizamos `loginAction` y la callback de autenticación para asegurar la validación exclusiva del rol admin por correo.
+- **Mejoras del Panel de Administración y Correcciones**:
+  - Simplificamos los filtros de asignaciones de entrenamiento a tres estados prácticos: `Todas`, `Con rutina` y `Sin rutina`.
+  - Añadimos el botón directo `+ Asignar rutina` en el dashboard del administrador debajo de la opción de registrar pagos.
+  - Limitamos la paginación del listado general de clientes en administración a un máximo de 10 clientes por página para optimizar el rendimiento de renderizado.
+  - Corregimos el calendario de asistencia del cliente para que no marque días pasados en rojo como "faltas" si el usuario no cuenta con una membresía activa en dicho periodo.
+  - Optimizamos el encabezado HTTP de caché en `next.config.ts` para cachear indefinidamente el manifiesto PWA y los iconos estáticos del cliente en producción.
+
 ## [1.7.0] - 2026-07-18
 
 ### Solución de Errores e Infraestructura

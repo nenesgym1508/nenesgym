@@ -9,11 +9,11 @@ export const dynamic = "force-dynamic"
 export default async function NuevaRutinaAdminPage({
   searchParams
 }: {
-  searchParams: Promise<{ clientId?: string }>
+  searchParams: Promise<{ clientId?: string; mode?: string }>
 }) {
   await requireAdminSession()
 
-  const { clientId } = await searchParams
+  const { clientId, mode } = await searchParams
 
   const [routines, classes, clients] = await Promise.all([
     getTrainingRoutines(),
@@ -27,6 +27,7 @@ export default async function NuevaRutinaAdminPage({
       classes={classes}
       clients={clients as any}
       initialClientId={clientId}
+      initialFormMode={mode === "existing" ? "existing" : undefined}
     />
   )
 }

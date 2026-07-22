@@ -777,6 +777,17 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, 
           )}
         </button>
 
+        {!readOnly && (
+          <button
+            onClick={() => { if (confirm(`¿Eliminar "${ex.exercise.name}" de este bloque?`)) onRemove?.() }}
+            disabled={isPending}
+            className="shrink-0 text-zinc-600 hover:text-red-400 transition-colors disabled:opacity-30"
+            aria-label="Eliminar ejercicio"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        )}
+
         <button
           onClick={() => setExpanded((v) => !v)}
           className="shrink-0 text-zinc-600 hover:text-zinc-300 transition-colors"
@@ -790,17 +801,12 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, 
         <div className="mt-3 space-y-3">
 
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex gap-1">
-                  <button onClick={onMoveUp} disabled={isFirst || isPending} className="flex h-6 w-6 items-center justify-center rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-20">
-                    <ChevronUp className="size-3.5" />
-                  </button>
-                  <button onClick={onMoveDown} disabled={isLast || isPending} className="flex h-6 w-6 items-center justify-center rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-20">
-                    <ChevronDown className="size-3.5" />
-                  </button>
-                </div>
-                <button onClick={onRemove} disabled={isPending} className="flex items-center gap-1 text-xs text-zinc-600 hover:text-red-400 transition-colors">
-                  <X className="size-3.5" /> Quitar
+              <div className="flex gap-1 mb-2">
+                <button onClick={onMoveUp} disabled={isFirst || isPending} className="flex h-6 w-6 items-center justify-center rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-20">
+                  <ChevronUp className="size-3.5" />
+                </button>
+                <button onClick={onMoveDown} disabled={isLast || isPending} className="flex h-6 w-6 items-center justify-center rounded text-zinc-600 hover:text-zinc-300 disabled:opacity-20">
+                  <ChevronDown className="size-3.5" />
                 </button>
               </div>
               <div className="grid grid-cols-4 gap-1.5">

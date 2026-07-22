@@ -9,11 +9,14 @@ import { ROUTES } from "@/constants/routes"
 export const dynamic = "force-dynamic"
 
 export default async function AdminRoutineDetailPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ fromExisting?: string }>
 }) {
   const { id } = await params
+  const { fromExisting } = await searchParams
   await requireAdminSession()
 
   const [routine, exercises, clients] = await Promise.all([
@@ -32,6 +35,7 @@ export default async function AdminRoutineDetailPage({
       exercises={exercises}
       variant="admin"
       clients={clients as any}
+      previewAssignment={fromExisting === "1"}
     />
   )
 }

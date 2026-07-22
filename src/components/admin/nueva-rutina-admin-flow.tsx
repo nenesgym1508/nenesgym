@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, ChevronRight, Loader2, Check } from "lucide-react"
+import { ChevronLeft, ChevronRight, Loader2, Check, Search } from "lucide-react"
 import { ROUTES } from "@/constants/routes"
 import { createRoutineAction, createRoutineFromClassAction } from "@/actions/routines.actions"
 import { assignTrainingRoutineToClientAction } from "@/actions/training-routines.actions"
@@ -17,6 +17,7 @@ interface NuevaRutinaAdminFlowProps {
   classes: DailyClass[]
   clients: { id: string; profile: { full_name: string | null } | null }[]
   initialClientId?: string
+  initialFormMode?: FormMode
 }
 
 type Step = "client-select" | "form"
@@ -27,7 +28,8 @@ export function NuevaRutinaAdminFlow({
   routines,
   classes,
   clients,
-  initialClientId
+  initialClientId,
+  initialFormMode
 }: NuevaRutinaAdminFlowProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -35,7 +37,7 @@ export function NuevaRutinaAdminFlow({
   const [clientSearch, setClientSearch] = useState("")
 
   const [currentStep, setCurrentStep] = useState<Step>(initialClientId ? "form" : "client-select")
-  const [formMode, setFormMode] = useState<FormMode>("manual")
+  const [formMode, setFormMode] = useState<FormMode>(initialFormMode ?? "manual")
   const [existingSourceType, setExistingSourceType] = useState<ExistingSourceType>("routine")
 
   const [values, setValues] = useState<RoutineBasicFormValues>(EMPTY_ROUTINE_BASIC_FORM_VALUES)
@@ -43,11 +45,16 @@ export function NuevaRutinaAdminFlow({
   // Rutina existente / clase existente (opción secundaria)
   const [selectedRoutineId, setSelectedRoutineId] = useState("")
   const [selectedClassId, setSelectedClassId] = useState("")
+  const [routineSearch, setRoutineSearch] = useState("")
 
   const selectedClient = clients.find(c => c.id === clientId)
 
   const filteredClients = clients.filter(c =>
     c.profile?.full_name?.toLowerCase().includes(clientSearch.toLowerCase().trim()) ?? false
+  )
+
+  const filteredRoutines = routines.filter(r =>
+    r.name.toLowerCase().includes(routineSearch.toLowerCase().trim())
   )
 
   const handleCreateManual = async (e: React.FormEvent) => {
@@ -74,16 +81,16 @@ export function NuevaRutinaAdminFlow({
     }
   }
 
-  const handleCreateFromRoutine = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedRoutineId || !clientId) return
+  const handleSelectRoutine = async (routineId: string) => {
+    if (!clientId || loading) return
 
+    setSelectedRoutineId(routineId)
     setLoading(true)
-    const res = await assignTrainingRoutineToClientAction(selectedRoutineId, clientId)
+    const res = await assignTrainingRoutineToClientAction(routineId, clientId)
     setLoading(false)
 
     if (res.success && res.id) {
-      router.push(`/admin/rutinas/${res.id}`)
+      router.push(`/admin/rutinas/${res.id}?fromExisting=1`)
     } else {
       alert(res.error || "Error al crear desde rutina existente.")
     }
@@ -172,7 +179,18 @@ export function NuevaRutinaAdminFlow({
 
       {/* PASO 2: Formulario (idéntico al del cliente) */}
       {currentStep === "form" && (
-        <div className="p-4">
+        <div className="p-4 space-y-4">
+          {formMode === "manual" && (
+            <button
+              type="button"
+              onClick={() => setFormMode("existing")}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl btn-glossy-red px-4 py-3.5 text-sm font-semibold text-white"
+            >
+              <Search className="size-4" />
+              Usar una rutina existente
+            </button>
+          )}
+
           {formMode === "manual" ? (
             <RoutineBasicForm
               values={values}
@@ -180,15 +198,6 @@ export function NuevaRutinaAdminFlow({
               onSubmit={handleCreateManual}
               loading={loading}
               titleLabel="Nombre de la rutina *"
-              footer={
-                <button
-                  type="button"
-                  onClick={() => setFormMode("existing")}
-                  className="w-full text-center text-xs text-zinc-500 hover:text-zinc-300 hover:underline underline-offset-2 transition-colors"
-                >
-                  ¿Prefieres partir de una rutina o clase existente?
-                </button>
-              }
             />
           ) : (
             <div className="space-y-4">
@@ -216,36 +225,45 @@ export function NuevaRutinaAdminFlow({
               </div>
 
               {existingSourceType === "routine" ? (
-                <form onSubmit={handleCreateFromRoutine} className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-zinc-400">Seleccionar Rutina *</label>
-                    <select
-                      required
-                      value={selectedRoutineId}
-                      onChange={(e) => setSelectedRoutineId(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-3.5 text-sm text-zinc-200 outline-none focus:border-red-600/50"
-                    >
-                      <option value="">Selecciona rutina</option>
-                      {routines.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name} ({r.days_per_week ? `${r.days_per_week} días/sem` : "Sin días"})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Buscar rutina..."
+                    value={routineSearch}
+                    onChange={(e) => setRoutineSearch(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3.5 py-3 text-sm text-zinc-200 outline-none focus:border-red-600/50"
+                  />
 
-                  <button
-                    type="submit"
-                    disabled={loading || !selectedRoutineId}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl btn-glossy-red py-3.5 text-sm font-semibold text-white disabled:opacity-50 cursor-pointer"
-                  >
-                    {loading ? (
-                      <Loader2 className="size-4 animate-spin" />
+                  <div className="space-y-2 max-h-[55vh] overflow-y-auto">
+                    {filteredRoutines.length === 0 ? (
+                      <p className="text-center py-8 text-sm text-zinc-500">No se encontraron rutinas.</p>
                     ) : (
-                      <><Check className="size-4" /> Crear desde Rutina</>
+                      <div className="overflow-hidden rounded-2xl border border-white/8 bg-zinc-900/60 divide-y divide-white/5">
+                        {filteredRoutines.map((r) => (
+                          <button
+                            key={r.id}
+                            type="button"
+                            disabled={loading}
+                            onClick={() => handleSelectRoutine(r.id)}
+                            className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-zinc-800/40 text-left transition-colors disabled:opacity-50"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm text-zinc-200 font-medium truncate">{r.name}</p>
+                              <p className="text-xs text-zinc-500 mt-0.5">
+                                {r.days_per_week ? `${r.days_per_week} días/sem` : "Sin días"}
+                              </p>
+                            </div>
+                            {loading && selectedRoutineId === r.id ? (
+                              <Loader2 className="size-4 animate-spin text-zinc-500 shrink-0 ml-2" />
+                            ) : (
+                              <ChevronRight className="size-4 text-zinc-600 shrink-0 ml-2" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
                     )}
-                  </button>
-                </form>
+                  </div>
+                </div>
               ) : (
                 <form onSubmit={handleCreateFromClass} className="space-y-4">
                   <div className="space-y-1">

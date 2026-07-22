@@ -4,6 +4,25 @@ Registro de lecciones de valor técnico, retos arquitectónicos y soluciones com
 
 ---
 
+## [2026-07-22] - Corrupción de caché de base de datos de Turbopack (.next/dev/cache/turbopack) en caliente
+
+### Contexto del Error
+Durante el desarrollo en caliente en el entorno local (`npm run dev`), el servidor se bloqueó mostrando de manera persistente la pantalla de carga `"Compiling..."` en el navegador. Al inspeccionar la consola de comandos se observaron múltiples pánicos de subprocesos Rust y excepciones del motor de base de datos integrada (`RocksDB` / SST files de Turbopack):
+`Failed to restore task data (corrupted database or bug): Unable to open static sorted file ... (os error 3)`
+
+### Análisis Técnico y Lección
+Turbopack utiliza una base de datos local y optimizada integrada (`RocksDB`) para guardar de manera inmutable en disco las representaciones compiladas de los archivos de código y módulos NPM.
+Cuando se realizan modificaciones estructurales en caliente sobre los archivos de configuración globales (`next.config.ts`), Next.js intenta recargar en caliente el servidor y reinicia el subproceso del compilador. Si un comando de eliminación (`rmdir` o `Remove-Item`) se ejecuta sobre la carpeta `.next` en paralelo mientras el servidor Node.js/Turbopack aún retiene manijas o locks de escritura activos sobre los archivos SST de RocksDB, la base de datos se corrompe de inmediato. El compilador queda atrapado en un ciclo infinito de pánicos de recuperación que impide compilar cualquier ruta de la app.
+
+**Lección general:** Al trabajar con Next.js y Turbopack, las carpetas de caché de compilación (`.next`) nunca deben borrarse o modificarse de forma paralela mientras el proceso de desarrollo de Next.js esté activo o en proceso de apagado. Siempre se debe detener el proceso del servidor local por completo (liberando todos los descriptores de archivos de RocksDB) antes de limpiar la caché de disco.
+
+### Solución Aplicada
+1. Se finalizó de forma estricta el proceso del comando bloqueado en la terminal (`kill`).
+2. Se ejecutó la remoción forzada de la carpeta `.next` libre de bloqueos de archivo.
+3. Se inició nuevamente el servidor de desarrollo (`npm run dev -- -p 3005`) regenerando una base de datos limpia de caché de Turbopack.
+
+---
+
 ## [2026-07-18] - Fallo del Escáner QR en PC/Laptops por Inexistencia de Cámara Trasera (facingMode: environment)
 
 ### Contexto del Error

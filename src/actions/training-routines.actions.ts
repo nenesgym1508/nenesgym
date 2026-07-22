@@ -397,95 +397,127 @@ export async function assignTrainingRoutineToClientAction(routineId: string, cli
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "No autenticado" }
 
-  const { data: rt, error: fetchErr } = await supabase
-    .from("training_routines")
-    .select("name, description, goal, custom_goal, level, days_per_week, notes")
-    .eq("id", routineId)
-    .single()
+  // Rutina y sus días se piden en paralelo: ninguno depende del otro.
+  const [{ data: rt, error: fetchErr }, { data: days }] = await Promise.all([
+    supabase
+      .from("training_routines")
+      .select("name, description, goal, custom_goal, level, days_per_week, notes")
+      .eq("id", routineId)
+      .single(),
+    supabase
+      .from("training_routine_days")
+      .select("id, title, weekday, position")
+      .eq("routine_id", routineId)
+  ])
 
   if (fetchErr || !rt) return { error: "No se encontró la rutina" }
 
-  const { data: newRoutine, error: insertErr } = await supabase
-    .from("client_routines")
-    .insert({
-      gym_id: GYM_ID,
-      client_id: clientId,
-      title: rt.name,
-      description: rt.description,
-      goal: rt.goal,
-      custom_goal: rt.custom_goal,
-      level: rt.level,
-      days_per_week: rt.days_per_week,
-      status: "active",
-      source_type: "training_routine",
-      source_id: routineId,
-      notes: rt.notes,
-      created_by: user.id,
-      created_by_role: "admin"
-    })
-    .select("id")
-    .single()
+  const dayIds = (days ?? []).map((d) => d.id)
+
+  // Crear la rutina del cliente y traer los bloques de todos los días a la vez
+  // (en paralelo: los bloques no dependen de newRoutine, solo de dayIds).
+  const [{ data: newRoutine, error: insertErr }, { data: blocks }] = await Promise.all([
+    supabase
+      .from("client_routines")
+      .insert({
+        gym_id: GYM_ID,
+        client_id: clientId,
+        title: rt.name,
+        description: rt.description,
+        goal: rt.goal,
+        custom_goal: rt.custom_goal,
+        level: rt.level,
+        days_per_week: rt.days_per_week,
+        status: "active",
+        source_type: "training_routine",
+        source_id: routineId,
+        notes: rt.notes,
+        created_by: user.id,
+        created_by_role: "admin"
+      })
+      .select("id")
+      .single(),
+    dayIds.length > 0
+      ? supabase
+          .from("training_routine_blocks")
+          .select("id, routine_day_id, title, position")
+          .in("routine_day_id", dayIds)
+      : Promise.resolve({ data: [] as { id: string; routine_day_id: string; title: string; position: number }[] })
+  ])
 
   if (insertErr) return { error: insertErr.message }
 
-  const { data: days } = await supabase
-    .from("training_routine_days")
-    .select("id, title, weekday, position")
-    .eq("routine_id", routineId)
+  if (!days || days.length === 0) {
+    revalidateRoutines()
+    updateTag("admin-routines")
+    revalidatePath(ROUTES.ADMIN_RUTINAS)
+    return { success: true, id: newRoutine.id }
+  }
 
-  for (const day of days ?? []) {
-    const { data: newDay } = await supabase
-      .from("client_routine_days")
-      .insert({
+  const blockRows = (blocks ?? []) as { id: string; routine_day_id: string; title: string; position: number }[]
+  const blockIds = blockRows.map((b) => b.id)
+
+  const { data: exercisesData } = blockIds.length > 0
+    ? await supabase
+        .from("training_routine_exercises")
+        .select("block_id, exercise_id, position, sets, reps, duration_seconds, rest_seconds, suggested_weight, notes")
+        .in("block_id", blockIds)
+    : { data: [] as any[] }
+
+  // Insertar todos los días de una vez. Postgres devuelve las filas de RETURNING
+  // en el mismo orden que la lista de VALUES insertada, así que el índice mapea 1:1.
+  const { data: newDays, error: daysInsertErr } = await supabase
+    .from("client_routine_days")
+    .insert(
+      days.map((day) => ({
         routine_id: newRoutine.id,
         title: day.title,
         weekday: day.weekday,
         position: day.position
-      })
-      .select("id")
-      .single()
+      }))
+    )
+    .select("id")
 
-    if (!newDay) continue
+  if (daysInsertErr || !newDays) return { error: daysInsertErr?.message || "Error al copiar los días" }
 
-    const { data: blocks } = await supabase
-      .from("training_routine_blocks")
-      .select("id, title, position")
-      .eq("routine_day_id", day.id)
+  const dayIdMap = new Map(days.map((d, i) => [d.id, newDays[i]!.id]))
 
-    for (const block of blocks ?? []) {
-      const { data: newBlock } = await supabase
-        .from("client_routine_blocks")
-        .insert({
-          routine_day_id: newDay.id,
-          title: block.title,
-          position: block.position
-        })
-        .select("id")
-        .single()
+  if (blockIds.length === 0) {
+    revalidateRoutines()
+    updateTag("admin-routines")
+    revalidatePath(ROUTES.ADMIN_RUTINAS)
+    return { success: true, id: newRoutine.id }
+  }
 
-      if (!newBlock) continue
+  const { data: newBlocks, error: blocksInsertErr } = await supabase
+    .from("client_routine_blocks")
+    .insert(
+      blockRows.map((block) => ({
+        routine_day_id: dayIdMap.get(block.routine_day_id)!,
+        title: block.title,
+        position: block.position
+      }))
+    )
+    .select("id")
 
-      const { data: exercises } = await supabase
-        .from("training_routine_exercises")
-        .select("exercise_id, position, sets, reps, duration_seconds, rest_seconds, suggested_weight, notes")
-        .eq("block_id", block.id)
+  if (blocksInsertErr || !newBlocks) return { error: blocksInsertErr?.message || "Error al copiar los bloques" }
 
-      if (exercises && exercises.length > 0) {
-        await supabase.from("client_routine_exercises").insert(
-          (exercises as any[]).map((ex: any) => ({
-            block_id: newBlock.id,
-            exercise_id: ex.exercise_id,
-            position: ex.position,
-            sets: ex.sets,
-            reps: ex.reps,
-            duration_seconds: ex.duration_seconds,
-            rest_seconds: ex.rest_seconds,
-            suggested_weight: ex.suggested_weight,
-            notes: ex.notes
-          }))
-        )
-      }
-    }
+  const blockIdMap = new Map(blockRows.map((b, i) => [b.id, newBlocks[i]!.id]))
+
+  const exerciseRows = (exercisesData as any[] ?? []).map((ex) => ({
+    block_id: blockIdMap.get(ex.block_id)!,
+    exercise_id: ex.exercise_id,
+    position: ex.position,
+    sets: ex.sets,
+    reps: ex.reps,
+    duration_seconds: ex.duration_seconds,
+    rest_seconds: ex.rest_seconds,
+    suggested_weight: ex.suggested_weight,
+    notes: ex.notes
+  }))
+
+  if (exerciseRows.length > 0) {
+    await supabase.from("client_routine_exercises").insert(exerciseRows)
   }
 
   revalidateRoutines()

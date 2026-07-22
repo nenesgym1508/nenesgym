@@ -58,6 +58,7 @@ interface RoutineEditorProps {
   isDoneToday?: boolean
   todayStr?: string
   myExerciseIds?: string[]
+  previewAssignment?: boolean
 }
 
 export function RoutineEditor({
@@ -67,7 +68,8 @@ export function RoutineEditor({
   clients = [],
   isDoneToday,
   todayStr,
-  myExerciseIds
+  myExerciseIds,
+  previewAssignment = false
 }: RoutineEditorProps) {
   const router = useRouter()
   const [routine, setRoutine] = useState(initialRoutine)
@@ -414,6 +416,18 @@ export function RoutineEditor({
           )
         }))
       }
+    })
+  }
+
+  const handleDiscardPreview = () => {
+    const targetClientId = routine.client_id
+    startTransition(async () => {
+      await deleteRoutineAction(routine.id)
+      router.push(
+        targetClientId
+          ? `${ROUTES.ADMIN_RUTINAS_NUEVA}?clientId=${targetClientId}&mode=existing`
+          : ROUTES.ADMIN_RUTINAS_NUEVA
+      )
     })
   }
 
@@ -786,18 +800,35 @@ export function RoutineEditor({
         )}
       </div>
 
-      {/* Barra de Listo */}
+      {/* Barra de Listo / confirmación de asignación */}
       {variant === "admin" && (
         <div className="fixed bottom-16 left-0 right-0 border-t border-white/8 bg-zinc-950/90 backdrop-blur-md p-4">
-          <button
-            onClick={() =>
-              router.push(ROUTES.ADMIN_RUTINAS)
-            }
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-800 py-3 text-sm font-semibold text-zinc-100 hover:bg-zinc-700 transition-colors"
-          >
-            <Check className="size-4" />
-            Listo
-          </button>
+          {previewAssignment ? (
+            <div className="flex gap-2">
+              <button
+                onClick={handleDiscardPreview}
+                disabled={isPending}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-zinc-900 py-3 text-sm font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+              >
+                {isPending ? <Loader2 className="size-4 animate-spin" /> : <><ChevronLeft className="size-4" /> Regresar</>}
+              </button>
+              <button
+                onClick={() => router.push(ROUTES.ADMIN_RUTINAS)}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl btn-glossy-red py-3 text-sm font-semibold text-white"
+              >
+                <Check className="size-4" />
+                Confirmar
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => router.push(ROUTES.ADMIN_RUTINAS)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-800 py-3 text-sm font-semibold text-zinc-100 hover:bg-zinc-700 transition-colors"
+            >
+              <Check className="size-4" />
+              Listo
+            </button>
+          )}
         </div>
       )}
 
