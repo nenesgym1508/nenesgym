@@ -136,12 +136,14 @@ export function DashboardCalendar({
           const isFutureDay = dStr > todayStr
           const isSun = isSunday(day)
           const isSat = isSaturday(day)
-          const isBeforeActivation = activationStr ? dStr < activationStr : false
+          const hasPlan = Boolean(activationStr)
+          const isBeforeActivation = activationStr ? dStr < activationStr : true
+          const isAfterExpiration = expirationStr ? dStr > expirationStr : false
           const isActivationDay = activationStr ? dStr === activationStr : false
           const isExpirationDay = expirationStr ? dStr === expirationStr : false
           
           const isFreeDay = daysPerWeek === 5 ? (isSun || isSat) : isSun
-          const isMissed = inSameMonth && isPast && !isAttended && !isFreeDay && !isBeforeActivation
+          const isMissed = inSameMonth && isPast && !isAttended && !isFreeDay && hasPlan && !isBeforeActivation && !isAfterExpiration
 
           const isInPlanPeriod = activationStr && expirationStr
             ? (dStr >= activationStr && dStr <= expirationStr)
@@ -155,12 +157,12 @@ export function DashboardCalendar({
 
           if (isCurrentDay && isAttended) {
             dayClasses += "bg-green-600/60 border border-green-500/50 text-white font-bold scale-110"
-          } else if (isCurrentDay) {
-            dayClasses += "bg-red-600 text-white shadow-[0_0_18px_rgba(220,38,38,0.7)] font-bold scale-110"
           } else if (isAttended) {
             dayClasses += "bg-green-600/60 border border-green-500/50 text-white font-semibold"
           } else if (isMissed || isUpcomingPlanDay) {
             dayClasses += "bg-red-500/25 border border-red-500/40 text-red-200"
+          } else if (isCurrentDay) {
+            dayClasses += "text-white font-bold scale-110"
           } else if (!inSameMonth) {
             dayClasses += "text-zinc-700"
           } else {
