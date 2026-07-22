@@ -67,13 +67,22 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      <Link
-        href={ROUTES.ADMIN_CLIENTES}
-        className="flex w-full md:w-auto items-center justify-center gap-2 rounded-2xl btn-glossy-red px-4 md:px-10 py-4 text-sm font-semibold text-white"
-      >
-        <Plus className="size-5" />
-        Registrar pago
-      </Link>
+      <div className="flex flex-col gap-3">
+        <Link
+          href={ROUTES.ADMIN_CLIENTES}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl btn-glossy-red px-4 md:px-10 py-4 text-sm font-semibold text-white"
+        >
+          <Plus className="size-5" />
+          Registrar pago
+        </Link>
+        <Link
+          href="/admin/entrenamiento?tab=asignaciones"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-zinc-900/90 hover:bg-zinc-800/90 px-4 md:px-10 py-4 text-sm font-semibold text-zinc-100 transition-colors shadow-sm"
+        >
+          <Plus className="size-5 text-red-500" />
+          Asignar rutina
+        </Link>
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-3 md:gap-4">
