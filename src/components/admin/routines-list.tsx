@@ -23,25 +23,17 @@ interface RoutinesListProps {
   clientsWithoutRoutine?: ClientWithoutRoutine[]
 }
 
-type FilterValue = RoutineStatus | "" | "sin_rutina"
+type FilterValue = "" | "con_rutina" | "sin_rutina"
 
 const FILTER_OPTIONS: { value: FilterValue; label: string }[] = [
   { value: "", label: "Todas" },
-  { value: "active", label: ROUTINE_STATUS_LABELS.active },
-  { value: "paused", label: ROUTINE_STATUS_LABELS.paused },
-  { value: "completed", label: ROUTINE_STATUS_LABELS.completed },
-  { value: "archived", label: ROUTINE_STATUS_LABELS.archived },
-  { value: "draft", label: ROUTINE_STATUS_LABELS.draft },
+  { value: "con_rutina", label: "Con rutina" },
   { value: "sin_rutina", label: "Sin rutina" },
 ]
 
 const EMPTY_LABELS: Record<FilterValue, string> = {
   "": "No hay deportistas ni rutinas registradas.",
-  active: "No hay rutinas activas.",
-  paused: "No hay rutinas pausadas.",
-  completed: "No hay rutinas completadas.",
-  archived: "No hay rutinas archivadas.",
-  draft: "No hay borradores de rutina.",
+  con_rutina: "No hay clientes con rutina asignada.",
   sin_rutina: "Todos los clientes tienen una rutina asignada.",
 }
 
@@ -83,8 +75,8 @@ export function RoutinesList({ routines, clientsWithoutRoutine = [] }: RoutinesL
     // 1. Filtrar por estado (pestaña)
     if (filter === "sin_rutina") {
       if (row.type !== "no_routine") return false
-    } else if (filter !== "") {
-      if (row.type !== "routine" || row.status !== filter) return false
+    } else if (filter === "con_rutina") {
+      if (row.type !== "routine") return false
     }
 
     // 2. Filtrar por búsqueda de texto
