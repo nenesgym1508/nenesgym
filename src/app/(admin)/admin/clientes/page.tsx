@@ -6,7 +6,7 @@ import { ClientsList } from "@/components/admin/clients-list"
 
 export const dynamic = "force-dynamic"
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 const VALID_STATUS: ClientStatusFilter[] = ["todos", "activos", "sin_membresia"]
 
 export default async function AdminClientesPage({
