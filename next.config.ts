@@ -32,26 +32,22 @@ const nextConfig: NextConfig = {
     },
   },
   async headers() {
-    if (process.env.NODE_ENV !== "production") return [];
     return [
       {
-        // Assets de Next.js — inmutables (el hash cambia con cada build)
+        // Assets de Next.js — inmutables
         source: "/_next/static/(.*)",
         headers: [
           { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
       {
-        // Íconos y manifest — cache 1 día
-        source: "/(icons|favicon)(.*)",
+        // Íconos, manifest e imágenes estáticas — caché largo e inmutable en cliente
+        source: "/(icons|favicon.ico|manifest.webmanifest|.*\\.webp|.*\\.png)",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=3600" },
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
     ]
-    // Nota: se eliminó el header `no-store` global de páginas HTML. Desactivaba el prefetch y el
-    // Router Cache de Next (cada navegación era un ida-y-vuelta completo → sensación de lentitud
-    // y "doble clic"). El caché del cliente se controla ahora con experimental.staleTimes.
   },
 }
 
