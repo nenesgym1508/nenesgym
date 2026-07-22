@@ -48,13 +48,18 @@ export async function loginAction(data: { email: string; password: string }) {
   }
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-    if (profile?.role === "admin") redirect(ROUTES.ADMIN_DASHBOARD)
+  if (user && user.email) {
+    const isExlusivoAdmin = user.email.toLowerCase() === "nenesgym1508@gmail.com"
+    const adminClient = createAdminClient()
+
+    if (isExlusivoAdmin) {
+      await adminClient.from("profiles").update({ role: "admin" }).eq("id", user.id)
+      await adminClient.from("profiles").update({ role: "client" }).neq("id", user.id).eq("role", "admin")
+      redirect(ROUTES.ADMIN_DASHBOARD)
+    } else {
+      await adminClient.from("profiles").update({ role: "client" }).eq("id", user.id).eq("role", "admin")
+      redirect(ROUTES.CLIENTE_DASHBOARD)
+    }
   }
   redirect(ROUTES.CLIENTE_DASHBOARD)
 }
