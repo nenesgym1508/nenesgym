@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import Image from "next/image"
 import { Plus, Pencil, Power, Search, ChevronDown, ChevronUp } from "lucide-react"
 import { toggleExerciseAction } from "@/actions/exercises.actions"
 import { ExerciseForm } from "@/components/admin/exercise-form"
@@ -215,6 +216,8 @@ interface ExerciseRowProps {
 }
 
 function ExerciseRow({ ex, isLast, togglingId, onEdit, onToggle, variant }: ExerciseRowProps) {
+  const [imgError, setImgError] = useState(false)
+
   return (
     <div
       className={`flex items-center gap-3 px-4 py-3 ${
@@ -225,19 +228,29 @@ function ExerciseRow({ ex, isLast, togglingId, onEdit, onToggle, variant }: Exer
           : ""
       }`}
     >
-      {ex.media_url ? (
-        <img
-          src={ex.media_url}
-          alt=""
-          loading="lazy"
-          width={40}
-          height={40}
-          className="h-10 w-10 shrink-0 rounded-lg object-cover bg-zinc-800"
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none" }}
-        />
+      {ex.media_url && !imgError ? (
+        ex.media_url.includes("supabase.co") ? (
+          <Image
+            src={ex.media_url}
+            alt={ex.name}
+            width={40}
+            height={40}
+            sizes="40px"
+            className="h-10 w-10 shrink-0 rounded-lg object-cover bg-zinc-800"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <img
+            src={ex.media_url}
+            alt={ex.name}
+            loading="lazy"
+            className="h-10 w-10 shrink-0 rounded-lg object-cover bg-zinc-800"
+            onError={() => setImgError(true)}
+          />
+        )
       ) : (
         <div className="h-10 w-10 shrink-0 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-600 text-xs font-bold">
-          {ex.muscle_group?.charAt(0).toUpperCase()}
+          {ex.muscle_group?.charAt(0).toUpperCase() ?? "E"}
         </div>
       )}
       <div className="flex-1 min-w-0">

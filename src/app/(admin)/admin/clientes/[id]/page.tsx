@@ -118,6 +118,8 @@ export default async function AdminClienteDetallePage({
             clientId={clientData.id}
             clientName={clientProfile?.full_name ?? "Cliente"}
             plans={planOptions}
+            isActive={effectiveStatus === "active" || effectiveStatus === "grace"}
+            currentEndDate={membership?.end_date ?? undefined}
           />
           <Link
             href={adminClienteRutinasDetalle(clientData.id)}

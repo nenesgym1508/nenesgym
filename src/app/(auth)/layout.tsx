@@ -30,6 +30,15 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </h1>
       </div>
       <div className="relative z-10 w-full max-w-sm">{children}</div>
+      <footer className="relative z-10 mt-6 text-center text-xs text-zinc-500 flex gap-3">
+        <a href="/privacidad" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">
+          Privacidad
+        </a>
+        <span>•</span>
+        <a href="/terminos" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">
+          Términos
+        </a>
+      </footer>
     </div>
   )
 }

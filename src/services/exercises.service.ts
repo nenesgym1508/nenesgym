@@ -21,7 +21,7 @@ export async function getExercises(filters?: {
   const supabase = await createClient()
   let query = (supabase as any)
     .from("exercises")
-    .select("*")
+    .select("id, gym_id, name, muscle_group, secondary_muscle_groups, equipment, exercise_type, usage_tags, instructions, media_url, source, external_id, is_active, created_at, updated_at, visibility, owner_client_id, created_by_role")
     .eq("gym_id", GYM_ID)
     .order("name")
 
@@ -39,7 +39,7 @@ export async function getExercise(id: string): Promise<Exercise | null> {
   const supabase = await createClient()
   const { data } = await supabase
     .from("exercises")
-    .select("*")
+    .select("id, gym_id, name, muscle_group, secondary_muscle_groups, equipment, exercise_type, usage_tags, instructions, media_url, source, external_id, is_active, created_at, updated_at, visibility, owner_client_id, created_by_role")
     .eq("id", id)
     .eq("gym_id", GYM_ID)
     .single()
@@ -51,7 +51,7 @@ export async function getMyCreatedExercises(clientId: string): Promise<Exercise[
   const supabase = await createClient()
   const { data } = await (supabase as any)
     .from("exercises")
-    .select("*")
+    .select("id, gym_id, name, muscle_group, secondary_muscle_groups, equipment, exercise_type, usage_tags, instructions, media_url, source, external_id, is_active, created_at, updated_at, visibility, owner_client_id, created_by_role")
     .eq("gym_id", GYM_ID)
     .eq("owner_client_id", clientId)
     .eq("visibility", "client")
@@ -69,7 +69,7 @@ export async function getMyCreatedExercises(clientId: string): Promise<Exercise[
 export async function getMyLibrary(clientId: string): Promise<Exercise[]> {
   const supabase = await createClient()
   const [{ data: gymExercises }, { data: libRows }] = await Promise.all([
-    (supabase as any).from("exercises").select("*").eq("gym_id", GYM_ID).eq("visibility", "gym").order("name"),
+    (supabase as any).from("exercises").select("id, gym_id, name, muscle_group, secondary_muscle_groups, equipment, exercise_type, usage_tags, instructions, media_url, source, external_id, is_active, created_at, updated_at, visibility, owner_client_id, created_by_role").eq("gym_id", GYM_ID).eq("visibility", "gym").order("name"),
     (supabase as any).from("client_exercise_library").select("exercise_id, is_active").eq("client_id", clientId),
   ])
   const overrides = new Map<string, boolean>(

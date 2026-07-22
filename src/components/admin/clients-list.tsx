@@ -269,6 +269,7 @@ export function ClientsList({ clients, plans, total, page, pageSize, search, sta
                     plans={plans}
                     triggerVariant="card"
                     isActive={isActive}
+                    currentEndDate={c.endDate ?? undefined}
                   />
                   {singleDayPlan && (
                     <LoadingButton

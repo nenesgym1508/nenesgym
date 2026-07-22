@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState, useTransition } from "react"
+import Image from "next/image"
 import { Search, Plus, Check, X, Pencil, Trash2, Dumbbell } from "lucide-react"
 import {
   addToMyLibraryAction,
@@ -304,6 +305,7 @@ function ExerciseRowItem({
   pending: boolean
   onView: (ex: Exercise) => void
 }) {
+  const [imgError, setImgError] = useState(false)
   const subtitle = [
     ex.muscle_group ? MUSCLE_GROUP_LABELS[ex.muscle_group] : null,
     ex.equipment ? EQUIPMENT_LABELS[ex.equipment] : null,
@@ -317,16 +319,26 @@ function ExerciseRowItem({
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onView(ex) }}
       className={`flex w-full items-center gap-3 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] px-4 py-3 text-left cursor-pointer hover:border-zinc-600 transition-colors ${pending ? "opacity-50" : ""}`}
     >
-      {ex.media_url ? (
-        <img
-          src={ex.media_url}
-          alt=""
-          loading="lazy"
-          width={44}
-          height={44}
-          className="h-11 w-11 shrink-0 rounded-xl border border-zinc-700 object-cover bg-zinc-950"
-          onError={(e) => { e.currentTarget.style.display = "none" }}
-        />
+      {ex.media_url && !imgError ? (
+        ex.media_url.includes("supabase.co") ? (
+          <Image
+            src={ex.media_url}
+            alt={ex.name}
+            width={44}
+            height={44}
+            sizes="44px"
+            className="h-11 w-11 shrink-0 rounded-xl border border-zinc-700 object-cover bg-zinc-950"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <img
+            src={ex.media_url}
+            alt={ex.name}
+            loading="lazy"
+            className="h-11 w-11 shrink-0 rounded-xl border border-zinc-700 object-cover bg-zinc-950"
+            onError={() => setImgError(true)}
+          />
+        )
       ) : (
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 text-zinc-600">
           <Dumbbell className="size-4" />

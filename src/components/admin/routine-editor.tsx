@@ -808,8 +808,8 @@ export function RoutineEditor({
           existingIds={
             activeDay?.blocks.find((b) => b.id === pickerBlockId)?.exercises.map((e) => e.exercise_id) ?? []
           }
-          onSelect={(ex, overrides) => {
-            handleAddExercise(pickerBlockId, ex, overrides)
+          onSelectMultiple={(selections) => {
+            selections.forEach(sel => handleAddExercise(pickerBlockId, sel.exercise, sel.overrides))
             setPickerBlockId(null)
           }}
           onClose={() => setPickerBlockId(null)}

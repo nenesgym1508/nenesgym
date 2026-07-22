@@ -3,16 +3,61 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { Play, Check, AlertTriangle, Loader2 } from "lucide-react"
+import { Play, Check, AlertTriangle, Loader2, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SuccessToast } from "@/components/ui/success-toast"
 import { clientCheckInAction } from "@/actions/client.actions"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { toZonedTime } from "date-fns-tz"
+import { nowInBogota, GYM_TIMEZONE } from "@/lib/dates"
 
 interface ClientCheckInButtonProps {
   alreadyToday: boolean
   lastCheckedInAt?: string | null
+}
+
+function getCheckInShiftValidation(
+  lastCheckedInAt?: string | null,
+  alreadyToday: boolean = false
+): { canCheckIn: boolean; message: string | null; buttonText: string } {
+  const now = nowInBogota()
+  const currentHour = now.getHours()
+  const currentShift = currentHour < 14 ? "am" : "pm"
+
+  if (!alreadyToday || !lastCheckedInAt) {
+    return {
+      canCheckIn: true,
+      message: null,
+      buttonText: "Sí, ingresar",
+    }
+  }
+
+  const lastCheckInDate = toZonedTime(new Date(lastCheckedInAt), GYM_TIMEZONE)
+  const lastHour = lastCheckInDate.getHours()
+  const lastShift = lastHour < 14 ? "am" : "pm"
+  const formattedLastTime = format(lastCheckInDate, "h:mm a", { locale: es })
+
+  if (lastShift === "am") {
+    if (currentShift === "am") {
+      return {
+        canCheckIn: false,
+        message: `Ya registraste tu ingreso del turno de la mañana (a las ${formattedLastTime}). Podrás registrar tu segundo ingreso en el turno de la tarde.`,
+        buttonText: "Turno mañana registrado",
+      }
+    }
+    return {
+      canCheckIn: true,
+      message: null,
+      buttonText: "Sí, ingresar",
+    }
+  }
+
+  return {
+    canCheckIn: false,
+    message: `Ya registraste tu ingreso del día de hoy (a las ${formattedLastTime}).`,
+    buttonText: "Ingreso de hoy registrado",
+  }
 }
 
 export function ClientCheckInButton({
@@ -25,7 +70,10 @@ export function ClientCheckInButton({
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successData, setSuccessData] = useState<{ title: string; subtitle: string; message: string } | null>(null)
 
+  const shiftValidation = getCheckInShiftValidation(lastCheckedInAt, alreadyToday)
+
   async function handleCheckIn() {
+    if (!shiftValidation.canCheckIn) return
     setLoading(true)
     setErrorMsg(null)
     setConfirmOpen(false)
@@ -51,7 +99,6 @@ export function ClientCheckInButton({
     }
   }
 
-  // Formatear hora de ingreso anterior
   const formattedLastTime = lastCheckedInAt
     ? format(new Date(lastCheckedInAt), "h:mm a", { locale: es })
     : null
@@ -69,14 +116,14 @@ export function ClientCheckInButton({
       )}
 
       {/* Botón Principal */}
-      {alreadyToday ? (
+      {alreadyToday && !shiftValidation.canCheckIn ? (
         <div className="space-y-3">
           <Button
             disabled
             className="w-full h-14 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 font-semibold cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Check className="size-5" />
-            Ingreso completado hoy
+            {shiftValidation.buttonText}
           </Button>
           {formattedLastTime && (
             <p className="text-center text-xs text-zinc-500">
@@ -127,6 +174,19 @@ export function ClientCheckInButton({
               <p className="text-sm text-zinc-400">
                 ¿Confirmas que estás ingresando al gimnasio en este momento?
               </p>
+
+              {/* Advertencia de Turno ya registrado */}
+              {!shiftValidation.canCheckIn && shiftValidation.message && (
+                <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs text-left space-y-1">
+                  <div className="flex items-center gap-1.5 font-semibold text-amber-400">
+                    <Clock className="size-4 shrink-0" />
+                    <span>Turno ya registrado</span>
+                  </div>
+                  <p className="leading-snug text-zinc-300">
+                    {shiftValidation.message}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3">
@@ -138,9 +198,14 @@ export function ClientCheckInButton({
               </Button>
               <Button
                 onClick={handleCheckIn}
-                className="flex-1 h-11 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"
+                disabled={loading || !shiftValidation.canCheckIn}
+                className="flex-1 h-11 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Sí, ingresar
+                {loading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  shiftValidation.buttonText
+                )}
               </Button>
             </div>
           </div>

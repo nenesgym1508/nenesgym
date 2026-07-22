@@ -705,7 +705,7 @@ export async function moveTrainingRoutineBlockAction(dayId: string, routineId: s
 }
 
 // ── Ejercicios en bloque ──────────────────────────────────
-export async function addExerciseToTrainingRoutineBlockAction(blockId: string, routineId: string, exerciseId: string, position: number) {
+export async function addExerciseToTrainingRoutineBlockAction(blockId: string, routineId: string, exerciseId: string, position: number, overrides?: { sets: number; reps: number; rest_seconds: number }) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("training_routine_exercises")
@@ -713,8 +713,9 @@ export async function addExerciseToTrainingRoutineBlockAction(blockId: string, r
       block_id: blockId,
       exercise_id: exerciseId,
       position,
-      sets: 3,
-      reps: 10
+      sets: overrides?.sets ?? 3,
+      reps: overrides?.reps ?? 10,
+      rest_seconds: overrides?.rest_seconds ?? 60
     })
     .select("id")
     .single()

@@ -7,7 +7,8 @@ import { useRouter } from "next/navigation"
 import { CheckCircle2, ChevronRight, Clock, Hourglass, AlertTriangle, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { formatDatetime } from "@/lib/dates"
+import { toZonedTime } from "date-fns-tz"
+import { formatDatetime, nowInBogota, GYM_TIMEZONE } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 import { SuccessToast } from "@/components/ui/success-toast"
 import { clientCheckInAction } from "@/actions/client.actions"
@@ -25,6 +26,64 @@ interface TodayStatusCardProps {
   hasActivePlan?: boolean
 }
 
+function getCheckInShiftValidation(
+  lastCheckInAt?: string | null,
+  sessionsToday: number = 0,
+  trainedToday: boolean = false
+): { canCheckIn: boolean; message: string | null; buttonText: string; showDoubleCounter: boolean } {
+  const now = nowInBogota()
+  const currentHour = now.getHours()
+  const currentShift = currentHour < 14 ? "am" : "pm"
+
+  if (sessionsToday >= 2) {
+    return {
+      canCheckIn: false,
+      message: "Ya completaste tus 2 ingresos permitidos por día (Turno Mañana y Turno Tarde).",
+      buttonText: "Ingresos de hoy completados",
+      showDoubleCounter: true,
+    }
+  }
+
+  if (!trainedToday || !lastCheckInAt) {
+    return {
+      canCheckIn: true,
+      message: null,
+      buttonText: "Sí, ingresar",
+      showDoubleCounter: false,
+    }
+  }
+
+  const lastCheckInDate = toZonedTime(new Date(lastCheckInAt), GYM_TIMEZONE)
+  const lastHour = lastCheckInDate.getHours()
+  const lastShift = lastHour < 14 ? "am" : "pm"
+  const formattedLastTime = format(lastCheckInDate, "h:mm a", { locale: es })
+
+  if (lastShift === "am") {
+    if (currentShift === "am") {
+      return {
+        canCheckIn: false,
+        message: `Ya registraste tu ingreso del turno de la mañana (a las ${formattedLastTime}). Podrás registrar tu segundo ingreso en el turno de la tarde.`,
+        buttonText: "Turno mañana registrado",
+        showDoubleCounter: true,
+      }
+    }
+    return {
+      canCheckIn: true,
+      message: null,
+      buttonText: "Sí, ingresar",
+      showDoubleCounter: true,
+    }
+  }
+
+  // Si su registro de hoy fue en el turno PM (y no asistió en la mañana), ya no tiene más turnos hoy
+  return {
+    canCheckIn: false,
+    message: `Ya registraste tu ingreso del día de hoy (a las ${formattedLastTime}).`,
+    buttonText: "Ingreso de hoy registrado",
+    showDoubleCounter: false,
+  }
+}
+
 export function TodayStatusCard({
   trainedToday,
   sessionsToday = 0,
@@ -39,7 +98,10 @@ export function TodayStatusCard({
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successData, setSuccessData] = useState<{ title: string; subtitle: string; message: string } | null>(null)
 
+  const shiftValidation = getCheckInShiftValidation(lastCheckInAt, sessionsToday, trainedToday)
+
   async function handleCheckIn() {
+    if (!shiftValidation.canCheckIn) return
     setLoading(true)
     setErrorMsg(null)
     setConfirmOpen(false)
@@ -122,7 +184,7 @@ export function TodayStatusCard({
             <div className="min-w-0 flex-1">
               <p className="font-bebas text-lg tracking-wide uppercase text-white">
                 {trainedToday ? "Entrenaste hoy" : "Aún no registras tu ingreso"}
-                {trainedToday && sessionsToday > 0 && (
+                {trainedToday && sessionsToday > 0 && shiftValidation.showDoubleCounter && (
                   <span className="font-sans text-xs font-normal normal-case tracking-normal text-zinc-500"> · {sessionsToday} de 2 ingresos</span>
                 )}
               </p>
@@ -208,6 +270,19 @@ export function TodayStatusCard({
                   {format(new Date(), "h:mm a", { locale: es })}
                 </p>
               </div>
+
+              {/* Advertencia de turno ya registrado */}
+              {!shiftValidation.canCheckIn && shiftValidation.message && (
+                <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs text-left space-y-1">
+                  <div className="flex items-center gap-1.5 font-semibold text-amber-400">
+                    <Clock className="size-4 shrink-0" />
+                    <span>Turno ya registrado</span>
+                  </div>
+                  <p className="leading-snug text-zinc-300">
+                    {shiftValidation.message}
+                  </p>
+                </div>
+              )}
             </div>
 
             {errorMsg && (
@@ -228,13 +303,13 @@ export function TodayStatusCard({
               <button
                 type="button"
                 onClick={handleCheckIn}
-                disabled={loading}
-                className="flex-1 h-11 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 text-sm"
+                disabled={loading || !shiftValidation.canCheckIn}
+                className="flex-1 h-11 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-sm"
               >
                 {loading ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
-                  "Sí, ingresar"
+                  shiftValidation.buttonText
                 )}
               </button>
             </div>

@@ -32,7 +32,28 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${geist.variable} ${bebas.variable} h-full dark`}>
-<body className="h-full bg-background text-foreground antialiased">{children}</body>
+      <body className="h-full bg-background text-foreground antialiased">
+        {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                  var removed = false;
+                  for (var i = 0; i < registrations.length; i++) {
+                    registrations[i].unregister();
+                    removed = true;
+                  }
+                  if (removed) {
+                    console.log('Stale Service Worker unregistered.');
+                    setTimeout(function() { window.location.reload(); }, 150);
+                  }
+                });
+              }
+            `,
+          }}
+        />
+      </body>
     </html>
   )
 }

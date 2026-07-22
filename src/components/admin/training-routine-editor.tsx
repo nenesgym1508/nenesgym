@@ -288,24 +288,24 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
     })
   }
 
-  const handleAddExercise = (blockId: string, ex: Exercise) => {
+  const handleAddExercise = (blockId: string, ex: Exercise, overrides?: { sets: number; reps: number; rest_seconds: number }) => {
     startTransition(async () => {
       const block = activeDay?.blocks.find((b) => b.id === blockId)
       const pos = block?.exercises.length ?? 0
-      const res = await addExerciseToTrainingRoutineBlockAction(blockId, routine.id, ex.id, pos)
+      const res = await addExerciseToTrainingRoutineBlockAction(blockId, routine.id, ex.id, pos, overrides)
       if (res.success && res.id) {
         const newEx = {
           id: res.id,
           block_id: blockId,
           exercise_id: ex.id,
           position: pos,
-          sets: 3,
-          reps: 10,
+          sets: overrides?.sets ?? 3,
+          reps: overrides?.reps ?? 10,
           duration_seconds: null,
-          rest_seconds: null,
+          rest_seconds: overrides?.rest_seconds ?? 60,
           suggested_weight: null,
           notes: null,
-          exercise: ex
+          exercise: { ...ex }
         }
         setRoutine((prev) => ({
           ...prev,
@@ -315,6 +315,8 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
               : d
           )
         }))
+      } else if (res.error) {
+        alert(res.error)
       }
     })
   }
@@ -543,8 +545,8 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
         <ExercisePicker
           exercises={exercises}
           existingIds={activeDay?.blocks.find((b) => b.id === pickerBlockId)?.exercises.map((e) => e.exercise_id) ?? []}
-          onSelect={(ex) => {
-            handleAddExercise(pickerBlockId, ex)
+          onSelectMultiple={(selections) => {
+            selections.forEach(sel => handleAddExercise(pickerBlockId, sel.exercise, sel.overrides))
             setPickerBlockId(null)
           }}
           onClose={() => setPickerBlockId(null)}

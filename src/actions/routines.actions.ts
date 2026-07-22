@@ -22,6 +22,36 @@ function revalidateAdminRoutines(routineId?: string) {
   }
 }
 
+async function requireAdminOrRoutineOwner(routineId: string) {
+  const session = await getAuthenticatedSession()
+  if (!session) return { error: "No autenticado" }
+
+  if (session.profile.role === "admin") {
+    return { success: true, user: session.user, role: "admin" }
+  }
+
+  const supabase = await createClient()
+  const { data: client } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("profile_id", session.user.id)
+    .single()
+
+  if (!client) return { error: "No se encontró el perfil de cliente" }
+
+  const { data: routine } = await supabase
+    .from("client_routines")
+    .select("client_id")
+    .eq("id", routineId)
+    .single()
+
+  if (!routine || routine.client_id !== client.id) {
+    return { error: "Sin permisos para modificar esta rutina" }
+  }
+
+  return { success: true, user: session.user, role: "client", clientId: client.id }
+}
+
 interface CreateRoutineInput {
   client_id: string | null
   title: string
@@ -94,7 +124,7 @@ export async function createRoutineAction(data: CreateRoutineInput) {
 }
 
 export async function updateRoutineMetaAction(id: string, data: Partial<ClientRoutineInput> & { status?: RoutineStatus; days_per_week?: number | null }) {
-  const guard = await requireAdmin()
+  const guard = await requireAdminOrRoutineOwner(id)
   if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase
@@ -265,7 +295,7 @@ export async function assignRoutineToClientAction(routineId: string, clientId: s
 
 // ── Días ──────────────────────────────────────────────────
 export async function addRoutineDayAction(routineId: string, title: string, weekday: Weekday | null, position: number) {
-  const guard = await requireAdmin()
+  const guard = await requireAdminOrRoutineOwner(routineId)
   if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -294,7 +324,7 @@ export async function addRoutineDayAction(routineId: string, title: string, week
 }
 
 export async function updateRoutineDayAction(dayId: string, routineId: string, title: string, weekday: Weekday | null) {
-  const guard = await requireAdmin()
+  const guard = await requireAdminOrRoutineOwner(routineId)
   if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase
@@ -309,7 +339,7 @@ export async function updateRoutineDayAction(dayId: string, routineId: string, t
 }
 
 export async function deleteRoutineDayAction(dayId: string, routineId: string) {
-  const guard = await requireAdmin()
+  const guard = await requireAdminOrRoutineOwner(routineId)
   if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase
@@ -324,7 +354,7 @@ export async function deleteRoutineDayAction(dayId: string, routineId: string) {
 }
 
 export async function moveRoutineDayAction(routineId: string, orderedIds: string[]) {
-  const guard = await requireAdmin()
+  const guard = await requireAdminOrRoutineOwner(routineId)
   if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const promises = orderedIds.map((id, index) =>
@@ -338,7 +368,7 @@ export async function moveRoutineDayAction(routineId: string, orderedIds: string
 
 // ── Bloques ───────────────────────────────────────────────
 export async function addRoutineBlockAction(dayId: string, routineId: string, title: string, position: number) {
-  const guard = await requireAdmin()
+  const guard = await requireAdminOrRoutineOwner(routineId)
   if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -354,7 +384,7 @@ export async function addRoutineBlockAction(dayId: string, routineId: string, ti
 }
 
 export async function updateRoutineBlockTitleAction(blockId: string, routineId: string, title: string) {
-  const guard = await requireAdmin()
+  const guard = await requireAdminOrRoutineOwner(routineId)
   if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase
@@ -369,7 +399,7 @@ export async function updateRoutineBlockTitleAction(blockId: string, routineId: 
 }
 
 export async function deleteRoutineBlockAction(blockId: string, routineId: string) {
-  const guard = await requireAdmin()
+  const guard = await requireAdminOrRoutineOwner(routineId)
   if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase.from("client_routine_blocks").delete().eq("id", blockId)
@@ -380,7 +410,7 @@ export async function deleteRoutineBlockAction(blockId: string, routineId: strin
 }
 
 export async function moveRoutineBlockAction(dayId: string, routineId: string, orderedIds: string[]) {
-  const guard = await requireAdmin()
+  const guard = await requireAdminOrRoutineOwner(routineId)
   if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const promises = orderedIds.map((id, index) =>
@@ -400,7 +430,7 @@ export async function addExerciseToRoutineBlockAction(
   position: number,
   overrides?: { sets: number; reps: number; rest_seconds: number }
 ) {
-  const guard = await requireAdmin()
+  const guard = await requireAdminOrRoutineOwner(routineId)
   if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -430,7 +460,7 @@ export async function updateRoutineBlockExerciseAction(exerciseRowId: string, ro
   suggested_weight?: string | null
   notes?: string | null
 }) {
-  const guard = await requireAdmin()
+  const guard = await requireAdminOrRoutineOwner(routineId)
   if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase
@@ -445,7 +475,7 @@ export async function updateRoutineBlockExerciseAction(exerciseRowId: string, ro
 }
 
 export async function removeExerciseFromRoutineBlockAction(exerciseRowId: string, routineId: string) {
-  const guard = await requireAdmin()
+  const guard = await requireAdminOrRoutineOwner(routineId)
   if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const { error } = await supabase.from("client_routine_exercises").delete().eq("id", exerciseRowId)
@@ -456,7 +486,7 @@ export async function removeExerciseFromRoutineBlockAction(exerciseRowId: string
 }
 
 export async function moveRoutineBlockExerciseAction(blockId: string, routineId: string, orderedIds: string[]) {
-  const guard = await requireAdmin()
+  const guard = await requireAdminOrRoutineOwner(routineId)
   if ("error" in guard) return { error: guard.error }
   const supabase = await createClient()
   const promises = orderedIds.map((id, index) =>

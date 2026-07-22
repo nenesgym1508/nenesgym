@@ -3,6 +3,8 @@ export const ROUTES = {
   BIENVENIDA: '/bienvenida',
   LOGIN: '/login',
   REGISTER: '/register',
+  PRIVACIDAD: '/privacidad',
+  TERMINOS: '/terminos',
 
   // Cliente
   CLIENTE_DASHBOARD: '/cliente/dashboard',

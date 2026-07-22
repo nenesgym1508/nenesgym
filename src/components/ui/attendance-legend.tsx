@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils"
 
 const LEGEND = [
   { label: "Asistido", dot: "bg-green-600/60 border border-green-500/50" },
-  { label: "Hoy", dot: "bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.6)]" },
+  { label: "Hoy", dot: "bg-transparent ring-1 ring-white ring-offset-1 ring-offset-zinc-950" },
   { label: "Falta", dot: "bg-red-500/25 border border-red-500/40" },
 ]
 

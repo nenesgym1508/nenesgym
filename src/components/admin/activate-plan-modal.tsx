@@ -8,6 +8,7 @@ import { LoadingButton } from "@/components/ui/loading-button"
 import { formatCOP, computePlanDiscount } from "@/lib/utils"
 import { PAYMENT_METHOD_LABELS } from "@/constants/plans"
 import type { PaymentMethod } from "@/types/payment"
+import { formatDate } from "@/lib/dates"
 
 interface Plan {
   id: string
@@ -23,11 +24,18 @@ interface ActivatePlanModalProps {
   plans: Plan[]
   triggerVariant?: 'default' | 'card'
   isActive?: boolean
+  currentEndDate?: string
+}
+
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr + "T12:00:00")
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split("T")[0]!
 }
 
 const METHODS: PaymentMethod[] = ["cash", "transfer", "nequi", "daviplata", "other"]
 
-export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant, isActive }: ActivatePlanModalProps) {
+export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant, isActive, currentEndDate }: ActivatePlanModalProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [planId, setPlanId] = useState("")
@@ -192,6 +200,20 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
                     ))}
                   </div>
                 </div>
+
+                {isActive && currentEndDate && selectedPlan && (
+                  <div className="rounded-xl border border-blue-500/20 bg-blue-950/20 p-3 text-[11px] text-blue-300 leading-normal mb-3 space-y-1">
+                    <p className="font-semibold flex items-center gap-1">
+                      ℹ️ Plan acumulativo
+                    </p>
+                    <p>
+                      El cliente tiene un plan activo que vence el <strong className="text-zinc-200">{formatDate(currentEndDate)}</strong>.
+                    </p>
+                    <p>
+                      Al activar este plan, se sumarán <strong className="text-zinc-200">{selectedPlan.days} días</strong> y el nuevo vencimiento será el <strong className="text-zinc-200 font-bold">{formatDate(addDays(currentEndDate, selectedPlan.duration_days))}</strong>.
+                    </p>
+                  </div>
+                )}
 
                 {status === "error" && (
                   <p className="text-xs text-red-400 mb-3">{errorMsg}</p>

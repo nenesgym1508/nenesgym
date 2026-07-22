@@ -86,6 +86,23 @@ export async function toggleExerciseAction(id: string, isActive: boolean) {
   return { success: true }
 }
 
+function isWebPBuffer(buffer: Buffer): boolean {
+  if (buffer.length < 12) return false
+  const riff = buffer.toString("ascii", 0, 4)
+  const webp = buffer.toString("ascii", 8, 12)
+  return riff === "RIFF" && webp === "WEBP"
+}
+
+function getStoragePathFromUrl(url: string | null): string | null {
+  if (!url) return null
+  const marker = "/storage/v1/object/public/exercises/"
+  const idx = url.indexOf(marker)
+  if (idx !== -1) {
+    return url.substring(idx + marker.length)
+  }
+  return null
+}
+
 export async function uploadExerciseImageAction(
   formData: FormData
 ): Promise<{ success: true; url: string } | { error: string }> {
@@ -99,36 +116,68 @@ export async function uploadExerciseImageAction(
     .eq("id", user.id)
     .single()
 
-  if (profile?.role !== "admin" && profile?.role !== "client") return { error: "Sin permisos" }
+  const role = profile?.role
+  if (role !== "admin" && role !== "client") return { error: "Sin permisos" }
 
-  const file = formData.get("file") as File
+  const file = formData.get("file") as File | null
+  const exerciseId = formData.get("exerciseId") as string | null
+
   if (!file || file.size === 0) return { error: "No se seleccionó ningún archivo" }
 
-  const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]
-  const MAX_FILE_SIZE = 4 * 1024 * 1024 // 4 MB
-
-  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-    return { error: "Tipo de archivo no permitido. Solo se admiten imágenes JPG, PNG y WEBP." }
-  }
+  const MAX_FILE_SIZE = 500 * 1024 // 500 KB estricto final
   if (file.size > MAX_FILE_SIZE) {
-    return { error: "La imagen no puede superar los 4 MB de tamaño." }
+    return { error: "La imagen optimizada supera el límite máximo de 500 KB." }
   }
-
-  const mimeToExt: Record<string, string> = {
-    "image/jpeg": "jpg",
-    "image/jpg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp"
-  }
-  const ext = mimeToExt[file.type] ?? "jpg"
-  const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`
-  const path = `${GYM_ID}/${fileName}`
 
   const buffer = Buffer.from(await file.arrayBuffer())
 
+  // Inspección de la firma real del archivo (Magic Bytes: RIFF...WEBP)
+  if (!isWebPBuffer(buffer)) {
+    return { error: "El archivo enviado no es una imagen WebP válida." }
+  }
+
+  let clientId: string | null = null
+  let oldMediaUrl: string | null = null
+
+  if (role === "client") {
+    const { data: client } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("profile_id", user.id)
+      .single()
+    if (!client) return { error: "Perfil de cliente no encontrado" }
+    clientId = client.id
+
+    if (exerciseId) {
+      const { data: existingEx } = await supabase
+        .from("exercises")
+        .select("owner_client_id, visibility, media_url")
+        .eq("id", exerciseId)
+        .single()
+      if (!existingEx || existingEx.owner_client_id !== clientId || existingEx.visibility !== "client") {
+        return { error: "Sin permisos para modificar la imagen de este ejercicio." }
+      }
+      oldMediaUrl = existingEx.media_url
+    }
+  } else if (role === "admin" && exerciseId) {
+    const { data: existingEx } = await supabase
+      .from("exercises")
+      .select("media_url")
+      .eq("id", exerciseId)
+      .single()
+    if (existingEx) {
+      oldMediaUrl = existingEx.media_url
+    }
+  }
+
+  const randomStr = Math.random().toString(36).substring(2, 8)
+  const path = role === "admin"
+    ? `gym/${GYM_ID}/${Date.now()}_${randomStr}.webp`
+    : `client/${clientId}/${Date.now()}_${randomStr}.webp`
+
   const { error: uploadError } = await supabase.storage
     .from("exercises")
-    .upload(path, buffer, { contentType: file.type, upsert: false })
+    .upload(path, buffer, { contentType: "image/webp", upsert: false })
 
   if (uploadError) {
     return { error: "Error al subir la imagen: " + uploadError.message }
@@ -140,6 +189,21 @@ export async function uploadExerciseImageAction(
 
   if (!urlData?.publicUrl) {
     return { error: "No se pudo obtener la URL pública de la imagen." }
+  }
+
+  // Eliminar la imagen previa únicamente si no está compartida por otro ejercicio
+  if (oldMediaUrl) {
+    const oldPath = getStoragePathFromUrl(oldMediaUrl)
+    if (oldPath && oldPath !== path) {
+      const { count } = await (supabase as any)
+        .from("exercises")
+        .select("id", { count: "exact", head: true })
+        .eq("media_url", oldMediaUrl)
+
+      if ((count ?? 0) <= 1) {
+        await supabase.storage.from("exercises").remove([oldPath])
+      }
+    }
   }
 
   return { success: true, url: urlData.publicUrl }
@@ -174,6 +238,21 @@ export async function createMyExerciseAction(
   if ("error" in ctx) return ctx
 
   if (!data.name.trim()) return { error: "El nombre es obligatorio" }
+
+  // Límite MVP: máximo 15 ejercicios personales por cliente
+  const { count } = await (supabase as any)
+    .from("exercises")
+    .select("id", { count: "exact", head: true })
+    .eq("gym_id", GYM_ID)
+    .eq("owner_client_id", ctx.clientId)
+    .eq("visibility", "client")
+    .eq("is_active", true)
+
+  if ((count ?? 0) >= 15) {
+    return {
+      error: "Has alcanzado el límite máximo de 15 ejercicios personales. Puedes editar o eliminar tus ejercicios existentes para crear nuevos."
+    }
+  }
 
   const { data: row, error } = await (supabase as any)
     .from("exercises")

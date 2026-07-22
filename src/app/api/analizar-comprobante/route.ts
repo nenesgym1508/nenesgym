@@ -363,20 +363,36 @@ export async function POST(req: NextRequest) {
       ? numerosCoinciden(datos.numeroDestino, numeroEsperado)
       : null
 
+    // Consultar el precio real del plan de la BD si se envió planId
+    let expectedPriceCents = Number(amountExpected)
+    if (planId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: dbPlan } = await (admin as any)
+        .from("plans")
+        .select("price_cents")
+        .eq("id", planId)
+        .maybeSingle()
+      if (dbPlan?.price_cents) {
+        expectedPriceCents = dbPlan.price_cents
+      }
+    }
+
     // amountExpected llega en centavos (amount_cents del plan); montoDetectado
     // por la IA viene en pesos — convertir antes de comparar.
     const coincideMonto: boolean | null =
-      Number(amountExpected) > 0
-        ? datos.montoDetectado === Math.round(Number(amountExpected) / 100)
+      expectedPriceCents > 0 && datos.montoDetectado > 0
+        ? datos.montoDetectado === Math.round(expectedPriceCents / 100)
         : null
 
     const titularFlexible = clientRow.auto_aprobacion === true
 
-    // Veredicto IA
+    // Veredicto IA: Requiere que la transacción sea exitosa, no haya discrepancia de nombre/número,
+    // el monto coincida (si se pudo leer) y no sea comprobante duplicado.
     const aiValido =
       datos.transaccionExitosa &&
       nombreCoincide !== false &&
       numeroCoincide !== false &&
+      coincideMonto !== false &&
       !imagenRepetida &&
       !referenciaRepetida
 
@@ -384,6 +400,7 @@ export async function POST(req: NextRequest) {
     if (referenciaRepetida) aiRazon = "La referencia ya fue registrada anteriormente"
     else if (imagenRepetida) aiRazon = "Este comprobante es similar a uno ya registrado"
     else if (!datos.transaccionExitosa) aiRazon = "La transacción no aparece como completada"
+    else if (coincideMonto === false) aiRazon = `El monto del comprobante ($${datos.montoDetectado.toLocaleString("es-CO")}) no coincide con el valor del plan ($${Math.round(expectedPriceCents / 100).toLocaleString("es-CO")})`
     else if (nombreCoincide === false) aiRazon = "El nombre del destinatario no coincide"
     else if (numeroCoincide === false) aiRazon = "El número de destino no coincide con la cuenta del gimnasio"
 
@@ -466,6 +483,30 @@ export async function POST(req: NextRequest) {
     if (v.imageHash !== imageHash) {
       return NextResponse.json(
         { error: "El comprobante cambió. Iniciá el proceso de nuevo." },
+        { status: 400 }
+      )
+    }
+
+    // Validar coincidencia de monto contra la BD y el veredicto de la IA
+    const confirmedPlanId = (v.planId as string) || null
+    if (confirmedPlanId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: dbPlan } = await (admin as any)
+        .from("plans")
+        .select("price_cents")
+        .eq("id", confirmedPlanId)
+        .maybeSingle()
+      if (dbPlan && dbPlan.price_cents !== amountCents) {
+        return NextResponse.json(
+          { error: "El monto ingresado no coincide con el precio del plan seleccionado." },
+          { status: 400 }
+        )
+      }
+    }
+
+    if (v.coincideMonto === false) {
+      return NextResponse.json(
+        { error: (v.aiRazon as string) || "El monto detectado en el comprobante no coincide con el valor del plan." },
         { status: 400 }
       )
     }

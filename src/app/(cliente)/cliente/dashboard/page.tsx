@@ -48,6 +48,7 @@ export default async function ClienteDashboardPage() {
     client ? getActiveRoutineForClient(client.id) : Promise.resolve(null),
   ])
 
+
   const attendanceDates = attendance.map(a => {
     const [year, month, day] = a.check_in_date.split('T')[0].split('-').map(Number)
     return new Date(year, month - 1, day)
@@ -112,12 +113,22 @@ export default async function ClienteDashboardPage() {
   const greeting = getGreeting(nowInBogota())
 
   let parsedMembershipStart: Date | undefined
+  let parsedMembershipEnd: Date | undefined
   if (membership?.start_date) {
     const [y, m, d] = membership.start_date.split('T')[0].split('-').map(Number)
     parsedMembershipStart = new Date(y, m - 1, d)
   }
+  if (membership?.end_date) {
+    const [y, m, d] = membership.end_date.split('T')[0].split('-').map(Number)
+    parsedMembershipEnd = new Date(y, m - 1, d)
+  }
 
   const recentAttendance = attendance.slice(0, 5)
+
+  const lastCheckInDate = attendance[0]?.checked_in_at ? new Date(attendance[0].checked_in_at) : null
+  const lastCheckInIsToday = lastCheckInDate && lastCheckInDate.getFullYear() === nowInBogota().getFullYear() && lastCheckInDate.getMonth() === nowInBogota().getMonth() && lastCheckInDate.getDate() === nowInBogota().getDate()
+  const lastCheckInShift = lastCheckInIsToday ? (lastCheckInDate.getHours() < 14 ? "am" : "pm") : null
+  const canRegisterMoreToday = !bothSessionsDone && !(alreadyToday && lastCheckInShift === "pm")
 
   return (
     <div>
@@ -196,10 +207,12 @@ export default async function ClienteDashboardPage() {
             {/* 6. Calendario */}
             <Card className="bg-zinc-950/50 border-white/5">
               <DashboardCalendar
-                currentDate={now}
-                attendanceDates={attendanceDates}
+                currentDateStr={today}
+                todayStr={today}
+                attendanceDates={attendance.map(a => a.check_in_date)}
                 integrated={true}
-                membershipStartDate={parsedMembershipStart}
+                membershipStartDate={membership.start_date}
+                membershipEndDate={membership.end_date}
                 daysPerWeek={daysPerWeek}
               />
             </Card>
@@ -250,10 +263,11 @@ export default async function ClienteDashboardPage() {
             </div>
             <Card className="bg-zinc-950/50 border-white/5">
               <DashboardCalendar
-                currentDate={now}
-                attendanceDates={attendanceDates}
+                currentDateStr={today}
+                todayStr={today}
+                attendanceDates={attendance.map(a => a.check_in_date)}
                 integrated={true}
-                membershipStartDate={parsedMembershipStart}
+                membershipStartDate={membership?.start_date}
                 daysPerWeek={6}
               />
             </Card>

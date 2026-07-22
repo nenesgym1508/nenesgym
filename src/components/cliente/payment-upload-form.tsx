@@ -578,10 +578,12 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado, clientId }: Pay
         })()
 
         const titularOk = datosIA.nombre_coincide !== false || datosIA.titular_flexible
+        const montoOk = datosIA.coincide_monto !== false
         const puede = amountCents > 0
           && !datosIA.imagen_repetida
           && !datosIA.referencia_repetida
           && titularOk
+          && montoOk
           && datosIA.transaccion_exitosa !== false
           && datosIA.numero_coincide !== false
 
@@ -653,10 +655,10 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado, clientId }: Pay
               </div>
             )}
             {!datosIA.imagen_repetida && !datosIA.referencia_repetida && !sinMonto && datosIA.coincide_monto === false && (
-              <div className="rounded-xl border border-yellow-800/40 bg-yellow-950/10 px-4 py-3">
-                <p className="text-xs font-bold text-yellow-400 mb-0.5">⚠️ Monto diferente al registrado</p>
-                <p className="text-xs text-zinc-500">
-                  Esperado {formatCOP(amountCents)}, comprobante muestra {formatPesos(datosIA.monto)}.
+              <div className="rounded-xl border border-red-700/40 bg-red-950/15 px-4 py-3">
+                <p className="text-xs font-bold text-red-400 mb-0.5">🚫 Monto no coincide con el valor del plan</p>
+                <p className="text-xs text-zinc-400">
+                  El comprobante muestra <strong className="text-red-300">{formatPesos(datosIA.monto)}</strong>, pero el plan seleccionado requiere <strong className="text-zinc-200">{formatCOP(amountCents)}</strong>.
                 </p>
               </div>
             )}

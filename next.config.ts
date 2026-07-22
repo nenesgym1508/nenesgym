@@ -3,6 +3,24 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'nqhkfqoroisszycdxwuy.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'raw.githubusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.githubusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
   },
   experimental: {
     // Reactiva el Router Cache del cliente para rutas dinámicas: al volver a una pantalla
@@ -14,6 +32,7 @@ const nextConfig: NextConfig = {
     },
   },
   async headers() {
+    if (process.env.NODE_ENV !== "production") return [];
     return [
       {
         // Assets de Next.js — inmutables (el hash cambia con cada build)

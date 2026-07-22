@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition, useMemo } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import {
   ChevronLeft, ChevronUp, ChevronDown, Plus, Trash2, BookmarkPlus,
@@ -197,7 +198,7 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
 
   // ── Ejercicios ────────────────────────────────────────────────────────────
 
-  const handleAddExercise = (blockId: string, exercise: Exercise) => {
+  const handleAddExercise = (blockId: string, exercise: Exercise, overrides?: { sets: number; reps: number; rest_seconds: number }) => {
     const block = cls.blocks.find((b) => b.id === blockId)
     if (!block) return
     const position = block.exercises.length
@@ -205,19 +206,19 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
       await addExerciseToBlockAction(blockId, cls.id, {
         exercise_id: exercise.id,
         position,
-        sets: 3,
-        reps: 12,
-        rest_seconds: 60,
+        sets: overrides?.sets ?? 3,
+        reps: overrides?.reps ?? 12,
+        rest_seconds: overrides?.rest_seconds ?? 60,
       })
       const newEx: BlockExercise = {
         id: crypto.randomUUID(),
         block_id: blockId,
         exercise_id: exercise.id,
         position,
-        sets: 3,
-        reps: 12,
+        sets: overrides?.sets ?? 3,
+        reps: overrides?.reps ?? 12,
         duration_seconds: null,
-        rest_seconds: 60,
+        rest_seconds: overrides?.rest_seconds ?? 60,
         suggested_weight: null,
         notes: null,
         exercise: {
@@ -492,7 +493,10 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
       {pickerBlockId && (
         <ExercisePicker
           exercises={exerciseList}
-          onSelect={(ex) => { handleAddExercise(pickerBlockId, ex); setPickerBlockId(null) }}
+          onSelectMultiple={(selections) => {
+            selections.forEach(sel => handleAddExercise(pickerBlockId, sel.exercise, sel.overrides))
+            setPickerBlockId(null)
+          }}
           onClose={() => setPickerBlockId(null)}
           onCreateNew={openCreateExercise}
           existingIds={cls.blocks.find((b) => b.id === pickerBlockId)?.exercises.map((e) => e.exercise_id) ?? []}
@@ -714,6 +718,7 @@ export interface ExerciseRowProps {
 
 export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, onMoveUp, onMoveDown, onRemove, onUpdate }: ExerciseRowProps) {
   const [expanded, setExpanded] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
 
   const muscleLabel = ex.exercise.muscle_group
     ? MUSCLE_GROUP_LABELS[ex.exercise.muscle_group as keyof typeof MUSCLE_GROUP_LABELS] ?? ex.exercise.muscle_group
@@ -734,15 +739,25 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, 
     <div className="px-3 py-2.5">
       <div className="flex items-center gap-2.5">
         {ex.exercise.media_url ? (
-          <img
-            src={ex.exercise.media_url}
-            alt=""
-            loading="lazy"
-            width={36}
-            height={36}
-            className="size-9 shrink-0 rounded-md object-cover bg-zinc-800"
-            onError={(e) => { e.currentTarget.style.display = "none" }}
-          />
+          ex.exercise.media_url.includes("supabase.co") ? (
+            <Image
+              src={ex.exercise.media_url}
+              alt={ex.exercise.name}
+              width={36}
+              height={36}
+              sizes="36px"
+              className="size-9 shrink-0 rounded-md object-cover bg-zinc-800"
+              onError={(e) => { (e.currentTarget as HTMLElement).style.display = "none" }}
+            />
+          ) : (
+            <img
+              src={ex.exercise.media_url}
+              alt={ex.exercise.name}
+              loading="lazy"
+              className="size-9 shrink-0 rounded-md object-cover bg-zinc-800"
+              onError={(e) => { (e.currentTarget as HTMLElement).style.display = "none" }}
+            />
+          )
         ) : (
           <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-600">
             <Dumbbell className="size-4" />
@@ -750,8 +765,8 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, 
         )}
 
         <button
-          onClick={() => setExpanded((v) => !v)}
-          className="flex-1 min-w-0 text-left"
+          onClick={() => setShowDetails(true)}
+          className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
         >
           <p className="text-sm font-medium text-zinc-200 leading-snug truncate">{ex.exercise.name}</p>
           <p className="text-[11px] text-zinc-500 truncate">
@@ -771,32 +786,9 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, 
         </button>
       </div>
 
-      {expanded && (
+      {expanded && !readOnly && (
         <div className="mt-3 space-y-3">
-          <div className="overflow-hidden rounded-xl bg-zinc-800">
-            {ex.exercise.media_url ? (
-              <img
-                src={ex.exercise.media_url}
-                alt=""
-                loading="lazy"
-                className="h-44 w-full object-cover"
-                onError={(e) => { e.currentTarget.style.display = "none" }}
-              />
-            ) : (
-              <div className="flex h-44 w-full items-center justify-center text-zinc-600">
-                <Dumbbell className="size-10" />
-              </div>
-            )}
-          </div>
 
-          {ex.exercise.instructions && (
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 mb-1">Descripción</p>
-              <p className="text-xs leading-relaxed text-zinc-400 whitespace-pre-line">{ex.exercise.instructions}</p>
-            </div>
-          )}
-
-          {!readOnly && (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex gap-1">
@@ -822,8 +814,16 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, 
                 <TextField label="Nota" value={ex.notes} placeholder="Opcional" onChange={(v) => onUpdate?.("notes", v)} />
               </div>
             </div>
-          )}
         </div>
+      )}
+
+      {showDetails && (
+        <ExerciseDetailSheet
+          exercise={ex.exercise as Exercise}
+          onClose={() => setShowDetails(false)}
+          onAdd={() => {}}
+          alreadyIn={true}
+        />
       )}
     </div>
   )
@@ -887,13 +887,12 @@ export function TextField({
 export interface ExercisePickerProps {
   exercises: Exercise[]
   existingIds: string[]
-  onSelect: (exercise: Exercise, overrides?: { sets: number; reps: number; rest_seconds: number }) => void
+  onSelect?: (exercise: Exercise, overrides?: { sets: number; reps: number; rest_seconds: number }) => void
+  onSelectMultiple?: (selections: { exercise: Exercise; overrides?: { sets: number; reps: number; rest_seconds: number } }[]) => void
   onClose: () => void
   onCreateNew?: () => void
   quickConfigDefaults?: { sets: number; reps: number; rest_seconds: number }
   myExerciseIds?: string[]
-  // Vista de cliente: oculta "Complementario" como filtro (para reducir
-  // decisiones) — esos ejercicios siguen apareciendo dentro de "Principal".
   simplifiedUsage?: boolean
 }
 
@@ -906,24 +905,23 @@ const SIMPLIFIED_USAGE_OPTIONS: UsageTag[] = ["calentamiento", "trabajo_principa
 
 const HIDE_SCROLLBAR = "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
 
-export function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCreateNew, quickConfigDefaults, myExerciseIds, simplifiedUsage = false }: ExercisePickerProps) {
+export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMultiple, onClose, onCreateNew, quickConfigDefaults, myExerciseIds, simplifiedUsage = false }: ExercisePickerProps) {
   const hasScopeToggle = !!myExerciseIds
-  // Con biblioteca personal chica (menos de 5) el usuario todavía necesita
-  // descubrir ejercicios; con biblioteca armada, seleccionar rápido desde lo propio.
-  const [scope, setScope] = useState<"mine" | "all">(() =>
-    myExerciseIds && myExerciseIds.length >= 5 ? "mine" : "all"
-  )
+  const [scope, setScope] = useState<"mine" | "all">("all")
   const [search, setSearch] = useState("")
   const [filterGroup, setFilterGroup] = useState("")
   const [filterUsage, setFilterUsage] = useState("")
   const [filterEquipment, setFilterEquipment] = useState("")
   const [filterType, setFilterType] = useState("")
   const [filtersOpen, setFiltersOpen] = useState(false)
+  
   const [detailExercise, setDetailExercise] = useState<Exercise | null>(null)
-  const [pendingExercise, setPendingExercise] = useState<Exercise | null>(null)
-  const [quickSets, setQuickSets] = useState(quickConfigDefaults?.sets ?? 3)
-  const [quickReps, setQuickReps] = useState(quickConfigDefaults?.reps ?? 12)
-  const [quickRest, setQuickRest] = useState(quickConfigDefaults?.rest_seconds ?? 60)
+  
+  // Selección múltiple
+  const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([])
+  const [showMultiConfig, setShowMultiConfig] = useState(false)
+  const [multiConfigs, setMultiConfigs] = useState<Record<string, { sets: number, reps: number, rest_seconds: number }>>({})
+
 
   const scopedExercises = useMemo(
     () => (!hasScopeToggle || scope === "all" ? exercises : exercises.filter((ex) => myExerciseIds!.includes(ex.id))),
@@ -952,22 +950,57 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCr
 
   const activeSecondaryFilters = (filterEquipment ? 1 : 0) + (filterType ? 1 : 0)
 
-  const handlePick = (ex: Exercise) => {
+  const handleToggleSelect = (ex: Exercise) => {
     setDetailExercise(null)
-    if (quickConfigDefaults) {
-      setQuickSets(quickConfigDefaults.sets)
-      setQuickReps(quickConfigDefaults.reps)
-      setQuickRest(quickConfigDefaults.rest_seconds)
-      setPendingExercise(ex)
-    } else {
-      onSelect(ex)
-    }
+    setSelectedExercises(prev => {
+      const isSelected = prev.some(p => p.id === ex.id)
+      if (isSelected) {
+        const next = prev.filter(p => p.id !== ex.id)
+        if (next.length === 0) setTimeout(() => setShowMultiConfig(false), 0)
+        return next
+      }
+      
+      // Initialize config for new selection
+      if (quickConfigDefaults) {
+        setMultiConfigs(configs => ({
+          ...configs,
+          [ex.id]: { sets: quickConfigDefaults.sets, reps: quickConfigDefaults.reps, rest_seconds: quickConfigDefaults.rest_seconds }
+        }))
+      }
+      return [...prev, ex]
+    })
   }
 
-  const handleConfirmQuick = () => {
-    if (!pendingExercise) return
-    onSelect(pendingExercise, { sets: quickSets, reps: quickReps, rest_seconds: quickRest })
-    setPendingExercise(null)
+  const handleUpdateConfig = (exId: string, field: string, val: number | null) => {
+    setMultiConfigs(prev => ({
+      ...prev,
+      [exId]: {
+        ...prev[exId],
+        [field]: val ?? 0
+      }
+    }))
+  }
+
+  const handleConfirmMulti = () => {
+    const selections = selectedExercises.map(ex => ({
+      exercise: ex,
+      overrides: multiConfigs[ex.id]
+    }))
+    if (onSelectMultiple) {
+      onSelectMultiple(selections)
+    } else if (onSelect) {
+      selections.forEach(sel => onSelect(sel.exercise, sel.overrides))
+    }
+    setShowMultiConfig(false)
+    setSelectedExercises([])
+  }
+
+  const handleAddDirect = (ex: Exercise) => {
+    if (onSelectMultiple) {
+      onSelectMultiple([{ exercise: ex }])
+    } else if (onSelect) {
+      onSelect(ex)
+    }
   }
 
   return (
@@ -979,43 +1012,59 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCr
         className="w-full max-w-lg rounded-t-3xl md:rounded-2xl border border-white/10 bg-zinc-900 flex flex-col h-[100dvh] md:h-[80vh] md:max-h-[80vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {pendingExercise ? (
+        {showMultiConfig ? (
           <>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/8 shrink-0">
               <p className="text-sm font-bold text-zinc-100">Configuración rápida</p>
-              <button onClick={() => setPendingExercise(null)} className="text-zinc-500 hover:text-zinc-300"><X className="size-4" /></button>
+              <button onClick={() => setShowMultiConfig(false)} className="text-zinc-500 hover:text-zinc-300"><X className="size-4" /></button>
             </div>
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-              <div className="flex items-center gap-3">
-                {pendingExercise.media_url ? (
-                  <img
-                    src={pendingExercise.media_url}
-                    alt=""
-                    loading="lazy"
-                    width={48}
-                    height={48}
-                    className="size-12 rounded-lg object-cover bg-zinc-800 shrink-0"
-                    onError={(e) => { e.currentTarget.style.display = "none" }}
-                  />
-                ) : (
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-zinc-800 text-zinc-600">
-                    <Dumbbell className="size-5" />
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+              {selectedExercises.map((ex) => (
+                <div key={ex.id} className="space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setDetailExercise(ex)}
+                      className="flex flex-1 items-center gap-3 text-left hover:opacity-80 transition-opacity min-w-0"
+                    >
+                      {ex.media_url ? (
+                        <img
+                          src={ex.media_url}
+                          alt=""
+                          loading="lazy"
+                          width={36}
+                          height={36}
+                          className="size-9 rounded-lg object-cover bg-zinc-800 shrink-0"
+                          onError={(e) => { e.currentTarget.style.display = "none" }}
+                        />
+                      ) : (
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-zinc-800 text-zinc-600">
+                          <Dumbbell className="size-4" />
+                        </div>
+                      )}
+                      <p className="text-sm font-semibold text-zinc-100 leading-snug truncate">{ex.name}</p>
+                    </button>
+                    <button
+                      onClick={() => handleToggleSelect(ex)}
+                      className="shrink-0 p-1.5 text-zinc-500 hover:text-red-400 hover:bg-zinc-800/50 rounded-md transition-colors mt-0.5"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
                   </div>
-                )}
-                <p className="text-sm font-semibold text-zinc-100">{pendingExercise.name}</p>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <NumField label="Series" value={quickSets} onChange={(v) => setQuickSets(v ?? 3)} />
-                <NumField label="Reps" value={quickReps} onChange={(v) => setQuickReps(v ?? 12)} />
-                <NumField label="Descanso (s)" value={quickRest} onChange={(v) => setQuickRest(v ?? 60)} />
-              </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <NumField label="Series" value={multiConfigs[ex.id]?.sets} onChange={(v) => handleUpdateConfig(ex.id, "sets", v)} />
+                    <NumField label="Reps" value={multiConfigs[ex.id]?.reps} onChange={(v) => handleUpdateConfig(ex.id, "reps", v)} />
+                    <NumField label="Descanso (s)" value={multiConfigs[ex.id]?.rest_seconds} onChange={(v) => handleUpdateConfig(ex.id, "rest_seconds", v)} />
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="p-4 border-t border-white/8">
+            <div className="p-4 border-t border-white/8 shrink-0 bg-zinc-900/90 backdrop-blur-sm">
               <button
-                onClick={handleConfirmQuick}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+                onClick={handleConfirmMulti}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-colors shadow-lg"
               >
-                <Check className="size-4" /> Añadir ejercicio
+                <Check className="size-4" /> Confirmar ({selectedExercises.length})
               </button>
             </div>
           </>
@@ -1126,28 +1175,39 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCr
               ) : (
                 filtered.map((ex) => {
                   const alreadyIn = existingIds.includes(ex.id)
+                  const isSelected = selectedExercises.some(p => p.id === ex.id)
                   const subtitle = [
                     ex.muscle_group ? MUSCLE_GROUP_LABELS[ex.muscle_group] : null,
                     ex.equipment ? EQUIPMENT_LABELS[ex.equipment] : null,
                     ex.exercise_type ? EXERCISE_TYPE_LABELS[ex.exercise_type] : null,
                   ].filter(Boolean).join(" · ")
                   return (
-                    <div key={ex.id} className={`flex items-center gap-3 border-b border-white/5 px-4 py-3 ${alreadyIn ? "opacity-40" : ""}`}>
+                    <div key={ex.id} className={`flex items-center gap-3 border-b border-white/5 px-4 py-3 ${alreadyIn ? "opacity-40" : isSelected ? "bg-red-600/5" : ""}`}>
                       <button
                         type="button"
                         onClick={() => setDetailExercise(ex)}
                         className="flex flex-1 items-center gap-3 min-w-0 text-left"
                       >
                         {ex.media_url ? (
-                          <img
-                            src={ex.media_url}
-                            alt=""
-                            loading="lazy"
-                            width={36}
-                            height={36}
-                            className="size-9 rounded-md object-cover bg-zinc-800 shrink-0"
-                            onError={(e) => { e.currentTarget.style.display = "none" }}
-                          />
+                          ex.media_url.includes("supabase.co") ? (
+                            <Image
+                              src={ex.media_url}
+                              alt={ex.name}
+                              width={36}
+                              height={36}
+                              sizes="36px"
+                              className="size-9 rounded-md object-cover bg-zinc-800 shrink-0"
+                              onError={(e) => { (e.currentTarget as HTMLElement).style.display = "none" }}
+                            />
+                          ) : (
+                            <img
+                              src={ex.media_url}
+                              alt={ex.name}
+                              loading="lazy"
+                              className="size-9 rounded-md object-cover bg-zinc-800 shrink-0"
+                              onError={(e) => { (e.currentTarget as HTMLElement).style.display = "none" }}
+                            />
+                          )
                         ) : (
                           <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-600">
                             <Dumbbell className="size-4" />
@@ -1167,10 +1227,14 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCr
                         <Info className="size-4" />
                       </button>
                       {alreadyIn ? (
-                        <Check className="size-4 text-green-500 shrink-0" />
+                        <Check className="size-4 text-zinc-600 shrink-0" />
+                      ) : isSelected ? (
+                        <button type="button" onClick={() => handleToggleSelect(ex)} className="shrink-0 text-green-500 hover:text-green-400">
+                          <Check className="size-5 font-bold" />
+                        </button>
                       ) : (
-                        <button onClick={() => handlePick(ex)} className="shrink-0 text-zinc-500 hover:text-red-400">
-                          <Plus className="size-4" />
+                        <button type="button" onClick={() => handleToggleSelect(ex)} className="shrink-0 text-zinc-500 hover:text-red-400">
+                          <Plus className="size-5" />
                         </button>
                       )}
                     </div>
@@ -1178,6 +1242,17 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCr
                 })
               )}
             </div>
+            
+            {selectedExercises.length > 0 && (
+              <div className="p-4 border-t border-white/8 shrink-0 bg-zinc-900/90 backdrop-blur-sm shadow-[0_-10px_20px_rgba(0,0,0,0.3)]">
+                <button
+                  onClick={() => setShowMultiConfig(true)}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-colors shadow-lg"
+                >
+                  Configurar {selectedExercises.length} ejercicio{selectedExercises.length > 1 ? "s" : ""}
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -1186,8 +1261,8 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onClose, onCr
         <ExerciseDetailSheet
           exercise={detailExercise}
           onClose={() => setDetailExercise(null)}
-          onAdd={() => handlePick(detailExercise)}
-          alreadyIn={existingIds.includes(detailExercise.id)}
+          onAdd={() => handleToggleSelect(detailExercise)}
+          alreadyIn={existingIds.includes(detailExercise.id) || selectedExercises.some(p => p.id === detailExercise.id)}
         />
       )}
     </div>

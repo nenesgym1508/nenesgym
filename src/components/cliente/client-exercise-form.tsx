@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Loader2, X } from "lucide-react"
 import { createMyExerciseAction, updateMyExerciseAction, uploadExerciseImageAction } from "@/actions/exercises.actions"
+import { processExerciseImage } from "@/lib/image-processor"
 import { Input, Textarea } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -43,16 +44,27 @@ export function ClientExerciseForm({ exercise, onSuccess, onClose }: ClientExerc
 
     setUploading(true)
     setError(null)
-    const formData = new FormData()
-    formData.append("file", file)
 
-    const res = await uploadExerciseImageAction(formData)
-    setUploading(false)
+    try {
+      const { file: processedFile } = await processExerciseImage(file)
+      const formData = new FormData()
+      formData.append("file", processedFile)
+      if (exercise?.id) {
+        formData.append("exerciseId", exercise.id)
+      }
 
-    if ("error" in res) {
-      setError(res.error)
-    } else {
-      setMediaUrl(res.url)
+      const res = await uploadExerciseImageAction(formData)
+      setUploading(false)
+
+      if ("error" in res) {
+        setError(res.error)
+      } else {
+        setMediaUrl(res.url)
+      }
+    } catch (err: unknown) {
+      setUploading(false)
+      const msg = err instanceof Error ? err.message : "Error al procesar la imagen."
+      setError(msg)
     }
   }
 

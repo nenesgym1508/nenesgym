@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { Dumbbell, X } from "lucide-react"
 import {
   MUSCLE_GROUP_LABELS,
@@ -38,12 +39,26 @@ export function ExerciseDetailModal({ exercise, onClose }: ExerciseDetailModalPr
 
         <div className="flex-1 overflow-y-auto">
           {exercise.media_url ? (
-            <img
-              src={exercise.media_url}
-              alt=""
-              className="w-full h-56 object-cover bg-zinc-800"
-              onError={(e) => { e.currentTarget.style.display = "none" }}
-            />
+            <div className="relative w-full h-56 bg-zinc-800">
+              {exercise.media_url.includes("supabase.co") ? (
+                <Image
+                  src={exercise.media_url}
+                  alt={exercise.name}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 512px"
+                  className="object-cover"
+                  onError={(e) => { (e.currentTarget as HTMLElement).style.display = "none" }}
+                />
+              ) : (
+                <img
+                  src={exercise.media_url}
+                  alt={exercise.name}
+                  loading="lazy"
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.currentTarget as HTMLElement).style.display = "none" }}
+                />
+              )}
+            </div>
           ) : (
             <div className="flex h-40 w-full items-center justify-center bg-zinc-800 text-zinc-600">
               <Dumbbell className="size-12" />

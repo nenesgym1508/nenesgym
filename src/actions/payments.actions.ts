@@ -27,6 +27,17 @@ export async function uploadPaymentAction(formData: FormData) {
 
   if (!amountCents || amountCents <= 0) return { error: "Monto inválido" }
 
+  if (planId) {
+    const { data: plan } = await supabase
+      .from("plans")
+      .select("price_cents")
+      .eq("id", planId)
+      .maybeSingle()
+    if (plan && plan.price_cents !== amountCents) {
+      return { error: "El monto ingresado no coincide con el precio del plan seleccionado." }
+    }
+  }
+
   const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"]
   const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 
