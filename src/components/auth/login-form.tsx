@@ -9,6 +9,7 @@ import { loginSchema, type LoginInput } from "@/schemas/client.schema"
 import { loginAction, resetPasswordAction } from "@/actions/auth.actions"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
+import { GoogleAuthButton } from "@/components/auth/google-button"
 import { ROUTES } from "@/constants/routes"
 
 export function LoginForm() {
@@ -100,6 +101,17 @@ export function LoginForm() {
       >
         Ingresar
       </LoadingButton>
+
+      <div className="relative my-2 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-white/10" />
+        </div>
+        <span className="relative bg-zinc-950 px-2 text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+          o continúa con
+        </span>
+      </div>
+
+      <GoogleAuthButton label="Iniciar sesión con Google" />
 
       <p className="text-center text-sm text-zinc-500">
         ¿No tienes cuenta?{" "}
