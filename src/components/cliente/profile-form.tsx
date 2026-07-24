@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Loader2, CheckCircle, User, Mail, Lock } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,8 @@ import {
   updateProfilePhoneAction,
   updateEmailAction,
   updatePasswordAction,
+  setPasswordAction,
+  currentUserHasPasswordAction,
 } from "@/actions/auth.actions"
 
 type Msg = { type: "ok" | "err"; text: string } | null
@@ -55,6 +57,17 @@ export function ClientProfileForm({ currentName, currentPhone, currentEmail }: C
   const [pw2, setPw2] = useState("")
   const [pwLoading, setPwLoading] = useState(false)
   const [pwMsg, setPwMsg] = useState<Msg>(null)
+  // null mientras se consulta. Las cuentas que entraron con Google no tienen
+  // contraseña propia: ahí se pide crearla (sin exigir la actual, que no existe).
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    let activo = true
+    currentUserHasPasswordAction().then((r) => {
+      if (activo) setHasPassword(r.hasPassword === true)
+    })
+    return () => { activo = false }
+  }, [])
 
   const dataDirty = name.trim() !== savedName || phone.trim() !== savedPhone
 
@@ -99,7 +112,8 @@ export function ClientProfileForm({ currentName, currentPhone, currentEmail }: C
 
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault()
-    if (!currentPw) {
+    if (hasPassword === null) return
+    if (hasPassword && !currentPw) {
       setPwMsg({ type: "err", text: "Debes ingresar tu contraseña actual" })
       return
     }
@@ -110,14 +124,22 @@ export function ClientProfileForm({ currentName, currentPhone, currentEmail }: C
     }
     setPwLoading(true)
     setPwMsg(null)
-    const result = await updatePasswordAction(pw, currentPw)
+    const result = hasPassword
+      ? await updatePasswordAction(pw, currentPw)
+      : await setPasswordAction(pw, pw2)
     setPwLoading(false)
     if (result?.error) setPwMsg({ type: "err", text: result.error })
     else {
-      setPwMsg({ type: "ok", text: "Contraseña actualizada correctamente" })
+      setPwMsg({
+        type: "ok",
+        text: hasPassword
+          ? "Contraseña actualizada correctamente"
+          : "Contraseña creada. Ahora puedes entrar con tu correo y contraseña, o seguir usando Google.",
+      })
       setCurrentPw("")
       setPw("")
       setPw2("")
+      if (!hasPassword) setHasPassword(true)
     }
   }
 
@@ -190,42 +212,68 @@ export function ClientProfileForm({ currentName, currentPhone, currentEmail }: C
       <Card className="p-4 space-y-4">
         <div className="flex items-center gap-2">
           <Lock className="size-4 text-zinc-400" />
-          <h3 className="text-sm font-semibold text-zinc-200">Cambiar contraseña</h3>
+          <h3 className="text-sm font-semibold text-zinc-200">
+            {hasPassword === false ? "Crear contraseña" : "Cambiar contraseña"}
+          </h3>
         </div>
-        <form onSubmit={handlePasswordChange} className="space-y-3">
-          <Input
-            id="current_password"
-            type="password"
-            value={currentPw}
-            onChange={(e) => setCurrentPw(e.target.value)}
-            placeholder="Contraseña actual"
-            label="Contraseña actual"
-          />
-          <Input
-            id="new_password"
-            type="password"
-            value={pw}
-            onChange={(e) => setPw(e.target.value)}
-            placeholder="Nueva contraseña"
-            label="Nueva contraseña"
-          />
-          <Input
-            id="new_password_confirm"
-            type="password"
-            value={pw2}
-            onChange={(e) => setPw2(e.target.value)}
-            placeholder="Repite la contraseña"
-            label="Confirmar contraseña"
-          />
-          <Feedback msg={pwMsg} />
-          <Button
-            type="submit"
-            disabled={pwLoading || !currentPw || !pw || !pw2}
-            className="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-semibold h-10"
-          >
-            {pwLoading ? <Loader2 className="size-4 animate-spin" /> : "Actualizar contraseña"}
-          </Button>
-        </form>
+
+        {hasPassword === null ? (
+          <div className="flex items-center gap-2 py-2 text-xs text-zinc-500">
+            <Loader2 className="size-3.5 animate-spin" />
+            Cargando...
+          </div>
+        ) : (
+          <>
+            {!hasPassword && (
+              <p className="text-xs text-zinc-500">
+                Entraste con Google y tu cuenta aún no tiene contraseña. Al crear una podrás
+                entrar también con tu correo y contraseña, sin perder el acceso con Google.
+              </p>
+            )}
+            <form onSubmit={handlePasswordChange} className="space-y-3">
+              {hasPassword && (
+                <Input
+                  id="current_password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPw}
+                  onChange={(e) => setCurrentPw(e.target.value)}
+                  placeholder="Contraseña actual"
+                  label="Contraseña actual"
+                />
+              )}
+              <Input
+                id="new_password"
+                type="password"
+                autoComplete="new-password"
+                value={pw}
+                onChange={(e) => setPw(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                label={hasPassword ? "Nueva contraseña" : "Contraseña"}
+              />
+              <Input
+                id="new_password_confirm"
+                type="password"
+                autoComplete="new-password"
+                value={pw2}
+                onChange={(e) => setPw2(e.target.value)}
+                placeholder="Repite la contraseña"
+                label="Confirmar contraseña"
+                error={pw2.length > 0 && pw2 !== pw ? "Las contraseñas no coinciden" : undefined}
+              />
+              <Feedback msg={pwMsg} />
+              <Button
+                type="submit"
+                disabled={pwLoading || (hasPassword && !currentPw) || pw.length < 6 || !pw2}
+                className="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-semibold h-10"
+              >
+                {pwLoading
+                  ? <Loader2 className="size-4 animate-spin" />
+                  : hasPassword ? "Actualizar contraseña" : "Crear contraseña"}
+              </Button>
+            </form>
+          </>
+        )}
       </Card>
     </div>
   )

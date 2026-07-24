@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { LogOut, ClipboardList } from "lucide-react"
 import { getAuthenticatedSession } from "@/lib/auth/session"
 import { getGymSettings, getAdminPlans } from "@/services/gym.service"
-import { logoutAction } from "@/actions/auth.actions"
+import { logoutAction, currentUserHasPasswordAction } from "@/actions/auth.actions"
 import { PageHeader } from "@/components/layout/page-header"
 import { GymSettingsForm } from "@/components/admin/gym-settings-form"
 import { PlansManager } from "@/components/admin/plans-manager"
@@ -26,7 +26,11 @@ export default async function AdminMasPage({
   const { user, profile } = session
   if (profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
 
-  const [gym, plans] = await Promise.all([getGymSettings(), getAdminPlans()])
+  const [gym, plans, passwordState] = await Promise.all([
+    getGymSettings(),
+    getAdminPlans(),
+    currentUserHasPasswordAction(),
+  ])
 
   const sp = await searchParams
   const activeTab: Tab = sp.tab === "cuenta" ? "cuenta" : "gym"
@@ -100,6 +104,7 @@ export default async function AdminMasPage({
               <ProfileSettingsForm
                 currentEmail={user.email ?? ""}
                 currentName={profile?.full_name ?? ""}
+                hasPassword={passwordState.hasPassword === true}
               />
             </div>
 

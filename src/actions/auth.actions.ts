@@ -114,6 +114,19 @@ export async function updateProfilePhoneAction(phone: string) {
   return { success: true }
 }
 
+// Las cuentas creadas con Google no tienen contraseña propia. La RPC lee
+// `auth.users.encrypted_password` del propio usuario (única fuente de verdad;
+// inferirlo por los providers de `identities` no es fiable).
+export async function currentUserHasPasswordAction() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "No autenticado", hasPassword: false }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("current_user_has_password")
+  if (error) return { error: "No se pudo verificar el estado de la contraseña", hasPassword: false }
+  return { hasPassword: data === true }
+}
+
 export async function updatePasswordAction(newPassword: string, currentPassword: string) {
   if (newPassword.length < 6)
     return { error: "La contraseña debe tener al menos 6 caracteres" }
@@ -136,6 +149,32 @@ export async function updatePasswordAction(newPassword: string, currentPassword:
 
   const { error } = await supabase.auth.updateUser({ password: newPassword })
   if (error) return { error: traducirErrorAuth(error.message) }
+  revalidatePath(ROUTES.ADMIN_MAS)
+  return { success: true }
+}
+
+// Alta de contraseña para cuentas que entraron con Google y aún no tienen una.
+// No pide contraseña actual porque no existe; la guarda del servidor impide
+// usar esta vía cuando la cuenta YA tiene contraseña (ahí se exige la actual).
+export async function setPasswordAction(newPassword: string, confirmPassword: string) {
+  if (newPassword.length < 6)
+    return { error: "La contraseña debe tener al menos 6 caracteres" }
+  if (newPassword !== confirmPassword)
+    return { error: "Las contraseñas no coinciden" }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "No autenticado" }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: yaTiene, error: checkError } = await (supabase as any).rpc("current_user_has_password")
+  if (checkError) return { error: "No se pudo verificar el estado de la contraseña" }
+  if (yaTiene === true)
+    return { error: "Tu cuenta ya tiene contraseña. Usa el cambio con contraseña actual." }
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) return { error: traducirErrorAuth(error.message) }
+  revalidatePath(ROUTES.ADMIN_MAS)
   return { success: true }
 }
 
