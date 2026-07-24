@@ -276,7 +276,7 @@ export async function POST(req: NextRequest) {
       .neq("status", "rejected")
       .maybeSingle()
 
-    let imagenRepetida = !!existenteHash
+    const imagenRepetida = !!existenteHash
 
     // Config del gym (cuentas de pago)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -310,23 +310,31 @@ export async function POST(req: NextRequest) {
       referenciaRepetida = !!existenteRef
     }
 
-    // dHash para duplicados perceptuales
+    // dHash perceptual: SOLO como red de seguridad cuando la IA no pudo leer la
+    // referencia. Los comprobantes de una misma billetera (Nequi, etc.) comparten
+    // plantilla, así que al reducirlos a 9x8 px quedan casi idénticos y el dHash
+    // produce falsos positivos entre pagos legítimos distintos. Cuando hay
+    // referencia, la unicidad ya la garantizan el hash exacto + la referencia
+    // repetida, así que el chequeo perceptual sobra. Un match perceptual NO
+    // genera strike ni rechazo: solo manda el pago a revisión manual (aiValido=false).
     const phash = await dHash(imageBase64 as string)
-    if (phash && !imagenRepetida) {
+    let imagenSimilar = false
+    if (phash && !imagenRepetida && !datos.referenciaDetectada) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: previos } = await (admin as any)
         .from("payments")
         .select("imagen_phash")
         .not("imagen_phash", "is", null)
+        .neq("status", "rejected")
         .order("created_at", { ascending: false })
         .limit(500)
-      const similar = ((previos ?? []) as Array<{ imagen_phash: string | null }>).some(
+      imagenSimilar = ((previos ?? []) as Array<{ imagen_phash: string | null }>).some(
         (p) => p.imagen_phash && hamming(phash, p.imagen_phash) <= 8
       )
-      if (similar) imagenRepetida = true
     }
 
-    // Registrar strike si hay fraude detectado
+    // Registrar strike solo por fraude real (imagen exacta o referencia repetida),
+    // nunca por similitud perceptual.
     let strikesActuales = currentStrikes
     if (imagenRepetida || referenciaRepetida) {
       const motivo = referenciaRepetida
@@ -387,18 +395,21 @@ export async function POST(req: NextRequest) {
     const titularFlexible = clientRow.auto_aprobacion === true
 
     // Veredicto IA: Requiere que la transacción sea exitosa, no haya discrepancia de nombre/número,
-    // el monto coincida (si se pudo leer) y no sea comprobante duplicado.
+    // el monto coincida (si se pudo leer) y no sea comprobante duplicado. Una imagen similar
+    // (sin referencia legible) no auto-aprueba: baja aiValido para forzar revisión manual.
     const aiValido =
       datos.transaccionExitosa &&
       nombreCoincide !== false &&
       numeroCoincide !== false &&
       coincideMonto !== false &&
       !imagenRepetida &&
+      !imagenSimilar &&
       !referenciaRepetida
 
     let aiRazon = ""
     if (referenciaRepetida) aiRazon = "La referencia ya fue registrada anteriormente"
-    else if (imagenRepetida) aiRazon = "Este comprobante es similar a uno ya registrado"
+    else if (imagenRepetida) aiRazon = "Este comprobante ya fue registrado anteriormente"
+    else if (imagenSimilar) aiRazon = "No se pudo leer la referencia y la imagen se parece a un comprobante previo — requiere revisión manual"
     else if (!datos.transaccionExitosa) aiRazon = "La transacción no aparece como completada"
     else if (coincideMonto === false) aiRazon = `El monto del comprobante ($${datos.montoDetectado.toLocaleString("es-CO")}) no coincide con el valor del plan ($${Math.round(expectedPriceCents / 100).toLocaleString("es-CO")})`
     else if (nombreCoincide === false) aiRazon = "El nombre del destinatario no coincide"
@@ -424,6 +435,7 @@ export async function POST(req: NextRequest) {
         numeroCoincide,
         coincideMonto,
         imagenRepetida,
+        imagenSimilar,
         referenciaRepetida,
         titularEsperado,
         titularFlexible,
@@ -541,28 +553,12 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    // Re-verificar dHash
+    // Nota: no se re-verifica el dHash perceptual aquí. La similitud perceptual
+    // solo baja aiValido (revisión manual) desde el paso "analizar"; no rechaza
+    // ni genera strike, porque los comprobantes de una misma billetera comparten
+    // plantilla y colisionan entre pagos legítimos distintos. La reutilización
+    // real la cubren el hash exacto (arriba) y la referencia repetida.
     const phash = v.phash as string | null
-    if (phash) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: previos } = await (admin as any)
-        .from("payments")
-        .select("imagen_phash")
-        .not("imagen_phash", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(500)
-      const similar = ((previos ?? []) as Array<{ imagen_phash: string | null }>).some(
-        (p) => p.imagen_phash && hamming(phash, p.imagen_phash) <= 8
-      )
-      if (similar) {
-        await registrarStrike(clientRow.id, "Imagen perceptualmente similar a comprobante ya enviado", admin)
-        return NextResponse.json(
-          { error: "Comprobante demasiado similar a uno ya registrado." },
-          { status: 400 }
-        )
-      }
-    }
-
     const datos = v.datos as DatosComprobante
     const aiValido = v.aiValido as boolean
     const aiRazon = (v.aiRazon as string) || null
