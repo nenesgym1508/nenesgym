@@ -104,9 +104,9 @@ export async function searchAdminClients(
   const q = search.trim()
   const offset = (page - 1) * pageSize
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any).rpc("admin_search_clients", {
-    p_search: q || null,
+  // p_search undefined → se omite en el JSON y aplica su DEFAULT NULL (sin filtro).
+  const { data, error } = await supabase.rpc("admin_search_clients", {
+    p_search: q || undefined,
     p_status: status,
     p_today: today,
     p_limit: pageSize,
@@ -121,15 +121,14 @@ export async function searchAdminClients(
     throw error
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows: AdminClientRow[] = (data ?? []).map((r: any) => ({
+  const rows: AdminClientRow[] = (data ?? []).map((r) => ({
     id: r.id,
     auto_aprobacion: r.auto_aprobacion,
     comprobante_bloqueado: r.comprobante_bloqueado,
     profile: { full_name: r.full_name, email: r.email },
     ...computeClientBadge(r.membership as MembershipLike | null, today),
   }))
-  const total = Number((data?.[0]?.total_count as number | undefined) ?? 0)
+  const total = Number(data?.[0]?.total_count ?? 0)
   return { rows, total, page, pageSize }
 }
 

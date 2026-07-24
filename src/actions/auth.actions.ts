@@ -121,8 +121,7 @@ export async function currentUserHasPasswordAction() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "No autenticado", hasPassword: false }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any).rpc("current_user_has_password")
+  const { data, error } = await supabase.rpc("current_user_has_password")
   if (error) return { error: "No se pudo verificar el estado de la contraseña", hasPassword: false }
   return { hasPassword: data === true }
 }
@@ -166,8 +165,7 @@ export async function setPasswordAction(newPassword: string, confirmPassword: st
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "No autenticado" }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: yaTiene, error: checkError } = await (supabase as any).rpc("current_user_has_password")
+  const { data: yaTiene, error: checkError } = await supabase.rpc("current_user_has_password")
   if (checkError) return { error: "No se pudo verificar el estado de la contraseña" }
   if (yaTiene === true)
     return { error: "Tu cuenta ya tiene contraseña. Usa el cambio con contraseña actual." }

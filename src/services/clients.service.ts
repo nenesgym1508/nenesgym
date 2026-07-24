@@ -50,9 +50,8 @@ export async function getAllClients() {
 // (total_count vía count() over()); si no existiera, cae a un count head:true.
 export async function countClients(): Promise<number> {
   const supabase = await createClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any).rpc("admin_search_clients", {
-    p_search: null,
+  // p_search se omite: su DEFAULT en la función es NULL (sin filtro de búsqueda).
+  const { data, error } = await supabase.rpc("admin_search_clients", {
     p_status: "todos",
     p_today: todayInBogota(),
     p_limit: 1,

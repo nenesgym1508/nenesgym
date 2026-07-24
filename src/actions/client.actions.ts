@@ -23,13 +23,16 @@ export async function clientCheckInAction(): Promise<{ error?: string; success?:
       return { error: "No autenticado. Por favor inicia sesión de nuevo." }
     }
 
-    const { data, error } = await (supabase as any).rpc("process_client_check_in")
+    const { data, error } = await supabase.rpc("process_client_check_in")
 
     if (error) {
       return { error: error.message || "Error al procesar el ingreso." }
     }
 
-    const response = data as CheckInResponse
+    // La RPC devuelve `json` de Postgres, que TS tipa como `Json` (unión que
+    // incluye arrays y primitivas). El paso por `unknown` es necesario para
+    // afirmar la forma real que garantiza la función.
+    const response = data as unknown as CheckInResponse
 
     if (!response.ok) {
       return { error: response.message || "Error al registrar el ingreso." }

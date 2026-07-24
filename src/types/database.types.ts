@@ -1496,6 +1496,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_search_clients: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
+          p_today?: string
+        }
+        Returns: {
+          auto_aprobacion: boolean
+          comprobante_bloqueado: boolean
+          email: string
+          full_name: string
+          id: string
+          membership: Json
+          total_count: number
+        }[]
+      }
       approve_payment: {
         Args: {
           p_duration_days?: number
@@ -1505,6 +1523,7 @@ export type Database = {
         Returns: Json
       }
       current_gym_id: { Args: never; Returns: string }
+      current_user_has_password: { Args: never; Returns: boolean }
       eligible_days_elapsed: {
         Args: { p_days_per_week: number; p_start: string; p_today: string }
         Returns: number
@@ -1518,6 +1537,7 @@ export type Database = {
         Returns: Database["public"]["Enums"]["membership_status"]
       }
       process_check_in: { Args: { p_gym_token: string }; Returns: Json }
+      process_client_check_in: { Args: never; Returns: Json }
       reject_payment: {
         Args: { p_note?: string; p_payment_id: string }
         Returns: Json
