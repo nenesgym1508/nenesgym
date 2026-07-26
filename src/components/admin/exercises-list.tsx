@@ -2,9 +2,10 @@
 
 import { useState, useMemo } from "react"
 import Image from "next/image"
-import { Plus, Pencil, Power, Search, ChevronDown, ChevronUp } from "lucide-react"
-import { toggleExerciseAction } from "@/actions/exercises.actions"
+import { Plus, Pencil, Star, Trash2, Search } from "lucide-react"
+import { toggleExerciseAction, deleteExerciseAction } from "@/actions/exercises.actions"
 import { ExerciseForm } from "@/components/admin/exercise-form"
+import { ExerciseDetailModal } from "@/components/cliente/exercise-detail-modal"
 import {
   MUSCLE_GROUP_LABELS,
   EXERCISE_TYPE_LABELS,
@@ -16,27 +17,32 @@ interface ExercisesListProps {
   initialExercises: Exercise[]
 }
 
+type FavTab = "todos" | "favoritos" | "creados"
+
 export function ExercisesList({ initialExercises }: ExercisesListProps) {
   const [exercises, setExercises] = useState(initialExercises)
   const [search, setSearch] = useState("")
   const [filterGroup, setFilterGroup] = useState<MuscleGroup | "">("")
-  const [inactiveExpanded, setInactiveExpanded] = useState(true)
+  const [favTab, setFavTab] = useState<FavTab>("todos")
   const [formOpen, setFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Exercise | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [viewTarget, setViewTarget] = useState<Exercise | null>(null)
 
-  const { active, inactive } = useMemo(() => {
+  const filtered = useMemo(() => {
     let list = exercises
+    if (favTab === "favoritos") list = list.filter((e) => e.is_active)
+    // "Creados por mí": los que el admin dio de alta a mano (botón Nuevo),
+    // a diferencia de los importados del catálogo base (source distinto de "manual").
+    if (favTab === "creados") list = list.filter((e) => e.source === "manual")
     if (filterGroup) list = list.filter((e) => e.muscle_group === filterGroup)
     if (search.trim()) {
       const q = search.trim().toLowerCase()
       list = list.filter((e) => e.name.toLowerCase().includes(q))
     }
-    return {
-      active: list.filter((e) => e.is_active).sort((a, b) => a.name.localeCompare(b.name)),
-      inactive: list.filter((e) => !e.is_active).sort((a, b) => a.name.localeCompare(b.name)),
-    }
-  }, [exercises, search, filterGroup])
+    return [...list].sort((a, b) => a.name.localeCompare(b.name))
+  }, [exercises, search, filterGroup, favTab])
 
   const openCreate = () => { setEditTarget(null); setFormOpen(true) }
   const openEdit = (ex: Exercise) => { setEditTarget(ex); setFormOpen(true) }
@@ -50,6 +56,8 @@ export function ExercisesList({ initialExercises }: ExercisesListProps) {
     setFormOpen(false)
   }
 
+  // is_active hace de "favorito": el admin lo usa para separar los ejercicios
+  // que más usa (favoritos) del resto de la biblioteca.
   const handleToggle = async (ex: Exercise) => {
     setTogglingId(ex.id)
     const result = await toggleExerciseAction(ex.id, !ex.is_active)
@@ -61,8 +69,21 @@ export function ExercisesList({ initialExercises }: ExercisesListProps) {
     setTogglingId(null)
   }
 
+  const handleDelete = async (ex: Exercise) => {
+    if (!confirm(`¿Eliminar "${ex.name}"? Esta acción no se puede deshacer.`)) return
+    setDeletingId(ex.id)
+    const result = await deleteExerciseAction(ex.id)
+    setDeletingId(null)
+    if (result.error) {
+      alert(result.error)
+      return
+    }
+    setExercises((prev) => prev.filter((e) => e.id !== ex.id))
+  }
+
   const muscleGroups = Object.keys(MUSCLE_GROUP_LABELS) as MuscleGroup[]
-  const total = active.length + inactive.length
+  const favoritesCount = exercises.filter((e) => e.is_active).length
+  const createdCount = exercises.filter((e) => e.source === "manual").length
 
   return (
     <>
@@ -88,6 +109,19 @@ export function ExercisesList({ initialExercises }: ExercisesListProps) {
           </button>
         </div>
 
+        {/* Pestañas: mismo patrón visual que "Explorar todos / Mis favoritos / Creados por mí" del panel de clientes */}
+        <div className="flex gap-2">
+          <TabButton active={favTab === "todos"} onClick={() => setFavTab("todos")}>
+            Todos ({exercises.length})
+          </TabButton>
+          <TabButton active={favTab === "favoritos"} onClick={() => setFavTab("favoritos")}>
+            Favoritos ({favoritesCount})
+          </TabButton>
+          <TabButton active={favTab === "creados"} onClick={() => setFavTab("creados")}>
+            Creados por mí ({createdCount})
+          </TabButton>
+        </div>
+
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           <button
             onClick={() => setFilterGroup("")}
@@ -97,7 +131,7 @@ export function ExercisesList({ initialExercises }: ExercisesListProps) {
                 : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
             }`}
           >
-            Todos ({total})
+            Todos
           </button>
           {muscleGroups.map((g) => (
             <button
@@ -116,12 +150,16 @@ export function ExercisesList({ initialExercises }: ExercisesListProps) {
       </div>
 
       {/* Lista */}
-      {total === 0 ? (
+      {filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/8 bg-zinc-900/50 py-10 text-center">
           <p className="text-sm text-zinc-500">
             {exercises.length === 0
               ? "No hay ejercicios. Crea el primero."
-              : "Sin resultados para esta búsqueda."}
+              : favTab === "favoritos"
+                ? "Aún no marcaste ejercicios como favoritos."
+                : favTab === "creados"
+                  ? "Aún no has creado ningún ejercicio a mano."
+                  : "Sin resultados para esta búsqueda."}
           </p>
           {exercises.length === 0 && (
             <button
@@ -133,64 +171,20 @@ export function ExercisesList({ initialExercises }: ExercisesListProps) {
           )}
         </div>
       ) : (
-        <div className="space-y-3">
-          {/* Sección activos */}
-          {active.length > 0 && (
-            <div className="overflow-hidden rounded-2xl border border-green-600/25 bg-green-950/10">
-              {active.map((ex, i) => (
-                <ExerciseRow
-                  key={ex.id}
-                  ex={ex}
-                  isLast={i === active.length - 1}
-                  togglingId={togglingId}
-                  onEdit={openEdit}
-                  onToggle={handleToggle}
-                  variant="active"
-                />
-              ))}
-            </div>
-          )}
-
-          {active.length === 0 && (
-            <p className="text-xs text-zinc-600 text-center py-2">
-              Ningún ejercicio activo — activa los que uses en este gym
-            </p>
-          )}
-
-          {/* Separador inactivos */}
-          {inactive.length > 0 && (
-            <>
-              <button
-                onClick={() => setInactiveExpanded((v) => !v)}
-                className="flex w-full items-center justify-between rounded-xl border border-white/8 bg-zinc-900/40 px-3.5 py-2 text-left transition-colors hover:bg-zinc-800/40"
-              >
-                <span className="text-xs font-medium text-zinc-500">
-                  Inactivos ({inactive.length})
-                </span>
-                {inactiveExpanded ? (
-                  <ChevronUp className="size-3.5 text-zinc-600" />
-                ) : (
-                  <ChevronDown className="size-3.5 text-zinc-600" />
-                )}
-              </button>
-
-              {inactiveExpanded && (
-                <div className="overflow-hidden rounded-2xl border border-white/8 bg-zinc-900/60">
-                  {inactive.map((ex, i) => (
-                    <ExerciseRow
-                      key={ex.id}
-                      ex={ex}
-                      isLast={i === inactive.length - 1}
-                      togglingId={togglingId}
-                      onEdit={openEdit}
-                      onToggle={handleToggle}
-                      variant="inactive"
-                    />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+        <div className="overflow-hidden rounded-2xl border border-white/8 bg-zinc-900/60">
+          {filtered.map((ex, i) => (
+            <ExerciseRow
+              key={ex.id}
+              ex={ex}
+              isLast={i === filtered.length - 1}
+              togglingId={togglingId}
+              deletingId={deletingId}
+              onEdit={openEdit}
+              onToggle={handleToggle}
+              onDelete={handleDelete}
+              onView={setViewTarget}
+            />
+          ))}
         </div>
       )}
 
@@ -202,6 +196,14 @@ export function ExercisesList({ initialExercises }: ExercisesListProps) {
           onClose={() => setFormOpen(false)}
         />
       )}
+
+      {/* Detalle del ejercicio (imagen completa + descripción) */}
+      {viewTarget && (
+        <ExerciseDetailModal
+          exercise={viewTarget}
+          onClose={() => setViewTarget(null)}
+        />
+      )}
     </>
   )
 }
@@ -210,68 +212,66 @@ interface ExerciseRowProps {
   ex: Exercise
   isLast: boolean
   togglingId: string | null
+  deletingId: string | null
   onEdit: (ex: Exercise) => void
   onToggle: (ex: Exercise) => void
-  variant: "active" | "inactive"
+  onDelete: (ex: Exercise) => void
+  onView: (ex: Exercise) => void
 }
 
-function ExerciseRow({ ex, isLast, togglingId, onEdit, onToggle, variant }: ExerciseRowProps) {
+function ExerciseRow({ ex, isLast, togglingId, deletingId, onEdit, onToggle, onDelete, onView }: ExerciseRowProps) {
   const [imgError, setImgError] = useState(false)
 
   return (
-    <div
-      className={`flex items-center gap-3 px-4 py-3 ${
-        !isLast
-          ? variant === "active"
-            ? "border-b border-green-600/15"
-            : "border-b border-white/5"
-          : ""
-      }`}
-    >
-      {ex.media_url && !imgError ? (
-        ex.media_url.includes("supabase.co") ? (
-          <Image
-            src={ex.media_url}
-            alt={ex.name}
-            width={40}
-            height={40}
-            sizes="40px"
-            className="h-10 w-10 shrink-0 rounded-lg object-cover bg-zinc-800"
-            onError={() => setImgError(true)}
-          />
+    <div className={`flex items-center gap-3 px-4 py-3 ${!isLast ? "border-b border-white/5" : ""}`}>
+      <button
+        onClick={() => onView(ex)}
+        className="flex flex-1 items-center gap-3 min-w-0 text-left cursor-pointer"
+        aria-label={`Ver detalle de ${ex.name}`}
+      >
+        {ex.media_url && !imgError ? (
+          (ex.media_url.includes("supabase.co") || ex.media_url.includes(".r2.dev")) ? (
+            <Image
+              src={ex.media_url}
+              alt={ex.name}
+              width={40}
+              height={40}
+              sizes="40px"
+              className="h-10 w-10 shrink-0 rounded-lg object-cover bg-zinc-800"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <img
+              src={ex.media_url}
+              alt={ex.name}
+              loading="lazy"
+              className="h-10 w-10 shrink-0 rounded-lg object-cover bg-zinc-800"
+              onError={() => setImgError(true)}
+            />
+          )
         ) : (
-          <img
-            src={ex.media_url}
-            alt={ex.name}
-            loading="lazy"
-            className="h-10 w-10 shrink-0 rounded-lg object-cover bg-zinc-800"
-            onError={() => setImgError(true)}
-          />
-        )
-      ) : (
-        <div className="h-10 w-10 shrink-0 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-600 text-xs font-bold">
-          {ex.muscle_group?.charAt(0).toUpperCase() ?? "E"}
+          <div className="h-10 w-10 shrink-0 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-600 text-xs font-bold">
+            {ex.muscle_group?.charAt(0).toUpperCase() ?? "E"}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate text-zinc-100">
+            {ex.name}
+          </p>
+          <div className="mt-0.5 flex flex-wrap gap-1.5">
+            {ex.muscle_group && (
+              <span className="text-[10px] font-medium rounded px-1.5 py-0.5 text-zinc-400 bg-zinc-800">
+                {MUSCLE_GROUP_LABELS[ex.muscle_group as MuscleGroup]}
+              </span>
+            )}
+            {ex.exercise_type && (
+              <span className="text-[10px] font-medium text-zinc-500 bg-zinc-800/50 rounded px-1.5 py-0.5">
+                {EXERCISE_TYPE_LABELS[ex.exercise_type as keyof typeof EXERCISE_TYPE_LABELS]}
+              </span>
+            )}
+          </div>
         </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium truncate ${variant === "active" ? "text-zinc-100" : "text-zinc-400"}`}>
-          {ex.name}
-        </p>
-        <div className="mt-0.5 flex flex-wrap gap-1.5">
-          {ex.muscle_group && (
-            <span className={`text-[10px] font-medium rounded px-1.5 py-0.5 ${
-              variant === "active" ? "text-green-300 bg-green-900/40" : "text-zinc-400 bg-zinc-800"
-            }`}>
-              {MUSCLE_GROUP_LABELS[ex.muscle_group as MuscleGroup]}
-            </span>
-          )}
-          {ex.exercise_type && (
-            <span className="text-[10px] font-medium text-zinc-500 bg-zinc-800/50 rounded px-1.5 py-0.5">
-              {EXERCISE_TYPE_LABELS[ex.exercise_type as keyof typeof EXERCISE_TYPE_LABELS]}
-            </span>
-          )}
-        </div>
-      </div>
+      </button>
       <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={() => onEdit(ex)}
@@ -284,15 +284,38 @@ function ExerciseRow({ ex, isLast, togglingId, onEdit, onToggle, variant }: Exer
           onClick={() => onToggle(ex)}
           disabled={togglingId === ex.id}
           className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
-            variant === "active"
-              ? "bg-green-600/20 text-green-400 hover:bg-red-600/15 hover:text-red-400"
-              : "bg-zinc-800 text-zinc-600 hover:bg-green-600/15 hover:text-green-400"
+            ex.is_active
+              ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+              : "bg-zinc-800 text-zinc-600 hover:bg-amber-500/15 hover:text-amber-400"
           }`}
-          aria-label={variant === "active" ? "Desactivar" : "Activar"}
+          aria-label={ex.is_active ? "Quitar de favoritos" : "Marcar como favorito"}
         >
-          <Power className="size-3.5" />
+          <Star className="size-3.5" fill={ex.is_active ? "currentColor" : "none"} />
+        </button>
+        <button
+          onClick={() => onDelete(ex)}
+          disabled={deletingId === ex.id}
+          className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-800 text-zinc-500 hover:bg-red-600/15 hover:text-red-400 transition-colors disabled:opacity-50"
+          aria-label="Eliminar"
+        >
+          <Trash2 className="size-3.5" />
         </button>
       </div>
     </div>
+  )
+}
+
+// Mismo componente/estilo que usa el panel de clientes para sus pestañas
+// (client-exercises-manager.tsx), por consistencia visual.
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-colors cursor-pointer ${
+        active ? "btn-glossy-red text-white" : "border border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800"
+      }`}
+    >
+      {children}
+    </button>
   )
 }

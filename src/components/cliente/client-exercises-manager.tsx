@@ -20,7 +20,7 @@ type Tab = "mine" | "explore" | "created"
 
 const TAB_DESCRIPTIONS: Record<Tab, string> = {
   mine: "Estos son los ejercicios que vas a poder usar para armar tus rutinas.",
-  explore: 'Todo el catálogo del gimnasio. Añade los que quieras a "Mis ejercicios" para usarlos en tus rutinas.',
+  explore: 'Todo el catálogo del gimnasio. Añade los que quieras a "Mis favoritos" para usarlos en tus rutinas.',
   created: "Ejercicios que creaste tú mismo, solo visibles para ti.",
 }
 
@@ -128,7 +128,7 @@ export function ClientExercisesManager({
           Explorar todos
         </TabButton>
         <TabButton active={tab === "mine"} onClick={() => setTab("mine")}>
-          Mis ejercicios
+          Mis favoritos
         </TabButton>
         <TabButton active={tab === "created"} onClick={() => setTab("created")}>
           Creados por mí
@@ -140,7 +140,7 @@ export function ClientExercisesManager({
       {tab === "mine" && (
         filteredLibrary.length === 0 ? (
           <EmptyState
-            text="Aún no has añadido ejercicios a tu biblioteca."
+            text="Aún no has añadido ejercicios a tus favoritos."
             subtext="Ve a Explorar todos y agrega los que quieras usar."
             actionLabel="Explorar todos"
             onAction={() => setTab("explore")}
@@ -320,7 +320,7 @@ function ExerciseRowItem({
       className={`flex w-full items-center gap-3 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] px-4 py-3 text-left cursor-pointer hover:border-zinc-600 transition-colors ${pending ? "opacity-50" : ""}`}
     >
       {ex.media_url && !imgError ? (
-        ex.media_url.includes("supabase.co") ? (
+        (ex.media_url.includes("supabase.co") || ex.media_url.includes(".r2.dev")) ? (
           <Image
             src={ex.media_url}
             alt={ex.name}

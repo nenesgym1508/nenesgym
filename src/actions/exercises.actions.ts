@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { GYM_ID } from "@/constants/plans"
 import { ROUTES } from "@/constants/routes"
+import { uploadToR2, deleteFromR2, r2KeyFromPublicUrl } from "@/lib/r2"
 import type { MuscleGroup, Equipment, ExerciseType, Exercise, UsageTag } from "@/services/exercises.service"
 
 interface ExerciseData {
@@ -86,6 +87,64 @@ export async function toggleExerciseAction(id: string, isActive: boolean) {
   return { success: true }
 }
 
+// Borrado real (no soft-delete): 5 tablas referencian exercises.id sin cascada
+// (class_block_exercises, template_block_exercises, client_routine_exercises,
+// client_exercise_library, training_routine_exercises), así que si el ejercicio
+// está en uso Postgres bloquea el borrado (23503) — se traduce a un mensaje
+// claro sugiriendo desactivarlo en su lugar (mismo patrón que deletePlanAction).
+export async function deleteExerciseAction(id: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "No autenticado" }
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+  if (profile?.role !== "admin") return { error: "Sin permisos" }
+
+  const { data: existing } = await supabase
+    .from("exercises")
+    .select("media_url")
+    .eq("id", id)
+    .eq("gym_id", GYM_ID)
+    .single()
+
+  const { error } = await supabase
+    .from("exercises")
+    .delete()
+    .eq("id", id)
+    .eq("gym_id", GYM_ID)
+
+  if (error) {
+    if (error.code === "23503") {
+      return { error: "No se puede eliminar: este ejercicio está en uso en una o más rutinas/clases. Desactívalo en su lugar." }
+    }
+    return { error: error.message }
+  }
+
+  // Borrar el archivo asociado (solo si vive en nuestro storage, no en URLs externas,
+  // y solo si ningún otro ejercicio sigue apuntando a la misma imagen)
+  if (existing?.media_url) {
+    const { count } = await (supabase as any)
+      .from("exercises")
+      .select("id", { count: "exact", head: true })
+      .eq("media_url", existing.media_url)
+
+    if ((count ?? 0) === 0) {
+      const r2Key = r2KeyFromPublicUrl(existing.media_url)
+      if (r2Key) {
+        await deleteFromR2(r2Key).catch(() => {})
+      } else {
+        const supabasePath = getStoragePathFromUrl(existing.media_url)
+        if (supabasePath) {
+          await supabase.storage.from("exercises").remove([supabasePath])
+        }
+      }
+    }
+  }
+
+  revalidatePath(ROUTES.ADMIN_CLASES_EJERCICIOS)
+  return { success: true }
+}
+
 function isWebPBuffer(buffer: Buffer): boolean {
   if (buffer.length < 12) return false
   const riff = buffer.toString("ascii", 0, 4)
@@ -93,6 +152,7 @@ function isWebPBuffer(buffer: Buffer): boolean {
   return riff === "RIFF" && webp === "WEBP"
 }
 
+// Imágenes viejas (subidas antes de migrar a R2) siguen en Supabase Storage.
 function getStoragePathFromUrl(url: string | null): string | null {
   if (!url) return null
   const marker = "/storage/v1/object/public/exercises/"
@@ -175,38 +235,35 @@ export async function uploadExerciseImageAction(
     ? `gym/${GYM_ID}/${Date.now()}_${randomStr}.webp`
     : `client/${clientId}/${Date.now()}_${randomStr}.webp`
 
-  const { error: uploadError } = await supabase.storage
-    .from("exercises")
-    .upload(path, buffer, { contentType: "image/webp", upsert: false })
-
-  if (uploadError) {
-    return { error: "Error al subir la imagen: " + uploadError.message }
-  }
-
-  const { data: urlData } = supabase.storage
-    .from("exercises")
-    .getPublicUrl(path)
-
-  if (!urlData?.publicUrl) {
-    return { error: "No se pudo obtener la URL pública de la imagen." }
+  let publicUrl: string
+  try {
+    publicUrl = await uploadToR2(path, buffer, "image/webp")
+  } catch (e) {
+    return { error: "Error al subir la imagen: " + (e instanceof Error ? e.message : "error desconocido") }
   }
 
   // Eliminar la imagen previa únicamente si no está compartida por otro ejercicio
   if (oldMediaUrl) {
-    const oldPath = getStoragePathFromUrl(oldMediaUrl)
-    if (oldPath && oldPath !== path) {
-      const { count } = await (supabase as any)
-        .from("exercises")
-        .select("id", { count: "exact", head: true })
-        .eq("media_url", oldMediaUrl)
+    const { count } = await (supabase as any)
+      .from("exercises")
+      .select("id", { count: "exact", head: true })
+      .eq("media_url", oldMediaUrl)
 
-      if ((count ?? 0) <= 1) {
-        await supabase.storage.from("exercises").remove([oldPath])
+    if ((count ?? 0) <= 1) {
+      const oldR2Key = r2KeyFromPublicUrl(oldMediaUrl)
+      if (oldR2Key) {
+        await deleteFromR2(oldR2Key).catch(() => {})
+      } else {
+        // Imagen vieja (pre-R2), sigue en Supabase Storage.
+        const oldSupabasePath = getStoragePathFromUrl(oldMediaUrl)
+        if (oldSupabasePath) {
+          await supabase.storage.from("exercises").remove([oldSupabasePath])
+        }
       }
     }
   }
 
-  return { success: true, url: urlData.publicUrl }
+  return { success: true, url: publicUrl }
 }
 
 // ── Biblioteca personal de ejercicios del cliente ──────────

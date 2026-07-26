@@ -845,7 +845,6 @@ export function RoutineEditor({
           }}
           onClose={() => setPickerBlockId(null)}
           onCreateNew={() => setCreateForBlockId(pickerBlockId)}
-          quickConfigDefaults={variant === "client-own" ? { sets: 3, reps: 12, rest_seconds: 60 } : undefined}
           myExerciseIds={variant === "client-own" ? myExerciseIds : undefined}
           simplifiedUsage={variant === "client-own"}
         />

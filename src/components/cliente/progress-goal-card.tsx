@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import { Target, ChevronDown } from "lucide-react"
 import { setProgressGoalAction } from "@/actions/progress.actions"
+import { adminSetProgressGoalAction } from "@/actions/admin.actions"
 import { GOAL_LABELS } from "@/types/progress"
 import type { GoalType, ProgressGoal } from "@/types/progress"
 
@@ -14,9 +15,11 @@ const GOAL_OPTIONS: GoalType[] = [
 
 interface GoalCardProps {
   goal: ProgressGoal | null
+  /** Presente = el admin cambia el objetivo en nombre de este cliente. */
+  clientId?: string
 }
 
-export function GoalCard({ goal }: GoalCardProps) {
+export function GoalCard({ goal, clientId }: GoalCardProps) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [current, setCurrent] = useState<GoalType | null>(
@@ -30,7 +33,9 @@ export function GoalCard({ goal }: GoalCardProps) {
     setError(null)
     setOpen(false)
     startTransition(async () => {
-      const result = await setProgressGoalAction(type)
+      const result = clientId
+        ? await adminSetProgressGoalAction(clientId, type)
+        : await setProgressGoalAction(type)
       if (result.error) {
         setCurrent(previous)
         setError(result.error)

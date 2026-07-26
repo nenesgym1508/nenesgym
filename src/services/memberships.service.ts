@@ -1,6 +1,11 @@
 import { createClient } from "@/lib/supabase/server"
 import { todayInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
+import { computeEffectiveStatus } from "@/lib/membership-status"
 import type { MembershipStatus } from "@/types/membership"
+
+// Re-exportada desde @/lib/membership-status (función pura, sin next/headers)
+// para no romper a los importadores existentes de este service.
+export { computeEffectiveStatus }
 
 export async function getActiveMembership(clientId: string) {
   const supabase = await createClient()
@@ -25,23 +30,6 @@ export async function getMembershipsForClient(clientId: string) {
   return data ?? []
 }
 
-export function computeEffectiveStatus(
-  usedDays: number,
-  totalDays: number,
-  endDate: string,
-  graceDays: number,
-  status: MembershipStatus
-): MembershipStatus {
-  if (status === "cancelled") return "cancelled"
-  if (usedDays >= totalDays) return "exhausted"
-  const today = todayInBogota()
-  if (today <= endDate) return "active"
-  const graceEnd = new Date(endDate)
-  graceEnd.setDate(graceEnd.getDate() + graceDays)
-  const graceEndStr = graceEnd.toISOString().split("T")[0]
-  if (today <= graceEndStr) return "grace"
-  return "expired"
-}
 
 // ─── Búsqueda + filtros + paginación de clientes (admin) ──────────────────────
 // La búsqueda, el filtro de estado y la paginación se resuelven en Postgres vía la

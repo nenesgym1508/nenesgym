@@ -29,14 +29,6 @@ export async function addProgressRecord(data: {
 
   const today = todayInBogota()
 
-  // Buscar si ya existe una medición del día en zona Bogotá
-  const { data: existing } = await supabase
-    .from("progress_records")
-    .select("id")
-    .eq("client_id", client.id)
-    .eq("measured_date", today)
-    .single()
-
   // `bmi` es columna GENERATED ALWAYS en Postgres — no enviar valor manual.
   const payload = {
     gym_id: GYM_ID,
@@ -52,17 +44,13 @@ export async function addProgressRecord(data: {
     created_by: "client",
   }
 
-  let error
-  if (existing) {
-    const result = await supabase
-      .from("progress_records")
-      .update(payload)
-      .eq("id", existing.id)
-    error = result.error
-  } else {
-    const result = await supabase.from("progress_records").insert(payload)
-    error = result.error
-  }
+  // upsert atómico sobre la restricción única (client_id, measured_date):
+  // evita la condición de carrera del viejo patrón "verificar si existe,
+  // luego insert o update" (dos guardados casi simultáneos podían crear
+  // filas duplicadas para el mismo día — ver Lección de la Sesión correspondiente).
+  const { error } = await supabase
+    .from("progress_records")
+    .upsert(payload, { onConflict: "client_id,measured_date" })
 
   if (error) return { error: error.message }
 

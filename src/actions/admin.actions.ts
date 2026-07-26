@@ -5,9 +5,10 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { computeEffectiveStatus, searchAdminClients } from "@/services/memberships.service"
 import { todayInBogota, nowInBogota, gymSession, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
-import { ROUTES } from "@/constants/routes"
+import { ROUTES, adminClienteDetalle } from "@/constants/routes"
 import type { MembershipStatus } from "@/types/membership"
 import type { PaymentMethod } from "@/types/payment"
+import type { GoalType } from "@/types/progress"
 
 const PAYMENT_METHODS: PaymentMethod[] = ["cash", "transfer", "nequi", "daviplata", "other"]
 
@@ -277,6 +278,123 @@ export async function manualCheckInAction(clientId: string) {
 
   revalidatePath(ROUTES.ADMIN_ASISTENCIAS)
   revalidatePath(ROUTES.ADMIN_DASHBOARD)
+  return { success: true }
+}
+
+// Ajuste manual de una membresía existente: días totales y/o fecha de
+// vencimiento. Los "días restantes" que ve el cliente/admin se recalculan
+// siempre en vivo (total_days - días hábiles transcurridos desde start_date,
+// ver eligibleDaysElapsed) — no hay contador que sincronizar aparte.
+export async function adjustMembershipAction(input: {
+  membershipId: string
+  clientId: string
+  totalDays: number
+  endDate: string
+}) {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error }
+
+  if (!Number.isInteger(input.totalDays) || input.totalDays <= 0)
+    return { error: "Los días totales deben ser un número entero mayor a 0" }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.endDate))
+    return { error: "Fecha de vencimiento inválida" }
+
+  const { error } = await ctx.supabase
+    .from("memberships")
+    .update({ total_days: input.totalDays, end_date: input.endDate })
+    .eq("id", input.membershipId)
+  if (error) return { error: error.message }
+
+  revalidatePath(ROUTES.ADMIN_CLIENTES)
+  revalidatePath(adminClienteDetalle(input.clientId))
+  return { success: true }
+}
+
+// Cancela la membresía activa del cliente. No la borra (queda en el
+// historial con status='cancelled'); computeEffectiveStatus la excluye de
+// inmediato de "activa/gracia" y deja de contar para check-in.
+export async function cancelMembershipAction(membershipId: string, clientId: string) {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error }
+
+  const { error } = await ctx.supabase
+    .from("memberships")
+    .update({ status: "cancelled" })
+    .eq("id", membershipId)
+  if (error) return { error: error.message }
+
+  revalidatePath(ROUTES.ADMIN_CLIENTES)
+  revalidatePath(adminClienteDetalle(clientId))
+  return { success: true }
+}
+
+// Progreso físico editado por el admin en nombre de un cliente (misma vista
+// que usa el cliente — ver ProgressView). progress_records solo tiene RLS de
+// escritura para "el propio cliente" (no hay policy admin de INSERT/UPDATE),
+// así que se escribe con el cliente de service-role, con requireAdmin como
+// guarda — mismo patrón que el resto de este archivo.
+export async function adminSaveProgressRecordAction(clientId: string, data: {
+  weight_kg?: number
+  height_cm?: number
+  waist_cm?: number
+  chest_cm?: number
+  arm_cm?: number
+  leg_cm?: number
+  note?: string
+}) {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error }
+
+  const admin = createAdminClient()
+  const today = todayInBogota()
+
+  // `bmi` es columna GENERATED ALWAYS en Postgres — no enviar valor manual.
+  const payload = {
+    gym_id: ctx.gymId,
+    client_id: clientId,
+    weight_kg: data.weight_kg ?? null,
+    height_cm: data.height_cm ?? null,
+    waist_cm: data.waist_cm ?? null,
+    chest_cm: data.chest_cm ?? null,
+    arm_cm: data.arm_cm ?? null,
+    leg_cm: data.leg_cm ?? null,
+    note: data.note ?? null,
+    measured_date: today,
+    created_by: "admin",
+  }
+
+  // upsert atómico sobre la restricción única (client_id, measured_date) —
+  // ver la misma corrección y su porqué en progress.actions.ts/addProgressRecord.
+  const { error } = await admin
+    .from("progress_records")
+    .upsert(payload, { onConflict: "client_id,measured_date" })
+  if (error) return { error: error.message }
+
+  revalidatePath(adminClienteDetalle(clientId))
+  return { success: true }
+}
+
+export async function adminSetProgressGoalAction(clientId: string, goalType: GoalType) {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error }
+
+  const admin = createAdminClient()
+
+  await admin
+    .from("progress_goals")
+    .update({ status: "cancelled" })
+    .eq("client_id", clientId)
+    .eq("status", "active")
+
+  const { error } = await admin.from("progress_goals").insert({
+    gym_id: ctx.gymId,
+    client_id: clientId,
+    goal_type: goalType,
+    created_by: "admin",
+  })
+  if (error) return { error: error.message }
+
+  revalidatePath(adminClienteDetalle(clientId))
   return { success: true }
 }
 

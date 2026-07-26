@@ -10,6 +10,7 @@
     "optimize-images": "node scripts/optimize-images.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1095.0",
     "@base-ui/react": "^1.5.0",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.4.0",
@@ -25,6 +26,7 @@
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-easy-crop": "^6.2.3",
     "react-hook-form": "^7.79.0",
     "shadcn": "^4.11.0",
     "tailwind-merge": "^3.6.0",

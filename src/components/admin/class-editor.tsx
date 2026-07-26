@@ -739,7 +739,7 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, 
     <div className="px-3 py-2.5">
       <div className="flex items-center gap-2.5">
         {ex.exercise.media_url ? (
-          ex.exercise.media_url.includes("supabase.co") ? (
+          (ex.exercise.media_url.includes("supabase.co") || ex.exercise.media_url.includes(".r2.dev")) ? (
             <Image
               src={ex.exercise.media_url}
               alt={ex.exercise.name}
@@ -911,7 +911,9 @@ const SIMPLIFIED_USAGE_OPTIONS: UsageTag[] = ["calentamiento", "trabajo_principa
 
 const HIDE_SCROLLBAR = "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
 
-export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMultiple, onClose, onCreateNew, quickConfigDefaults, myExerciseIds, simplifiedUsage = false }: ExercisePickerProps) {
+const DEFAULT_QUICK_CONFIG = { sets: 4, reps: 12, rest_seconds: 60 }
+
+export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMultiple, onClose, onCreateNew, quickConfigDefaults = DEFAULT_QUICK_CONFIG, myExerciseIds, simplifiedUsage = false }: ExercisePickerProps) {
   const hasScopeToggle = !!myExerciseIds
   const [scope, setScope] = useState<"mine" | "all">("all")
   const [search, setSearch] = useState("")
@@ -926,7 +928,7 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMulti
   // Selección múltiple
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([])
   const [showMultiConfig, setShowMultiConfig] = useState(false)
-  const [multiConfigs, setMultiConfigs] = useState<Record<string, { sets: number, reps: number, rest_seconds: number }>>({})
+  const [multiConfigs, setMultiConfigs] = useState<Record<string, { sets: number | null, reps: number | null, rest_seconds: number | null }>>({})
 
 
   const scopedExercises = useMemo(
@@ -978,20 +980,31 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMulti
   }
 
   const handleUpdateConfig = (exId: string, field: string, val: number | null) => {
+    // Guardamos el valor tal cual (puede ser null mientras el campo está vacío
+    // en edición) — forzarlo a 0 aquí hacía que el input se "reescribiera" solo
+    // apenas lo borrabas, sin dejar teclear un número nuevo.
     setMultiConfigs(prev => ({
       ...prev,
       [exId]: {
         ...prev[exId],
-        [field]: val ?? 0
+        [field]: val
       }
     }))
   }
 
   const handleConfirmMulti = () => {
-    const selections = selectedExercises.map(ex => ({
-      exercise: ex,
-      overrides: multiConfigs[ex.id]
-    }))
+    const selections = selectedExercises.map(ex => {
+      const cfg = multiConfigs[ex.id]
+      return {
+        exercise: ex,
+        // Un campo vacío al confirmar cae al valor por defecto, no a 0.
+        overrides: {
+          sets: cfg?.sets ?? quickConfigDefaults.sets,
+          reps: cfg?.reps ?? quickConfigDefaults.reps,
+          rest_seconds: cfg?.rest_seconds ?? quickConfigDefaults.rest_seconds,
+        },
+      }
+    })
     if (onSelectMultiple) {
       onSelectMultiple(selections)
     } else if (onSelect) {
@@ -1195,7 +1208,7 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMulti
                         className="flex flex-1 items-center gap-3 min-w-0 text-left"
                       >
                         {ex.media_url ? (
-                          ex.media_url.includes("supabase.co") ? (
+                          (ex.media_url.includes("supabase.co") || ex.media_url.includes(".r2.dev")) ? (
                             <Image
                               src={ex.media_url}
                               alt={ex.name}

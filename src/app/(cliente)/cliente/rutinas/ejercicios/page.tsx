@@ -22,7 +22,7 @@ export default async function ClienteEjerciciosPage() {
 
   return (
     <div className="pb-24">
-      <PageHeader title="Mis ejercicios" backHref={ROUTES.CLIENTE_RUTINAS} />
+      <PageHeader title="Mis favoritos" backHref={ROUTES.CLIENTE_RUTINAS} />
       <div className="p-4">
         <ClientExercisesManager
           initialLibrary={myLibrary}

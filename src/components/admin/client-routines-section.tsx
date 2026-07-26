@@ -2,11 +2,21 @@
 
 import { useState, useTransition } from "react"
 import Link from "next/link"
-import { ChevronRight, Plus, Save, Check } from "lucide-react"
-import { Card } from "@/components/ui/card"
+import { ChevronRight, Plus, Save, Check, Dumbbell, Calendar } from "lucide-react"
 import { adminRutinaDetalle, ROUTES } from "@/constants/routes"
-import { formatRoutineGoal, ROUTINE_STATUS_LABELS, type ClientRoutine } from "@/types/routine"
+import { formatRoutineGoal, ROUTINE_STATUS_LABELS, type ClientRoutine, type RoutineStatus } from "@/types/routine"
 import { saveAsTrainingRoutineAction } from "@/actions/training-routines.actions"
+
+// Mismo diseño de tarjeta grande que ve el cliente en /cliente/rutinas
+// (ver custom-routines-list.tsx), adaptado a las rutas y acciones del admin.
+
+const STATUS_BADGE_CLASSES: Record<RoutineStatus, string> = {
+  active: "text-green-500 bg-green-500/10 border-green-500/20",
+  draft: "text-zinc-400 bg-zinc-500/10 border-zinc-500/20",
+  paused: "text-amber-500 bg-amber-500/10 border-amber-500/20",
+  completed: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+  archived: "text-zinc-500 bg-zinc-500/10 border-zinc-500/20",
+}
 
 interface ClientRoutinesSectionProps {
   clientId: string
@@ -18,12 +28,12 @@ export function ClientRoutinesSection({ clientId, routines }: ClientRoutinesSect
   const ownCreated = routines.filter((r) => r.created_by_role === "client")
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Rutinas</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Rutinas</p>
         <Link
           href={`${ROUTES.ADMIN_RUTINAS_NUEVA}?clientId=${clientId}`}
-          className="flex items-center gap-1 text-xs font-semibold text-red-400 hover:text-red-300 transition-colors"
+          className="flex items-center gap-1.5 rounded-xl btn-glossy-red px-3.5 py-2 text-xs font-semibold text-white"
         >
           <Plus className="size-3.5" />
           Asignar rutina
@@ -31,39 +41,32 @@ export function ClientRoutinesSection({ clientId, routines }: ClientRoutinesSect
       </div>
 
       <div className="space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Asignadas por ti</p>
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Asignadas por ti</h3>
         {assigned.length === 0 ? (
-          <Card className="p-4 text-center text-xs text-zinc-500">Aún no le has asignado ninguna rutina.</Card>
+          <div className="p-8 text-center text-zinc-500 text-xs rounded-3xl border border-zinc-800 bg-zinc-900/20">
+            Aún no le has asignado ninguna rutina.
+          </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-white/8 bg-zinc-900/60 divide-y divide-white/5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {assigned.map((r) => (
-              <Link
-                key={r.id}
-                href={adminRutinaDetalle(r.id)}
-                className="flex items-center justify-between px-4 py-3 hover:bg-zinc-800/40 transition-colors"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-zinc-200 truncate">{r.title}</p>
-                  <p className="text-[11px] text-zinc-500">
-                    {ROUTINE_STATUS_LABELS[r.status]}
-                    {r.days_per_week ? ` · ${r.days_per_week} días/sem` : ""}
-                  </p>
-                </div>
-                <ChevronRight className="size-4 text-zinc-600 shrink-0" />
-              </Link>
+              <RoutineCard key={r.id} routine={r} />
             ))}
           </div>
         )}
       </div>
 
       <div className="space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Creadas por el cliente</p>
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+          Creadas por el cliente
+        </h3>
         {ownCreated.length === 0 ? (
-          <Card className="p-4 text-center text-xs text-zinc-500">El cliente no ha creado rutinas propias.</Card>
+          <div className="p-8 text-center text-zinc-500 text-xs rounded-3xl border border-zinc-800 bg-zinc-900/20">
+            El cliente no ha creado rutinas propias.
+          </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-white/8 bg-zinc-900/60 divide-y divide-white/5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {ownCreated.map((r) => (
-              <OwnRoutineRow key={r.id} routine={r} />
+              <RoutineCard key={r.id} routine={r} showSaveToLibrary />
             ))}
           </div>
         )}
@@ -72,37 +75,70 @@ export function ClientRoutinesSection({ clientId, routines }: ClientRoutinesSect
   )
 }
 
-function OwnRoutineRow({ routine }: { routine: ClientRoutine }) {
+function RoutineCard({ routine: r, showSaveToLibrary }: { routine: ClientRoutine; showSaveToLibrary?: boolean }) {
   const [isPending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
 
   const handleSave = () => {
     startTransition(async () => {
-      const res = await saveAsTrainingRoutineAction(routine.id, routine.title)
+      const res = await saveAsTrainingRoutineAction(r.id, r.title)
       if (res.success) setSaved(true)
     })
   }
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 gap-2">
-      <Link href={adminRutinaDetalle(routine.id)} className="min-w-0 flex-1 hover:opacity-80 transition-opacity">
-        <p className="text-sm font-medium text-zinc-200 truncate">{routine.title}</p>
-        <p className="text-[11px] text-zinc-500">
-          {routine.goal ? formatRoutineGoal(routine.goal, routine.custom_goal) : ROUTINE_STATUS_LABELS[routine.status]}
-          {routine.days_per_week ? ` · ${routine.days_per_week} días/sem` : ""}
-        </p>
+    <div className="relative rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] overflow-hidden hover:border-red-600/40 transition-colors">
+      <Link href={adminRutinaDetalle(r.id)} className="block p-5 space-y-3.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 rounded-full border border-zinc-600 flex items-center justify-center bg-zinc-950 shrink-0">
+              <Dumbbell className="size-5 text-zinc-400" />
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-bebas font-bold text-xl tracking-wide uppercase text-white truncate">
+                {r.title}
+              </h4>
+              <span className={`text-[10px] rounded-md px-2.5 py-0.5 mt-1 inline-block font-semibold border ${STATUS_BADGE_CLASSES[r.status]}`}>
+                {ROUTINE_STATUS_LABELS[r.status]}
+              </span>
+            </div>
+          </div>
+          <ChevronRight className="size-5 text-zinc-500 shrink-0" />
+        </div>
+
+        <div className="border-t border-white/5" />
       </Link>
-      <button
-        onClick={handleSave}
-        disabled={isPending || saved}
-        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-50"
-      >
-        {saved ? (
-          <><Check className="size-3.5 text-green-400" /> Guardada</>
-        ) : (
-          <><Save className="size-3.5" /> Guardar en biblioteca</>
+
+      <div className="flex items-center justify-between gap-3 px-5 pb-5">
+        <Link href={adminRutinaDetalle(r.id)} className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-11 h-11 rounded-xl border border-white/5 bg-zinc-950 flex items-center justify-center shrink-0">
+            <Calendar className="size-5 text-red-500" />
+          </div>
+          <div className="min-w-0 text-xs text-zinc-400 space-y-0.5">
+            <p className="truncate">
+              <span className="text-zinc-500 font-medium">Objetivo:</span>{" "}
+              {r.goal ? formatRoutineGoal(r.goal, r.custom_goal) : "Personalizada"}
+            </p>
+            <p className="truncate">
+              <span className="text-zinc-500 font-medium">Frecuencia:</span>{" "}
+              {r.days_per_week ? `${r.days_per_week} días/sem` : "Sin definir"}
+            </p>
+          </div>
+        </Link>
+        {showSaveToLibrary && (
+          <button
+            onClick={handleSave}
+            disabled={isPending || saved}
+            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-zinc-900/80 border border-white/5 px-2.5 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+          >
+            {saved ? (
+              <><Check className="size-3.5 text-green-400" /> Guardada</>
+            ) : (
+              <><Save className="size-3.5" /> Guardar</>
+            )}
+          </button>
         )}
-      </button>
+      </div>
     </div>
   )
 }

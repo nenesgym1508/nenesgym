@@ -40,7 +40,7 @@ export function ExerciseDetailModal({ exercise, onClose }: ExerciseDetailModalPr
         <div className="flex-1 overflow-y-auto">
           {exercise.media_url ? (
             <div className="relative w-full h-56 bg-zinc-800">
-              {exercise.media_url.includes("supabase.co") ? (
+              {(exercise.media_url.includes("supabase.co") || exercise.media_url.includes(".r2.dev")) ? (
                 <Image
                   src={exercise.media_url}
                   alt={exercise.name}

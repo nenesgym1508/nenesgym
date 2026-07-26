@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'pub-5e1d912ef2bd446cb76d60013bb0240b.r2.dev',
+      },
+      {
+        protocol: 'https',
         hostname: 'raw.githubusercontent.com',
       },
       {

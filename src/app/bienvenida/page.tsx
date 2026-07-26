@@ -67,12 +67,6 @@ export default async function BienvenidaPage() {
         >
           Crear cuenta
         </Link>
-        <Link
-          href={ROUTES.LOGIN}
-          className="flex h-12 items-center justify-center text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-200"
-        >
-          Continuar como invitado
-        </Link>
         <p className="pt-2 text-center text-xs text-zinc-600">
           Construye fuerza. Construye confianza. Construye tu mejor versión.
         </p>

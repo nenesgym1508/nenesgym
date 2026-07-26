@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2, CheckCircle, Plus, X, Pencil, ChevronDown, ChevronUp } from "lucide-react"
 import { progressRecordSchema } from "@/schemas/progress.schema"
 import { addProgressRecord } from "@/actions/progress.actions"
+import { adminSaveProgressRecordAction } from "@/actions/admin.actions"
 import { Input, Textarea } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import type { z } from "zod"
@@ -16,9 +17,11 @@ type ProgressInput = z.infer<typeof progressRecordSchema>
 interface ProgressFormProps {
   todayRecord?: ProgressRecord | null
   latestHeightCm?: number | null
+  /** Presente = el admin guarda en nombre de este cliente; ausente = el cliente guarda lo suyo. */
+  clientId?: string
 }
 
-export function ProgressForm({ todayRecord, latestHeightCm }: ProgressFormProps) {
+export function ProgressForm({ todayRecord, latestHeightCm, clientId }: ProgressFormProps) {
   const [open, setOpen] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -62,7 +65,7 @@ export function ProgressForm({ todayRecord, latestHeightCm }: ProgressFormProps)
 
   const onSubmit = async (data: ProgressInput) => {
     setServerError(null)
-    const result = await addProgressRecord({
+    const payload = {
       weight_kg: data.weight_kg,
       height_cm: data.height_cm,
       waist_cm: data.waist_cm,
@@ -70,7 +73,10 @@ export function ProgressForm({ todayRecord, latestHeightCm }: ProgressFormProps)
       arm_cm: data.arm_cm,
       leg_cm: data.leg_cm,
       note: data.note,
-    })
+    }
+    const result = clientId
+      ? await adminSaveProgressRecordAction(clientId, payload)
+      : await addProgressRecord(payload)
     if (result.error) {
       setServerError(result.error)
     } else {
