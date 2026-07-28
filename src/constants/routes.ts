@@ -38,6 +38,7 @@ export const ROUTES = {
   // Cliente — Rutinas
   CLIENTE_RUTINAS: '/cliente/rutinas',
   CLIENTE_RUTINAS_EJERCICIOS: '/cliente/rutinas/ejercicios',
+  CLIENTE_RUTINAS_BIBLIOTECA: '/cliente/rutinas/biblioteca',
 } as const
 
 export function adminClienteDetalle(id: string) {
@@ -62,6 +63,10 @@ export function adminRutinaBibliotecaDetalle(id: string) {
 
 export function clienteRutinaDetalle(id: string) {
   return `/cliente/rutinas/${id}` as const
+}
+
+export function clienteRutinaBibliotecaDetalle(id: string) {
+  return `/cliente/rutinas/biblioteca/${id}` as const
 }
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES]

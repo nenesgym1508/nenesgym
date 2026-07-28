@@ -515,6 +515,52 @@ export type Database = {
           },
         ]
       }
+      client_training_routine_favorites: {
+        Row: {
+          client_id: string
+          created_at: string
+          gym_id: string
+          id: string
+          routine_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          gym_id: string
+          id?: string
+          routine_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          gym_id?: string
+          id?: string
+          routine_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_training_routine_favorites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_training_routine_favorites_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_training_routine_favorites_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "training_routines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           auto_aprobacion: boolean
@@ -1448,6 +1494,7 @@ export type Database = {
           gym_id: string
           id: string
           is_active: boolean
+          is_public: boolean
           level: string | null
           name: string
           notes: string | null
@@ -1462,6 +1509,7 @@ export type Database = {
           gym_id: string
           id?: string
           is_active?: boolean
+          is_public?: boolean
           level?: string | null
           name: string
           notes?: string | null
@@ -1476,6 +1524,7 @@ export type Database = {
           gym_id?: string
           id?: string
           is_active?: boolean
+          is_public?: boolean
           level?: string | null
           name?: string
           notes?: string | null

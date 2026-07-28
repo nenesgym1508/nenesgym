@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ClipboardList, Users, CalendarCheck, Copy, Archive, ArchiveRestore, Trash2, UserPlus, CalendarPlus, Loader2, MoreVertical } from "lucide-react"
+import { ClipboardList, Users, CalendarCheck, Copy, Archive, ArchiveRestore, Trash2, UserPlus, CalendarPlus, Loader2, MoreVertical, Globe, Lock } from "lucide-react"
 import { formatRoutineGoal } from "@/types/routine"
 import { adminRutinaBibliotecaDetalle } from "@/constants/routes"
 import { ActionMenu } from "@/components/ui/action-menu"
@@ -18,16 +18,21 @@ interface TrainingRoutinesListProps {
   routines: TrainingRoutine[]
 }
 
+type LibraryFilter = "todas" | "publicas"
+
 export function TrainingRoutinesList({ routines: initialRoutines }: TrainingRoutinesListProps) {
   const router = useRouter()
   const [routines, setRoutines] = useState(initialRoutines)
   const [search, setSearch] = useState("")
+  const [filter, setFilter] = useState<LibraryFilter>("todas")
   const [, startTransition] = useTransition()
   const [pendingId, setPendingId] = useState<string | null>(null)
 
-  const filtered = routines.filter((r) =>
-    r.name.toLowerCase().includes(search.toLowerCase().trim())
-  )
+  const publicCount = routines.filter((r) => r.is_public).length
+
+  const filtered = routines
+    .filter((r) => (filter === "publicas" ? r.is_public : true))
+    .filter((r) => r.name.toLowerCase().includes(search.toLowerCase().trim()))
 
   const handleDuplicate = (id: string) => {
     if (pendingId) return
@@ -50,6 +55,21 @@ export function TrainingRoutinesList({ routines: initialRoutines }: TrainingRout
         const res = await updateTrainingRoutineMetaAction(routine.id, { is_active: !routine.is_active })
         if (!res.error) {
           setRoutines((prev) => prev.map((r) => (r.id === routine.id ? { ...r, is_active: !r.is_active } : r)))
+        }
+      } finally {
+        setPendingId(null)
+      }
+    })
+  }
+
+  const handleTogglePublic = (routine: TrainingRoutine) => {
+    if (pendingId) return
+    setPendingId(routine.id)
+    startTransition(async () => {
+      try {
+        const res = await updateTrainingRoutineMetaAction(routine.id, { is_public: !routine.is_public })
+        if (!res.error) {
+          setRoutines((prev) => prev.map((r) => (r.id === routine.id ? { ...r, is_public: !r.is_public } : r)))
         }
       } finally {
         setPendingId(null)
@@ -81,12 +101,43 @@ export function TrainingRoutinesList({ routines: initialRoutines }: TrainingRout
         className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3.5 py-3 text-sm text-zinc-200 outline-none focus:border-red-600/50"
       />
 
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setFilter("todas")}
+          className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            filter === "todas" ? "bg-red-600/20 text-red-400" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+          }`}
+        >
+          Todas ({routines.length})
+        </button>
+        <button
+          onClick={() => setFilter("publicas")}
+          className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            filter === "publicas" ? "bg-red-600/20 text-red-400" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+          }`}
+        >
+          Públicas ({publicCount})
+        </button>
+      </div>
+
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-white/10 py-12 text-center">
           <ClipboardList className="size-8 text-zinc-700" />
           <div>
-            <p className="text-sm font-medium text-zinc-400">Sin rutinas todavía</p>
-            <p className="text-xs text-zinc-600 mt-1">Crea una rutina reutilizable para asignarla o programarla más rápido.</p>
+            <p className="text-sm font-medium text-zinc-400">
+              {routines.length === 0
+                ? "Sin rutinas todavía"
+                : filter === "publicas"
+                  ? "Ninguna rutina está en la biblioteca de clientes"
+                  : "Sin resultados para esta búsqueda"}
+            </p>
+            <p className="text-xs text-zinc-600 mt-1">
+              {routines.length === 0
+                ? "Crea una rutina reutilizable para asignarla o programarla más rápido."
+                : filter === "publicas"
+                  ? "Marca \"Mostrar en biblioteca de clientes\" desde el menú de una rutina."
+                  : "Prueba con otro término de búsqueda."}
+            </p>
           </div>
         </div>
       ) : (
@@ -119,6 +170,12 @@ export function TrainingRoutinesList({ routines: initialRoutines }: TrainingRout
                 disabled: isRowPending
               },
               {
+                label: r.is_public ? "Quitar de la biblioteca de clientes" : "Mostrar en biblioteca de clientes",
+                icon: r.is_public ? <Lock className="size-4" /> : <Globe className="size-4" />,
+                onClick: () => handleTogglePublic(r),
+                disabled: isRowPending
+              },
+              {
                 label: "Eliminar",
                 icon: <Trash2 className="size-4" />,
                 destructive: true,
@@ -145,7 +202,10 @@ export function TrainingRoutinesList({ routines: initialRoutines }: TrainingRout
                   }
                 >
                   <Link href={adminRutinaBibliotecaDetalle(r.id)} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
-                    <p className="text-sm font-semibold text-zinc-200 truncate">{r.name}</p>
+                    <p className="text-sm font-semibold text-zinc-200 truncate">
+                      {r.name}
+                      {r.is_public && <span className="ml-1.5 text-[10px] font-semibold text-green-500 align-middle">· Pública</span>}
+                    </p>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-zinc-500">
                       {r.days_per_week && <span>{r.days_per_week} días/sem</span>}
                       {r.goal && <span>{formatRoutineGoal(r.goal, r.custom_goal)}</span>}

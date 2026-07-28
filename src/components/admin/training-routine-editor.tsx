@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Plus, Trash2, Check, Loader2, X, UserPlus, CalendarPlus, Copy, Archive, ArchiveRestore } from "lucide-react"
+import { ChevronLeft, Plus, Trash2, Check, Loader2, X, UserPlus, CalendarPlus, Copy, Archive, ArchiveRestore, Globe, Lock } from "lucide-react"
 import Link from "next/link"
 import {
   updateTrainingRoutineMetaAction,
@@ -116,6 +116,13 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
     startTransition(async () => {
       const res = await updateTrainingRoutineMetaAction(routine.id, { is_active: !routine.is_active })
       if (!res.error) setRoutine((prev) => ({ ...prev, is_active: !prev.is_active }))
+    })
+  }
+
+  const handleTogglePublic = () => {
+    startTransition(async () => {
+      const res = await updateTrainingRoutineMetaAction(routine.id, { is_public: !routine.is_public })
+      if (!res.error) setRoutine((prev) => ({ ...prev, is_public: !prev.is_public }))
     })
   }
 
@@ -406,6 +413,11 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
       onClick: handleToggleActive
     },
     {
+      label: routine.is_public ? "Quitar de la biblioteca de clientes" : "Mostrar en biblioteca de clientes",
+      icon: routine.is_public ? <Lock className="size-4" /> : <Globe className="size-4" />,
+      onClick: handleTogglePublic
+    },
+    {
       label: "Eliminar",
       icon: <Trash2 className="size-4" />,
       destructive: true,
@@ -426,7 +438,10 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
             </Link>
             <div>
               <h1 className="text-sm font-semibold text-zinc-200 truncate max-w-[200px]">{routine.name}</h1>
-              <p className="text-[10px] text-zinc-500">{routine.is_active ? "Rutina activa" : "Archivada"}</p>
+              <p className="text-[10px] text-zinc-500">
+                {routine.is_active ? "Rutina activa" : "Archivada"}
+                {routine.is_public && <span className="text-green-500"> · Pública</span>}
+              </p>
             </div>
           </div>
 

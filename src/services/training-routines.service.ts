@@ -16,11 +16,13 @@ export interface TrainingRoutine {
   days_per_week: number | null
   notes: string | null
   is_active: boolean
+  is_public: boolean
   created_at: string
   updated_at: string
   exercise_count?: number
   assigned_count?: number
   scheduled_count?: number
+  is_favorite?: boolean
 }
 
 
@@ -152,6 +154,75 @@ export function getTrainingRoutines(search?: string): Promise<TrainingRoutine[]>
     ["training-routines", search || ""],
     { revalidate: 3600, tags: ["training-routines"] }
   )()
+}
+
+// Biblioteca pública: rutinas que el admin marcó visibles para clientes.
+// Usa createClient() (ligado a la sesión del cliente) — la RLS
+// (client_select_public_training_routines, migración 020) ya filtra por
+// is_public/is_active/gym_id, así que estas condiciones se repiten aquí solo
+// como defensa en profundidad y para dejar la intención explícita.
+// Si se pasa clientId, cada rutina viene con is_favorite según
+// client_training_routine_favorites (para pintar la estrella y filtrar).
+export async function getPublicTrainingRoutines(clientId?: string): Promise<TrainingRoutine[]> {
+  const supabase = await createClient()
+  const [{ data: routines }, favoriteIds] = await Promise.all([
+    supabase
+      .from("training_routines")
+      .select("*")
+      .eq("gym_id", GYM_ID)
+      .eq("is_public", true)
+      .eq("is_active", true)
+      .order("name"),
+    clientId ? getFavoriteTrainingRoutineIds(clientId) : Promise.resolve(new Set<string>())
+  ])
+
+  const list = (routines ?? []).map((r) => ({ ...r, is_favorite: favoriteIds.has(r.id) })) as TrainingRoutine[]
+  if (list.length === 0) return list
+
+  const routineIds = list.map((r) => r.id)
+  const { data: days } = await supabase
+    .from("training_routine_days")
+    .select("id, routine_id")
+    .in("routine_id", routineIds)
+
+  if (!days || days.length === 0) return list.map((r) => ({ ...r, exercise_count: 0 }))
+
+  const { data: blocks } = await supabase
+    .from("training_routine_blocks")
+    .select("id, routine_day_id")
+    .in("routine_day_id", days.map((d) => d.id))
+
+  const dayToRoutine = new Map(days.map((d) => [d.id, d.routine_id]))
+  if (!blocks || blocks.length === 0) return list.map((r) => ({ ...r, exercise_count: 0 }))
+
+  const { data: exercises } = await supabase
+    .from("training_routine_exercises")
+    .select("id, block_id")
+    .in("block_id", blocks.map((b) => b.id))
+
+  const blockToRoutine = new Map<string, string>()
+  for (const b of blocks) {
+    const rId = dayToRoutine.get(b.routine_day_id)
+    if (rId) blockToRoutine.set(b.id, rId)
+  }
+
+  const exerciseCounts = new Map<string, number>()
+  for (const ex of exercises ?? []) {
+    const rId = blockToRoutine.get(ex.block_id)
+    if (rId) exerciseCounts.set(rId, (exerciseCounts.get(rId) ?? 0) + 1)
+  }
+
+  return list.map((r) => ({ ...r, exercise_count: exerciseCounts.get(r.id) ?? 0 }))
+}
+
+export async function getFavoriteTrainingRoutineIds(clientId: string): Promise<Set<string>> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("client_training_routine_favorites")
+    .select("routine_id")
+    .eq("client_id", clientId)
+
+  return new Set((data ?? []).map((f) => f.routine_id))
 }
 
 export interface TrainingRoutineWithDayOptions extends TrainingRoutine {

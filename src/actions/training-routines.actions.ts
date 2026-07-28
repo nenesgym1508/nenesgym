@@ -90,6 +90,7 @@ export async function updateTrainingRoutineMetaAction(id: string, data: {
   days_per_week?: number | null
   notes?: string | null
   is_active?: boolean
+  is_public?: boolean
 }) {
   const guard = await requireAdmin()
   if ("error" in guard) return { error: guard.error }
@@ -390,13 +391,26 @@ export async function saveAsTrainingRoutineAction(routineId: string, name: strin
 }
 
 // ── Asignar a cliente (copia independiente hacia client_routines) ──
-export async function assignTrainingRoutineToClientAction(routineId: string, clientId: string) {
-  const guard = await requireAdmin()
-  if ("error" in guard) return { error: guard.error }
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "No autenticado" }
+// Union explícita (con las claves "hermanas" marcadas opcionales en cada
+// lado) para que `if (res.success)` siga type-narrowing en los callers tal
+// como lo hacía cuando este código vivía inline en una sola función.
+type RoutineCopyResult =
+  | { success: true; id: string; error?: undefined }
+  | { success?: undefined; id?: undefined; error: string }
 
+// Copia una rutina de la biblioteca (training_routines) a una rutina propia
+// de un cliente (client_routines), con sus días/bloques/ejercicios. Compartida
+// por assignTrainingRoutineToClientAction (admin asigna a un cliente elegido)
+// y saveTrainingRoutineToMyRoutinesAction (cliente se copia una rutina pública
+// de la biblioteca) — la única diferencia entre ambos casos es quién dispara
+// la copia y con qué created_by/created_by_role queda la rutina resultante.
+async function copyTrainingRoutineToClientRoutine(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  routineId: string,
+  clientId: string,
+  createdBy: string,
+  createdByRole: "admin" | "client"
+): Promise<RoutineCopyResult> {
   // Rutina y sus días se piden en paralelo: ninguno depende del otro.
   const [{ data: rt, error: fetchErr }, { data: days }] = await Promise.all([
     supabase
@@ -432,8 +446,8 @@ export async function assignTrainingRoutineToClientAction(routineId: string, cli
         source_type: "training_routine",
         source_id: routineId,
         notes: rt.notes,
-        created_by: user.id,
-        created_by_role: "admin"
+        created_by: createdBy,
+        created_by_role: createdByRole
       })
       .select("id")
       .single(),
@@ -524,6 +538,87 @@ export async function assignTrainingRoutineToClientAction(routineId: string, cli
   updateTag("admin-routines")
   revalidatePath(ROUTES.ADMIN_RUTINAS)
   return { success: true, id: newRoutine.id }
+}
+
+export async function assignTrainingRoutineToClientAction(routineId: string, clientId: string): Promise<RoutineCopyResult> {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error ?? "Sin permisos" }
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "No autenticado" }
+
+  return copyTrainingRoutineToClientRoutine(supabase, routineId, clientId, user.id, "admin")
+}
+
+// Un cliente se copia una rutina PÚBLICA de la biblioteca a "Mis rutinas".
+// La rutina original (training_routines) nunca se toca — esto solo crea una
+// copia independiente en client_routines, igual que cuando el admin asigna.
+export async function saveTrainingRoutineToMyRoutinesAction(routineId: string): Promise<RoutineCopyResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "No autenticado" }
+
+  const { data: client } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("profile_id", user.id)
+    .single()
+
+  if (!client) return { error: "No se encontró el perfil de cliente" }
+
+  // Defensa adicional a la RLS: solo se puede copiar una rutina que sigue
+  // pública y activa en este mismo momento (por si el admin la quitó de la
+  // biblioteca justo después de que el cliente abrió la pantalla).
+  const { data: routine } = await supabase
+    .from("training_routines")
+    .select("id")
+    .eq("id", routineId)
+    .eq("is_public", true)
+    .eq("is_active", true)
+    .single()
+
+  if (!routine) return { error: "Esta rutina ya no está disponible en la biblioteca" }
+
+  const result = await copyTrainingRoutineToClientRoutine(supabase, routineId, client.id, user.id, "client")
+  if ("error" in result) return result
+
+  revalidatePath(ROUTES.CLIENTE_RUTINAS)
+  return result
+}
+
+// Favorito (bookmark) del cliente sobre una rutina pública — no crea ninguna
+// copia, solo marca/desmarca una fila en client_training_routine_favorites.
+export async function toggleTrainingRoutineFavoriteAction(routineId: string, isFavorite: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "No autenticado" }
+
+  const { data: client } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("profile_id", user.id)
+    .single()
+
+  if (!client) return { error: "No se encontró el perfil de cliente" }
+
+  if (isFavorite) {
+    const { error } = await supabase
+      .from("client_training_routine_favorites")
+      .insert({ gym_id: GYM_ID, client_id: client.id, routine_id: routineId })
+    // Si ya estaba marcada (doble clic rápido), el UNIQUE(client_id, routine_id)
+    // devuelve 23505 — no es un error real para el usuario.
+    if (error && error.code !== "23505") return { error: error.message }
+  } else {
+    const { error } = await supabase
+      .from("client_training_routine_favorites")
+      .delete()
+      .eq("client_id", client.id)
+      .eq("routine_id", routineId)
+    if (error) return { error: error.message }
+  }
+
+  revalidatePath(ROUTES.CLIENTE_RUTINAS)
+  return { success: true }
 }
 
 // daily_classes.objective solo acepta el vocabulario técnico de clases (CHECK en DB),

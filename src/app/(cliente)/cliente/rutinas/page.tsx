@@ -3,11 +3,14 @@ import { redirect } from "next/navigation"
 import { ChevronRight, Plus, Calendar, Dumbbell } from "lucide-react"
 import { getCurrentClientData } from "@/services/clients.service"
 import { getClientRoutines, getAssignedRoutine } from "@/services/routines.service"
+import { getPublicTrainingRoutines } from "@/services/training-routines.service"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card } from "@/components/ui/card"
 import { ROUTES } from "@/constants/routes"
 import { formatRoutineGoal, type RoutineStatus } from "@/types/routine"
 import { CustomRoutinesList } from "@/components/cliente/custom-routines-list"
+import { BibliotecaRutinasList } from "@/components/cliente/biblioteca-rutinas-list"
+import { RutinasTabs } from "@/components/cliente/rutinas-tabs"
 
 const STATUS_BADGE_CLASSES: Record<RoutineStatus, string> = {
   active: "text-green-500 bg-green-500/10 border-green-500/20",
@@ -26,18 +29,17 @@ export default async function ClienteRoutinesHubPage() {
   const { client } = clientData
   if (!client) redirect(ROUTES.CLIENTE_DASHBOARD)
 
-  const [assignedRoutine, myRoutines] = await Promise.all([
+  const [assignedRoutine, myRoutines, bibliotecaRoutines] = await Promise.all([
     getAssignedRoutine(client.id),
-    getClientRoutines(client.id)
+    getClientRoutines(client.id),
+    getPublicTrainingRoutines(client.id)
   ])
 
   // Filter custom routines (those created by client themselves)
   const customRoutines = myRoutines.filter((r) => r.created_by_role === "client")
 
-  return (
-    <div className="pb-24">
-      <PageHeader title="Mis Rutinas" />
-      <div className="p-4 md:px-10 md:py-8 space-y-5">
+  const misRutinasContent = (
+    <div className="space-y-5">
         {/* Rutina Asignada por Admin */}
         <div className="space-y-2">
           <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
@@ -115,6 +117,17 @@ export default async function ClienteRoutinesHubPage() {
           </h3>
           <CustomRoutinesList routines={customRoutines} />
         </div>
+    </div>
+  )
+
+  return (
+    <div className="pb-24">
+      <PageHeader title="Mis Rutinas" />
+      <div className="p-4 md:px-10 md:py-8">
+        <RutinasTabs
+          misRutinasContent={misRutinasContent}
+          bibliotecaContent={<BibliotecaRutinasList routines={bibliotecaRoutines} />}
+        />
       </div>
     </div>
   )
