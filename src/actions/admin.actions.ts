@@ -414,24 +414,24 @@ export async function createManualPaymentAction(formData: {
     return { error: "Método de pago inválido" }
   }
 
-  const { data: payment, error: paymentError } = await supabase
-    .from("payments")
-    .insert({
-      gym_id: ctx.gymId,
-      client_id: formData.clientId,
-      plan_id: formData.planId || null,
-      amount_cents: formData.amountCents,
-      method: formData.method as PaymentMethod,
-      status: "pending",
-    })
-    .select("id")
-    .single()
+  // Operación atómica: crea el pago y aprueba la membresía en una sola
+  // transacción en BD. Elimina el riesgo de pagos huérfanos o membresías
+  // duplicadas que existía con el flujo anterior de 2 pasos.
+  const { data, error } = await supabase.rpc("create_and_approve_cash_payment", {
+    p_client_id:     formData.clientId,
+    p_amount_cents:  formData.amountCents,
+    p_method:        formData.method,
+    p_plan_id:       formData.planId || undefined,
+    p_total_days:    formData.totalDays,
+    p_duration_days: formData.durationDays,
+  })
 
-  if (paymentError) return { error: paymentError.message }
+  if (error) return { error: error.message }
+  const result = data as { ok: boolean; code?: string; message?: string }
+  if (!result?.ok) return { error: result?.message ?? "Error al registrar el pago" }
 
-  const result = await approvePaymentAction(payment.id, formData.totalDays, formData.durationDays)
-  if (result.error) return { error: result.error }
-
+  updateTag("admin-payments")
   revalidatePath(ROUTES.ADMIN_CLIENTES)
+  revalidatePath(ROUTES.ADMIN_DASHBOARD)
   return { success: true }
 }

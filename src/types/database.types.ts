@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -924,6 +924,7 @@ export type Database = {
           amount_cents: number
           auto_aprobado: boolean
           client_id: string
+          client_request_id: string | null
           created_at: string
           gym_id: string
           id: string
@@ -932,6 +933,7 @@ export type Database = {
           membership_id: string | null
           method: Database["public"]["Enums"]["payment_method"]
           note: string | null
+          occurred_at: string | null
           plan_id: string | null
           receipt_path: string | null
           reviewed_at: string | null
@@ -951,6 +953,7 @@ export type Database = {
           amount_cents: number
           auto_aprobado?: boolean
           client_id: string
+          client_request_id?: string | null
           created_at?: string
           gym_id: string
           id?: string
@@ -959,6 +962,7 @@ export type Database = {
           membership_id?: string | null
           method?: Database["public"]["Enums"]["payment_method"]
           note?: string | null
+          occurred_at?: string | null
           plan_id?: string | null
           receipt_path?: string | null
           reviewed_at?: string | null
@@ -978,6 +982,7 @@ export type Database = {
           amount_cents?: number
           auto_aprobado?: boolean
           client_id?: string
+          client_request_id?: string | null
           created_at?: string
           gym_id?: string
           id?: string
@@ -986,6 +991,7 @@ export type Database = {
           membership_id?: string | null
           method?: Database["public"]["Enums"]["payment_method"]
           note?: string | null
+          occurred_at?: string | null
           plan_id?: string | null
           receipt_path?: string | null
           reviewed_at?: string | null
@@ -1563,10 +1569,36 @@ export type Database = {
           total_count: number
         }[]
       }
+      apply_membership_purchase: {
+        Args: {
+          p_client_id: string
+          p_duration_days: number
+          p_grace_days: number
+          p_gym_id: string
+          p_plan_id: string
+          p_price_cents: number
+          p_start_date: string
+          p_total_days: number
+        }
+        Returns: string
+      }
       approve_payment: {
         Args: {
           p_duration_days?: number
           p_payment_id: string
+          p_total_days?: number
+        }
+        Returns: Json
+      }
+      create_and_approve_cash_payment: {
+        Args: {
+          p_amount_cents: number
+          p_client_id: string
+          p_client_request_id?: string
+          p_duration_days?: number
+          p_method: string
+          p_occurred_at?: string
+          p_plan_id?: string
           p_total_days?: number
         }
         Returns: Json
