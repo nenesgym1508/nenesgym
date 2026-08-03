@@ -9,6 +9,7 @@ import { uploadPaymentAction } from "@/actions/payments.actions"
 import { createClient } from "@/lib/supabase/client"
 import { formatCOP, formatPesos, computePlanDiscount } from "@/lib/utils"
 import { PAYMENT_METHOD_LABELS } from "@/constants/plans"
+import { ImageCropModal } from "@/components/ui/image-crop-modal"
 import type { Plan } from "@/types/payment"
 
 interface PaymentUploadFormProps {
@@ -159,9 +160,16 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado, clientId }: Pay
     }).catch(() => {})
   }
 
-  const handleFile = async (file: File) => {
+  const [cropTarget, setCropTarget] = useState<File | null>(null)
+
+  const handleFileSelect = (file: File) => {
     if (!file.type.startsWith("image/")) { setErrorMsg("Solo se aceptan imágenes."); setPaso("error"); return }
-    if (file.size > 5 * 1024 * 1024) { setErrorMsg("La imagen no puede superar 5 MB."); setPaso("error"); return }
+    if (file.size > 10 * 1024 * 1024) { setErrorMsg("La imagen no puede superar 10 MB."); setPaso("error"); return }
+    setCropTarget(file)
+  }
+
+  const processCroppedReceipt = async (file: File) => {
+    setCropTarget(null)
     try {
       const { base64, dataUrl } = await comprimirImagen(file)
       setPreview(dataUrl)
@@ -497,14 +505,14 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado, clientId }: Pay
           {/* Drop zone */}
           <div
             onClick={() => fileRef.current?.click()}
-            onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
+            onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFileSelect(f) }}
             onDragOver={e => e.preventDefault()}
             className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-white/15 bg-white/[0.02] p-8 cursor-pointer hover:border-red-600/40 hover:bg-red-950/5 transition-colors text-center"
           >
             <ImageIcon className="size-9 text-zinc-600" />
             <div>
               <p className="text-sm font-semibold text-zinc-400">Toca para subir el comprobante</p>
-              <p className="text-xs text-zinc-600 mt-1">Nequi, Daviplata, transferencia — JPG o PNG, máx. 5 MB</p>
+              <p className="text-xs text-zinc-600 mt-1">Nequi, Daviplata, transferencia — JPG o PNG</p>
             </div>
           </div>
           <input
@@ -512,7 +520,7 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado, clientId }: Pay
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f) }}
           />
 
           <button
@@ -871,6 +879,16 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado, clientId }: Pay
             Intentar de nuevo
           </button>
         </div>
+      )}
+
+      {cropTarget && (
+        <ImageCropModal
+          src={URL.createObjectURL(cropTarget)}
+          label="Comprobante de pago"
+          onConfirm={processCroppedReceipt}
+          onCancel={() => setCropTarget(null)}
+          aspect={4 / 5}
+        />
       )}
     </div>
   )

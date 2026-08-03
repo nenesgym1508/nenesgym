@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Loader2, X } from "lucide-react"
 import { createMyExerciseAction, updateMyExerciseAction, uploadExerciseImageAction } from "@/actions/exercises.actions"
 import { processExerciseImage } from "@/lib/image-processor"
+import { ImageCropModal } from "@/components/ui/image-crop-modal"
 import { Input, Textarea } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -38,15 +39,44 @@ export function ClientExerciseForm({ exercise, onSuccess, onClose }: ClientExerc
   const toggleUsageTag = (t: UsageTag) =>
     setUsageTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [cropTarget, setCropTarget] = useState<File | null>(null)
+  const [fileInputKey, setFileInputKey] = useState(0)
+
+  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
+  const MAX_ORIGINAL_SIZE = 10 * 1024 * 1024 // 10 MB
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setError(null)
 
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError("Formato no permitido. Selecciona una imagen JPG, PNG o WebP.")
+      setFileInputKey((k) => k + 1)
+      return
+    }
+    if (file.size > MAX_ORIGINAL_SIZE) {
+      setError("La imagen seleccionada no puede superar los 10 MB.")
+      setFileInputKey((k) => k + 1)
+      return
+    }
+
+    setCropTarget(file)
+  }
+
+  const handleCropCancel = () => {
+    setCropTarget(null)
+    setFileInputKey((k) => k + 1)
+  }
+
+  const handleCropConfirm = async (croppedFile: File) => {
+    setCropTarget(null)
+    setFileInputKey((k) => k + 1)
     setUploading(true)
     setError(null)
 
     try {
-      const { file: processedFile } = await processExerciseImage(file)
+      const { file: processedFile } = await processExerciseImage(croppedFile)
       const formData = new FormData()
       formData.append("file", processedFile)
       if (exercise?.id) {
@@ -252,6 +282,15 @@ export function ClientExerciseForm({ exercise, onSuccess, onClose }: ClientExerc
           </div>
         </form>
       </div>
+
+      {cropTarget && (
+        <ImageCropModal
+          src={URL.createObjectURL(cropTarget)}
+          label={name || "Foto del ejercicio"}
+          onConfirm={handleCropConfirm}
+          onCancel={handleCropCancel}
+        />
+      )}
     </div>
   )
 }
