@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, X } from "lucide-react"
+import { Loader2, X, Crop } from "lucide-react"
 import { createExerciseAction, updateExerciseAction, uploadExerciseImageAction } from "@/actions/exercises.actions"
 import { processExerciseImage } from "@/lib/image-processor"
 import { ExerciseImageCropModal } from "@/components/admin/exercise-image-crop-modal"
@@ -58,6 +58,22 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
   const handleCropCancel = () => {
     setCropTarget(null)
     setFileInputKey((k) => k + 1)
+  }
+
+  const handleCropExisting = async () => {
+    if (!mediaUrl) return
+    setError(null)
+    setUploading(true)
+    try {
+      const res = await fetch(mediaUrl)
+      const blob = await res.blob()
+      const file = new File([blob], "exercise-image.jpg", { type: blob.type || "image/jpeg" })
+      setCropTarget(file)
+    } catch {
+      setError("No se pudo cargar la foto para recortar. Intenta subir una nueva imagen.")
+    } finally {
+      setUploading(false)
+    }
   }
 
   const handleCropConfirm = async (croppedFile: File) => {
@@ -187,12 +203,24 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
             </label>
             <div className="flex items-center gap-3">
               {mediaUrl.trim() ? (
-                <img
-                  src={mediaUrl.trim()}
-                  alt=""
-                  className="size-12 shrink-0 rounded-md object-cover bg-zinc-800 border border-white/10"
-                  onError={(e) => { e.currentTarget.style.visibility = "hidden" }}
-                />
+                <button
+                  type="button"
+                  onClick={handleCropExisting}
+                  disabled={uploading}
+                  className="relative size-12 shrink-0 rounded-md overflow-hidden bg-zinc-800 border border-white/10 group cursor-pointer"
+                  title="Haz clic para recortar/reubicar foto"
+                >
+                  <img
+                    src={mediaUrl.trim()}
+                    alt=""
+                    className="size-full object-cover"
+                    onError={(e) => { e.currentTarget.style.visibility = "hidden" }}
+                  />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white">
+                    <Crop className="size-4 text-red-400" />
+                    <span className="text-[9px] font-bold">Recortar</span>
+                  </div>
+                </button>
               ) : (
                 <div className="flex size-12 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-500 text-[10px] text-center border border-dashed border-white/10">
                   Sin imagen
@@ -209,7 +237,7 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
                 />
                 <label
                   htmlFor="ex-file-upload"
-                  className="flex-1 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-zinc-300 font-semibold cursor-pointer hover:bg-white/10 hover:text-zinc-100 transition-all text-center"
+                  className="flex-1 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-zinc-300 font-semibold cursor-pointer hover:bg-white/10 hover:text-zinc-100 transition-all text-center"
                 >
                   {uploading ? (
                     <><Loader2 className="size-3.5 animate-spin mr-2" /> Subiendo...</>
@@ -217,14 +245,28 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
                     "Seleccionar foto"
                   )}
                 </label>
+
                 {mediaUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setMediaUrl("")}
-                    className="rounded-lg bg-zinc-800 px-3 text-xs font-medium text-red-400 hover:bg-zinc-700/50 hover:text-red-300 transition-colors"
-                  >
-                    Quitar
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleCropExisting}
+                      disabled={uploading}
+                      className="flex items-center gap-1 rounded-lg border border-red-600/30 bg-red-600/10 px-3 text-xs font-semibold text-red-400 hover:bg-red-600/20 transition-colors cursor-pointer"
+                      title="Recortar o reubicar encuadre"
+                    >
+                      <Crop className="size-3.5" />
+                      Recortar
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setMediaUrl("")}
+                      className="rounded-lg bg-zinc-800 px-3 text-xs font-medium text-zinc-400 hover:bg-zinc-700/50 hover:text-red-400 transition-colors cursor-pointer"
+                    >
+                      Quitar
+                    </button>
+                  </>
                 )}
               </div>
             </div>
