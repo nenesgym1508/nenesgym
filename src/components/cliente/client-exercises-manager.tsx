@@ -24,6 +24,26 @@ const TAB_DESCRIPTIONS: Record<Tab, string> = {
   created: "Ejercicios que creaste tú mismo, solo visibles para ti.",
 }
 
+const USAGE_OPTIONS = [
+  { id: "todos", label: "Todos" },
+  { id: "calentamiento", label: "Calentamiento" },
+  { id: "trabajo_principal", label: "Principal" },
+  { id: "estiramiento", label: "Estiramiento" },
+]
+
+const MUSCLE_OPTIONS = [
+  { id: "todos", label: "Todos" },
+  { id: "pecho", label: "Pecho" },
+  { id: "espalda", label: "Espalda" },
+  { id: "pierna", label: "Pierna" },
+  { id: "gluteo", label: "Glúteo" },
+  { id: "hombro", label: "Hombro" },
+  { id: "biceps", label: "Bícep" },
+  { id: "triceps", label: "Trícep" },
+  { id: "abdomen", label: "Abdomen" },
+  { id: "cardio", label: "Cardio" },
+]
+
 interface ClientExercisesManagerProps {
   initialLibrary: Exercise[]
   initialGymExercises: Exercise[]
@@ -46,22 +66,38 @@ export function ClientExercisesManager({
   const [isPending, startTransition] = useTransition()
   const [pendingId, setPendingId] = useState<string | null>(null)
 
+  const [usageFilter, setUsageFilter] = useState<string>("todos")
+  const [muscleFilter, setMuscleFilter] = useState<string>("todos")
+
   const libraryExerciseIds = useMemo(() => new Set(library.map((e) => e.id)), [library])
 
-  const filteredLibrary = useMemo(() => {
+  const filterExerciseList = (list: Exercise[]) => {
     const q = search.trim().toLowerCase()
-    return q ? library.filter((e) => e.name.toLowerCase().includes(q)) : library
-  }, [library, search])
+    return list.filter((e) => {
+      // Filtro de búsqueda por texto
+      if (q && !e.name.toLowerCase().includes(q)) return false
 
-  const filteredGym = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return q ? gymExercises.filter((e) => e.name.toLowerCase().includes(q)) : gymExercises
-  }, [gymExercises, search])
+      // Filtro por Uso
+      if (usageFilter !== "todos") {
+        const hasTag = e.usage_tags && e.usage_tags.includes(usageFilter as any)
+        const typeMatch = e.exercise_type === usageFilter
+        if (!hasTag && !typeMatch) return false
+      }
 
-  const filteredCreated = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return q ? myCreated.filter((e) => e.name.toLowerCase().includes(q)) : myCreated
-  }, [myCreated, search])
+      // Filtro por Músculo
+      if (muscleFilter !== "todos") {
+        const primaryMatch = e.muscle_group === muscleFilter
+        const secondaryMatch = e.secondary_muscle_groups && e.secondary_muscle_groups.includes(muscleFilter as any)
+        if (!primaryMatch && !secondaryMatch) return false
+      }
+
+      return true
+    })
+  }
+
+  const filteredLibrary = useMemo(() => filterExerciseList(library), [library, search, usageFilter, muscleFilter])
+  const filteredGym = useMemo(() => filterExerciseList(gymExercises), [gymExercises, search, usageFilter, muscleFilter])
+  const filteredCreated = useMemo(() => filterExerciseList(myCreated), [myCreated, search, usageFilter, muscleFilter])
 
   const handleAdd = (exerciseId: string) => {
     setPendingId(exerciseId)
@@ -133,6 +169,53 @@ export function ClientExercisesManager({
         <TabButton active={tab === "created"} onClick={() => setTab("created")}>
           Creados por mí
         </TabButton>
+      </div>
+
+      {/* ── FILTROS DE SELECCIÓN RÁPIDA ── */}
+      <div className="space-y-2.5 pt-1 bg-[#0f0f10] p-3 rounded-2xl border border-white/5">
+        {/* Filtro por Uso */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
+          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider shrink-0 w-12">Uso:</span>
+          {USAGE_OPTIONS.map((u) => {
+            const active = usageFilter === u.id
+            return (
+              <button
+                key={u.id}
+                type="button"
+                onClick={() => setUsageFilter(u.id)}
+                className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                  active
+                    ? "bg-red-600 text-white shadow-[0_0_12px_rgba(220,38,38,0.4)]"
+                    : "bg-zinc-900 border border-white/5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                }`}
+              >
+                {u.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Filtro por Músculo */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
+          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider shrink-0 w-12">Músculo:</span>
+          {MUSCLE_OPTIONS.map((m) => {
+            const active = muscleFilter === m.id
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setMuscleFilter(m.id)}
+                className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                  active
+                    ? "bg-red-600 text-white shadow-[0_0_12px_rgba(220,38,38,0.4)]"
+                    : "bg-zinc-900 border border-white/5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                }`}
+              >
+                {m.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <p className="text-xs text-zinc-500 px-1">{TAB_DESCRIPTIONS[tab]}</p>
