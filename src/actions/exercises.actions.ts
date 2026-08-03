@@ -215,14 +215,13 @@ export async function uploadExerciseImageAction(
   }
 
   const randomStr = Math.random().toString(36).substring(2, 8)
-  const ext = file.type === "image/png" ? "png" : file.type === "image/jpeg" ? "jpg" : "webp"
   const path = role === "admin"
-    ? `gym/${GYM_ID}/${Date.now()}_${randomStr}.${ext}`
-    : `client/${clientId}/${Date.now()}_${randomStr}.${ext}`
+    ? `gym/${GYM_ID}/${Date.now()}_${randomStr}.webp`
+    : `client/${clientId}/${Date.now()}_${randomStr}.webp`
 
   let publicUrl: string
   try {
-    publicUrl = await uploadToR2(path, buffer, file.type || "image/webp")
+    publicUrl = await uploadToR2(path, buffer, "image/webp")
   } catch (e) {
     return { error: "Error al subir la imagen a Cloudflare R2: " + (e instanceof Error ? e.message : "error desconocido") }
   }

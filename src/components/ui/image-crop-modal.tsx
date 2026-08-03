@@ -42,10 +42,10 @@ export async function getCroppedFile(imageSrc: string, cropPx: Area, fileName: s
     canvas.toBlob(
       (blob) => {
         if (!blob) { rej(new Error("Canvas toBlob failed")); return }
-        res(new File([blob], fileName.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }))
+        res(new File([blob], fileName.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" }))
       },
-      "image/jpeg",
-      0.92
+      "image/webp",
+      0.90
     )
   })
 }
@@ -84,10 +84,10 @@ async function getFullSizeFile(imageSrc: string, fileName: string): Promise<File
     canvas.toBlob(
       (blob) => {
         if (!blob) { rej(new Error("Canvas toBlob failed")); return }
-        res(new File([blob], fileName.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }))
+        res(new File([blob], fileName.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" }))
       },
-      "image/jpeg",
-      0.92
+      "image/webp",
+      0.90
     )
   })
 }
