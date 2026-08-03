@@ -7,22 +7,30 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'pub-5e1d912ef2bd446cb76d60013bb0240b.r2.dev',
+        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'nqhkfqoroisszycdxwuy.supabase.co',
+        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'raw.githubusercontent.com',
+        pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: '*.r2.dev',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*',
       },
       {
         protocol: 'http',
-        hostname: '**',
+        hostname: '*',
       },
     ],
   },
