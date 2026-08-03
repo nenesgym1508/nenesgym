@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Loader2, X, Crop } from "lucide-react"
 import { createExerciseAction, updateExerciseAction, uploadExerciseImageAction } from "@/actions/exercises.actions"
 import { processExerciseImage } from "@/lib/image-processor"
-import { ExerciseImageCropModal } from "@/components/admin/exercise-image-crop-modal"
+import { ImageCropModal } from "@/components/ui/image-crop-modal"
 import { Input, Textarea } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -30,7 +30,7 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [cropTarget, setCropTarget] = useState<File | null>(null)
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
   const [fileInputKey, setFileInputKey] = useState(0)
 
   const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
@@ -52,32 +52,22 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
       return
     }
 
-    setCropTarget(file)
+    setCropSrc(URL.createObjectURL(file))
   }
 
   const handleCropCancel = () => {
-    setCropTarget(null)
+    setCropSrc(null)
     setFileInputKey((k) => k + 1)
   }
 
-  const handleCropExisting = async () => {
+  const handleCropExisting = () => {
     if (!mediaUrl) return
     setError(null)
-    setUploading(true)
-    try {
-      const res = await fetch(mediaUrl)
-      const blob = await res.blob()
-      const file = new File([blob], "exercise-image.jpg", { type: blob.type || "image/jpeg" })
-      setCropTarget(file)
-    } catch {
-      setError("No se pudo cargar la foto para recortar. Intenta subir una nueva imagen.")
-    } finally {
-      setUploading(false)
-    }
+    setCropSrc(mediaUrl)
   }
 
   const handleCropConfirm = async (croppedFile: File) => {
-    setCropTarget(null)
+    setCropSrc(null)
     setFileInputKey((k) => k + 1)
     setUploading(true)
     setError(null)
@@ -363,12 +353,12 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
         </form>
       </div>
 
-      {cropTarget && (
-        <ExerciseImageCropModal
-          file={cropTarget}
-          exerciseName={name}
-          onCancel={handleCropCancel}
+      {cropSrc && (
+        <ImageCropModal
+          src={cropSrc}
+          label={name || "Foto del ejercicio"}
           onConfirm={handleCropConfirm}
+          onCancel={handleCropCancel}
         />
       )}
     </div>

@@ -39,7 +39,7 @@ export function ClientExerciseForm({ exercise, onSuccess, onClose }: ClientExerc
   const toggleUsageTag = (t: UsageTag) =>
     setUsageTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
 
-  const [cropTarget, setCropTarget] = useState<File | null>(null)
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
   const [fileInputKey, setFileInputKey] = useState(0)
 
   const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
@@ -61,32 +61,22 @@ export function ClientExerciseForm({ exercise, onSuccess, onClose }: ClientExerc
       return
     }
 
-    setCropTarget(file)
+    setCropSrc(URL.createObjectURL(file))
   }
 
   const handleCropCancel = () => {
-    setCropTarget(null)
+    setCropSrc(null)
     setFileInputKey((k) => k + 1)
   }
 
-  const handleCropExisting = async () => {
+  const handleCropExisting = () => {
     if (!mediaUrl) return
     setError(null)
-    setUploading(true)
-    try {
-      const res = await fetch(mediaUrl)
-      const blob = await res.blob()
-      const file = new File([blob], "exercise-image.jpg", { type: blob.type || "image/jpeg" })
-      setCropTarget(file)
-    } catch {
-      setError("No se pudo cargar la foto para recortar. Intenta subir una nueva imagen.")
-    } finally {
-      setUploading(false)
-    }
+    setCropSrc(mediaUrl)
   }
 
   const handleCropConfirm = async (croppedFile: File) => {
-    setCropTarget(null)
+    setCropSrc(null)
     setFileInputKey((k) => k + 1)
     setUploading(true)
     setError(null)
@@ -325,9 +315,9 @@ export function ClientExerciseForm({ exercise, onSuccess, onClose }: ClientExerc
         </form>
       </div>
 
-      {cropTarget && (
+      {cropSrc && (
         <ImageCropModal
-          src={URL.createObjectURL(cropTarget)}
+          src={cropSrc}
           label={name || "Foto del ejercicio"}
           onConfirm={handleCropConfirm}
           onCancel={handleCropCancel}

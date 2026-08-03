@@ -8,14 +8,16 @@ import { X, ZoomIn, Check, Crop } from "lucide-react"
 
 // ─── Canvas Crop Helper ───────────────────────────────────────────────────────
 export async function getCroppedFile(imageSrc: string, cropPx: Area, fileName: string): Promise<File> {
+  const finalSrc = (imageSrc.startsWith("http://") || imageSrc.startsWith("https://"))
+    ? `/api/proxy-image?url=${encodeURIComponent(imageSrc)}`
+    : imageSrc
+
   const img = await new Promise<HTMLImageElement>((res, rej) => {
     const i = new window.Image()
-    if (imageSrc.startsWith("http://") || imageSrc.startsWith("https://") || imageSrc.startsWith("//")) {
-      i.crossOrigin = "anonymous"
-    }
+    i.crossOrigin = "anonymous"
     i.onload = () => res(i)
     i.onerror = rej
-    i.src = imageSrc
+    i.src = finalSrc
   })
   const canvas = document.createElement("canvas")
   const ctx = canvas.getContext("2d")!
@@ -52,14 +54,16 @@ export async function getCroppedFile(imageSrc: string, cropPx: Area, fileName: s
 
 // ─── Full Size Canvas Compression Helper ────────────────────────────────────
 async function getFullSizeFile(imageSrc: string, fileName: string): Promise<File> {
+  const finalSrc = (imageSrc.startsWith("http://") || imageSrc.startsWith("https://"))
+    ? `/api/proxy-image?url=${encodeURIComponent(imageSrc)}`
+    : imageSrc
+
   const img = await new Promise<HTMLImageElement>((res, rej) => {
     const i = new window.Image()
-    if (imageSrc.startsWith("http://") || imageSrc.startsWith("https://") || imageSrc.startsWith("//")) {
-      i.crossOrigin = "anonymous"
-    }
+    i.crossOrigin = "anonymous"
     i.onload = () => res(i)
     i.onerror = rej
-    i.src = imageSrc
+    i.src = finalSrc
   })
   const canvas = document.createElement("canvas")
   const ctx = canvas.getContext("2d")!
@@ -120,6 +124,10 @@ export function ImageCropModal({
   const [processing, setProcessing] = useState(false)
   const [cropError, setCropError] = useState("")
   const [useFullImage, setUseFullImage] = useState(false)
+
+  const effectiveSrc = (src.startsWith("http://") || src.startsWith("https://"))
+    ? `/api/proxy-image?url=${encodeURIComponent(src)}`
+    : src
 
   const onCropComplete = useCallback((_: Area, px: Area) => setCroppedAreaPx(px), [])
 
@@ -204,13 +212,13 @@ export function ImageCropModal({
         {useFullImage ? (
           <div className="relative h-[40dvh] sm:h-[45dvh] w-full shrink-0 overflow-hidden rounded-2xl bg-black border border-white/5 flex items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt={label} className="max-h-full max-w-full object-contain" />
+            <img src={effectiveSrc} alt={label} className="max-h-full max-w-full object-contain" />
           </div>
         ) : (
           <>
             <div className="relative h-[40dvh] sm:h-[45dvh] w-full shrink-0 overflow-hidden rounded-2xl bg-black border border-white/5">
               <Cropper
-                image={src}
+                image={effectiveSrc}
                 crop={crop}
                 zoom={zoom}
                 aspect={currentAspect}
