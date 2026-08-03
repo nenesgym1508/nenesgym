@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
 import { Dumbbell } from "lucide-react"
 
 interface ExerciseImageThumbnailProps {
@@ -24,24 +23,6 @@ export function ExerciseImageThumbnail({
       <div className={`flex items-center justify-center bg-zinc-800 text-zinc-500 shrink-0 ${className}`}>
         <Dumbbell className={iconSizeClassName} />
       </div>
-    )
-  }
-
-  // Si es una ruta interna (/exercises/...) o una URL externa remota
-  const isRemote = src.startsWith("http://") || src.startsWith("https://")
-
-  if (isRemote) {
-    return (
-      <Image
-        src={src}
-        alt={alt}
-        width={48}
-        height={48}
-        sizes="48px"
-        className={className}
-        onError={() => setError(true)}
-        unoptimized={src.endsWith(".gif")}
-      />
     )
   }
 
