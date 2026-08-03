@@ -2,6 +2,29 @@
 
 Todos los cambios notables en este proyecto serán documentados en este archivo.
 
+## [1.9.0] - 2026-08-03
+
+### Infraestructura — Migración 100% a Cloudflare R2
+- **Eliminación total de Supabase Storage**: Se auditó todo el codebase y se eliminaron todos los rastros de `supabase.storage` en favor de **Cloudflare R2** exclusivamente.
+  - `exercises.actions.ts`: borrado de imagen previa y subida de nueva imagen ahora usan solo `uploadToR2` / `deleteFromR2`.
+  - `analizar-comprobante/route.ts`: subida de comprobantes de pago migrada de Supabase Storage a R2 (`receipts/{GYM_ID}/{client_id}/{timestamp}.jpg`).
+  - `receipt/route.ts`: eliminado `adminClient.storage.createSignedUrl`, ahora redirige directamente a la URL pública de R2.
+  - `payments.service.ts`: `getReceiptSignedUrl` ya no depende de Supabase, resuelve directamente la URL pública de R2.
+  - Eliminada función `getStoragePathFromUrl` (helper legacy de Supabase Storage).
+
+### Feature — Recorte y Optimización de Imágenes (Image Pipeline)
+- **`ImageCropModal` mejorado** (`src/components/ui/image-crop-modal.tsx`):
+  - Conversión automática de toda imagen recortada o seleccionada a **formato WebP** (`image/webp`, calidad `0.90`) via HTML5 Canvas, replicando el estándar de `TodoAquiApp`.
+  - Máximo de 1600px en la dimensión mayor con redimensionado proporcional.
+  - Soporte para imágenes remotas (R2, GitHub) mediante un **proxy CORS** server-side (`/api/proxy-image`), evitando el error de *tainted canvas*.
+- **`/api/proxy-image/route.ts` (NUEVO)**: API route de Next.js que descarga imágenes remotas desde el servidor y las sirve al cliente con `Access-Control-Allow-Origin: *`, habilitando la manipulación en canvas sin restricciones CORS.
+- **`uploadExerciseImageAction`**: ahora acepta imágenes JPG, PNG y WebP (validación por magic bytes), las guarda en R2 siempre con extensión `.webp` y `ContentType: image/webp`. Límite subido a 1 MB.
+
+### Fix — Botón "Recortar" no abría el modal
+- **Causa raíz**: `handleCropExisting` ejecutaba `fetch(mediaUrl)` para descargar la imagen existente antes de abrir el modal. Este `fetch` fallaba silenciosamente por CORS en el navegador, nunca asignaba el archivo y nunca abría el modal.
+- **Solución**: Se reemplazó `cropTarget: File | null` por `cropSrc: string | null`. Al presionar "Recortar" sobre una imagen existente se llama `setCropSrc(mediaUrl)` directamente (instantáneo, 0ms). Al seleccionar un archivo nuevo se usa `URL.createObjectURL(file)`. El modal recibe la URL y el proxy `/api/proxy-image` resuelve el CORS internamente.
+- Aplicado en: `src/components/admin/exercise-form.tsx` y `src/components/cliente/client-exercise-form.tsx`.
+
 ## [1.8.0] - 2026-07-22
 
 ### Características y Mejoras

@@ -4,6 +4,40 @@ Registro de lecciones de valor técnico, retos arquitectónicos y soluciones com
 
 ---
 
+## [2026-08-03] - Modal de Recorte que nunca abría: fetch CORS silencioso en el navegador
+
+### Contexto del Error
+Al presionar el botón **"Recortar"** en el formulario de edición de ejercicios, el modal de recorte no aparecía. No había error visible en pantalla, solo un spinner efímero y luego nada.
+
+### Análisis Técnico y Lección
+`handleCropExisting` descargaba la imagen existente ejecutando `fetch(mediaUrl)` directamente desde el navegador para convertirla en un objeto `File` y asignarlo a `setCropTarget(file)`. Sin embargo, las imágenes en Cloudflare R2 (y en GitHub raw) no envían cabeceras `Access-Control-Allow-Origin: *` cuando se consumen con credenciales anónimas desde un origen distinto. El navegador bloqueaba el `fetch` con un error CORS y el flujo caía silenciosamente al `catch`, que solo mostraba un `setError(...)` que, en el contexto de las pruebas, no se inspeccionaba. Por tanto, `setCropTarget` nunca se ejecutaba y el modal nunca se montaba en el DOM.
+
+**Lección general:** Un `fetch` desde el navegador a una URL externa sin cabeceras CORS no lanza una excepción visible para el usuario; la promesa se rechaza silenciosamente. Antes de usar `fetch()` en el cliente para consumir recursos de terceros, verificar que el servidor de origen envíe `Access-Control-Allow-Origin`. Si no se puede controlar el servidor de origen, usar un proxy server-side en Next.js que sí exponga esas cabeceras.
+
+### Solución Aplicada
+1. Se eliminó el `fetch()` del cliente como primer paso. El botón "Recortar" ahora llama a `setCropSrc(mediaUrl)` (string URL, 0ms, sin petición de red), montando el modal inmediatamente.
+2. Se creó `/api/proxy-image/route.ts`: API route de Next.js que descarga la imagen en el servidor (sin restricciones CORS) y la sirve al cliente con `Access-Control-Allow-Origin: *`.
+3. `ImageCropModal` usa `effectiveSrc = /api/proxy-image?url=...` cuando la imagen es de origen remoto (`http/https`). El `<Cropper>` y el `<canvas>` consumen esta URL proxeada, evitando el error de *tainted canvas*.
+
+---
+
+## [2026-08-03] - Tainted Canvas al intentar exportar WebP de imágenes remotas con crossOrigin
+
+### Contexto del Error
+Al confirmar el recorte en `ImageCropModal`, `canvas.toBlob()` lanzaba `Failed to execute 'toBlob' on 'HTMLCanvasElement': Tainted canvases may not be exported` cuando `imageSrc` era una URL remota de Cloudflare R2.
+
+### Análisis Técnico y Lección
+El API HTML5 Canvas marca el canvas como "tainted" (contaminado) en cuanto se dibuja sobre él un recurso de imagen de origen cruzado, incluso si el elemento `<img>` tiene `crossOrigin="anonymous"`. Para que `crossOrigin="anonymous"` funcione el servidor de origen debe enviar `Access-Control-Allow-Origin: *` en su respuesta; si no lo hace, el navegador dibuja la imagen en el canvas pero lo bloquea para exportación binaria (`toBlob`, `toDataURL`). En producción, Cloudflare R2 Public Bucket no incluye estas cabeceras CORS por defecto en respuestas de imágenes.
+
+**Lección general:** `crossOrigin="anonymous"` en un `<img>` NO garantiza que el canvas quede no-tainted; solo solicita al servidor la cabecera CORS. Si el servidor no responde con `Access-Control-Allow-Origin`, el canvas queda tainted igualmente. La única solución fiable es enrutar la imagen a través de un proxy mismo-origen que sí emita esa cabecera.
+
+### Solución Aplicada
+- Ver entrada anterior: proxy `/api/proxy-image` resuelve ambos problemas simultáneamente (CORS de fetch + tainted canvas).
+
+---
+
+
+
 ## [2026-07-22] - Corrupción de caché de base de datos de Turbopack (.next/dev/cache/turbopack) en caliente
 
 ### Contexto del Error
