@@ -26,6 +26,7 @@ import {
 import { saveClassAsTrainingRoutineAction } from "@/actions/training-routines.actions"
 import { ExerciseForm } from "@/components/admin/exercise-form"
 import { ActionMenu } from "@/components/ui/action-menu"
+import { ExerciseImageThumbnail } from "@/components/ui/exercise-image-thumbnail"
 import { ROUTES } from "@/constants/routes"
 import {
   CLASS_OBJECTIVE_LABELS,
@@ -738,31 +739,7 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, 
   return (
     <div className="px-3 py-2.5">
       <div className="flex items-center gap-2.5">
-        {ex.exercise.media_url ? (
-          (ex.exercise.media_url.includes("supabase.co") || ex.exercise.media_url.includes(".r2.dev")) ? (
-            <Image
-              src={ex.exercise.media_url}
-              alt={ex.exercise.name}
-              width={36}
-              height={36}
-              sizes="36px"
-              className="size-9 shrink-0 rounded-md object-cover bg-zinc-800"
-              onError={(e) => { (e.currentTarget as HTMLElement).style.display = "none" }}
-            />
-          ) : (
-            <img
-              src={ex.exercise.media_url}
-              alt={ex.exercise.name}
-              loading="lazy"
-              className="size-9 shrink-0 rounded-md object-cover bg-zinc-800"
-              onError={(e) => { (e.currentTarget as HTMLElement).style.display = "none" }}
-            />
-          )
-        ) : (
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-600">
-            <Dumbbell className="size-4" />
-          </div>
-        )}
+        <ExerciseImageThumbnail src={ex.exercise.media_url} alt={ex.exercise.name} />
 
         <button
           onClick={() => setShowDetails(true)}
@@ -1046,21 +1023,7 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMulti
                       onClick={() => setDetailExercise(ex)}
                       className="flex flex-1 items-center gap-3 text-left hover:opacity-80 transition-opacity min-w-0"
                     >
-                      {ex.media_url ? (
-                        <img
-                          src={ex.media_url}
-                          alt=""
-                          loading="lazy"
-                          width={36}
-                          height={36}
-                          className="size-9 rounded-lg object-cover bg-zinc-800 shrink-0"
-                          onError={(e) => { e.currentTarget.style.display = "none" }}
-                        />
-                      ) : (
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-zinc-800 text-zinc-600">
-                          <Dumbbell className="size-4" />
-                        </div>
-                      )}
+                      <ExerciseImageThumbnail src={ex.media_url} alt={ex.name} />
                       <p className="text-sm font-semibold text-zinc-100 leading-snug truncate">{ex.name}</p>
                     </button>
                     <button
@@ -1207,31 +1170,7 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMulti
                         onClick={() => setDetailExercise(ex)}
                         className="flex flex-1 items-center gap-3 min-w-0 text-left"
                       >
-                        {ex.media_url ? (
-                          (ex.media_url.includes("supabase.co") || ex.media_url.includes(".r2.dev")) ? (
-                            <Image
-                              src={ex.media_url}
-                              alt={ex.name}
-                              width={36}
-                              height={36}
-                              sizes="36px"
-                              className="size-9 rounded-md object-cover bg-zinc-800 shrink-0"
-                              onError={(e) => { (e.currentTarget as HTMLElement).style.display = "none" }}
-                            />
-                          ) : (
-                            <img
-                              src={ex.media_url}
-                              alt={ex.name}
-                              loading="lazy"
-                              className="size-9 rounded-md object-cover bg-zinc-800 shrink-0"
-                              onError={(e) => { (e.currentTarget as HTMLElement).style.display = "none" }}
-                            />
-                          )
-                        ) : (
-                          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-600">
-                            <Dumbbell className="size-4" />
-                          </div>
-                        )}
+                        <ExerciseImageThumbnail src={ex.media_url} alt={ex.name} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-zinc-200 truncate">{ex.name}</p>
                           {subtitle && <p className="text-[10px] text-zinc-600 truncate">{subtitle}</p>}

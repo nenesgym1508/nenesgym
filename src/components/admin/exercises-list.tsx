@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import Image from "next/image"
 import { Plus, Pencil, Star, Trash2, Search } from "lucide-react"
+import { ExerciseImageThumbnail } from "@/components/ui/exercise-image-thumbnail"
 import { toggleExerciseAction, deleteExerciseAction } from "@/actions/exercises.actions"
 import { ExerciseForm } from "@/components/admin/exercise-form"
 import { ExerciseDetailModal } from "@/components/cliente/exercise-detail-modal"
@@ -229,31 +230,7 @@ function ExerciseRow({ ex, isLast, togglingId, deletingId, onEdit, onToggle, onD
         className="flex flex-1 items-center gap-3 min-w-0 text-left cursor-pointer"
         aria-label={`Ver detalle de ${ex.name}`}
       >
-        {ex.media_url && !imgError ? (
-          (ex.media_url.includes("supabase.co") || ex.media_url.includes(".r2.dev")) ? (
-            <Image
-              src={ex.media_url}
-              alt={ex.name}
-              width={40}
-              height={40}
-              sizes="40px"
-              className="h-10 w-10 shrink-0 rounded-lg object-cover bg-zinc-800"
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <img
-              src={ex.media_url}
-              alt={ex.name}
-              loading="lazy"
-              className="h-10 w-10 shrink-0 rounded-lg object-cover bg-zinc-800"
-              onError={() => setImgError(true)}
-            />
-          )
-        ) : (
-          <div className="h-10 w-10 shrink-0 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-600 text-xs font-bold">
-            {ex.muscle_group?.charAt(0).toUpperCase() ?? "E"}
-          </div>
-        )}
+        <ExerciseImageThumbnail src={ex.media_url} alt={ex.name} className="h-10 w-10 shrink-0 rounded-lg object-cover bg-zinc-800" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate text-zinc-100">
             {ex.name}
