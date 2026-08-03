@@ -1,8 +1,8 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
+import { useMemo, useState, useRef, useTransition } from "react"
 import Image from "next/image"
-import { Search, Plus, Check, X, Pencil, Trash2, Dumbbell } from "lucide-react"
+import { Search, Plus, Check, X, Pencil, Trash2, Dumbbell, ChevronLeft, ChevronRight } from "lucide-react"
 import {
   addToMyLibraryAction,
   removeFromMyLibraryAction,
@@ -43,6 +43,53 @@ const MUSCLE_OPTIONS = [
   { id: "abdomen", label: "Abdomen" },
   { id: "cardio", label: "Cardio" },
 ]
+
+function ScrollableChipsBar({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const scroll = (direction: "left" | "right") => {
+    if (containerRef.current) {
+      const amount = direction === "left" ? -180 : 180
+      containerRef.current.scrollBy({ left: amount, behavior: "smooth" })
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1 relative">
+      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider shrink-0 w-14 pl-1">
+        {label}:
+      </span>
+      <button
+        type="button"
+        onClick={() => scroll("left")}
+        className="shrink-0 p-1 text-zinc-500 hover:text-white transition-colors cursor-pointer"
+        title="Deslizar izquierda"
+      >
+        <ChevronLeft className="size-4" />
+      </button>
+      <div
+        ref={containerRef}
+        className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-1 flex-1"
+      >
+        {children}
+      </div>
+      <button
+        type="button"
+        onClick={() => scroll("right")}
+        className="shrink-0 p-1 text-zinc-500 hover:text-white transition-colors cursor-pointer"
+        title="Deslizar derecha"
+      >
+        <ChevronRight className="size-4" />
+      </button>
+    </div>
+  )
+}
 
 interface ClientExercisesManagerProps {
   initialLibrary: Exercise[]
@@ -171,11 +218,10 @@ export function ClientExercisesManager({
         </TabButton>
       </div>
 
-      {/* ── FILTROS DE SELECCIÓN RÁPIDA ── */}
-      <div className="space-y-2.5 pt-1 bg-[#0f0f10] p-3 rounded-2xl border border-white/5">
+      {/* ── FILTROS DE SELECCIÓN RÁPIDA (CON FLECHAS MINIMALISTAS) ── */}
+      <div className="space-y-2 pt-1 bg-[#0f0f10] p-3 rounded-2xl border border-white/5">
         {/* Filtro por Uso */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
-          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider shrink-0 w-12">Uso:</span>
+        <ScrollableChipsBar label="Uso">
           {USAGE_OPTIONS.map((u) => {
             const active = usageFilter === u.id
             return (
@@ -183,7 +229,7 @@ export function ClientExercisesManager({
                 key={u.id}
                 type="button"
                 onClick={() => setUsageFilter(u.id)}
-                className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                className={`shrink-0 rounded-full px-3.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
                   active
                     ? "bg-red-600 text-white shadow-[0_0_12px_rgba(220,38,38,0.4)]"
                     : "bg-zinc-900 border border-white/5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
@@ -193,11 +239,10 @@ export function ClientExercisesManager({
               </button>
             )
           })}
-        </div>
+        </ScrollableChipsBar>
 
         {/* Filtro por Músculo */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
-          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider shrink-0 w-12">Músculo:</span>
+        <ScrollableChipsBar label="Músculo">
           {MUSCLE_OPTIONS.map((m) => {
             const active = muscleFilter === m.id
             return (
@@ -205,7 +250,7 @@ export function ClientExercisesManager({
                 key={m.id}
                 type="button"
                 onClick={() => setMuscleFilter(m.id)}
-                className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                className={`shrink-0 rounded-full px-3.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
                   active
                     ? "bg-red-600 text-white shadow-[0_0_12px_rgba(220,38,38,0.4)]"
                     : "bg-zinc-900 border border-white/5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
@@ -215,7 +260,7 @@ export function ClientExercisesManager({
               </button>
             )
           })}
-        </div>
+        </ScrollableChipsBar>
       </div>
 
       <p className="text-xs text-zinc-500 px-1">{TAB_DESCRIPTIONS[tab]}</p>
@@ -253,11 +298,16 @@ export function ClientExercisesManager({
 
       {tab === "explore" && (
         filteredGym.length === 0 ? (
-          <EmptyState text="No hay ejercicios en la biblioteca del gimnasio." />
+          <EmptyState
+            text="No se encontraron ejercicios."
+            subtext="Prueba con otro término de búsqueda o crea uno personalizado."
+            actionLabel="+ Crear mi propio ejercicio"
+            onAction={openCreate}
+          />
         ) : (
           <RowList>
             {filteredGym.map((ex) => {
-              const alreadyIn = libraryExerciseIds.has(ex.id)
+              const added = libraryExerciseIds.has(ex.id)
               return (
                 <ExerciseRowItem
                   key={ex.id}
@@ -265,22 +315,15 @@ export function ClientExercisesManager({
                   pending={isPending && pendingId === ex.id}
                   onView={setViewTarget}
                   action={
-                    alreadyIn ? (
-                      <button
-                        onClick={() => handleRemove(ex.id)}
-                        disabled={isPending && pendingId === ex.id}
-                        className="group shrink-0 flex items-center gap-1 rounded-md border border-green-500/20 bg-green-500/10 px-2.5 py-1 text-[11px] font-semibold text-green-500 hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-400 transition-colors"
-                      >
-                        <Check className="size-3.5 group-hover:hidden" />
-                        <X className="size-3.5 hidden group-hover:block" />
-                        <span className="group-hover:hidden">Añadido</span>
-                        <span className="hidden group-hover:inline">Quitar</span>
-                      </button>
+                    added ? (
+                      <span className="shrink-0 inline-flex items-center gap-1 rounded-md border border-green-500/20 bg-green-500/10 px-2.5 py-1 text-[11px] font-semibold text-green-400">
+                        <Check className="size-3" /> Añadido
+                      </span>
                     ) : (
                       <button
                         onClick={() => handleAdd(ex.id)}
                         disabled={isPending && pendingId === ex.id}
-                        className="btn-glossy-red shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white cursor-pointer"
+                        className="shrink-0 rounded-md btn-glossy-red px-3 py-1 text-[11px] font-semibold text-white cursor-pointer"
                       >
                         + Añadir
                       </button>
@@ -295,15 +338,22 @@ export function ClientExercisesManager({
 
       {tab === "created" && (
         <div className="space-y-3">
-          <button
-            onClick={openCreate}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl btn-glossy-red px-4 py-3 text-sm font-semibold text-white cursor-pointer"
-          >
-            <Plus className="size-4" />
-            Crear ejercicio propio
-          </button>
+          <div className="flex justify-end">
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center gap-1.5 rounded-xl btn-glossy-red px-3.5 py-2 text-xs font-semibold text-white cursor-pointer"
+            >
+              <Plus className="size-3.5" /> Crear ejercicio nuevo
+            </button>
+          </div>
+
           {filteredCreated.length === 0 ? (
-            <EmptyState text="Aún no has creado ningún ejercicio propio." />
+            <EmptyState
+              text="No tienes ejercicios creados por ti todavía."
+              subtext="Puedes crear tus propios ejercicios personalizados si no los encuentras en el catálogo."
+              actionLabel="+ Crear ejercicio nuevo"
+              onAction={openCreate}
+            />
           ) : (
             <RowList>
               {filteredCreated.map((ex) => (
@@ -313,19 +363,19 @@ export function ClientExercisesManager({
                   pending={isPending && pendingId === ex.id}
                   onView={setViewTarget}
                   action={
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => openEdit(ex)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition-colors"
-                        aria-label="Editar"
+                        className="p-1.5 text-zinc-400 hover:text-zinc-200 transition-colors"
+                        title="Editar"
                       >
                         <Pencil className="size-3.5" />
                       </button>
                       <button
                         onClick={() => handleDelete(ex)}
                         disabled={isPending && pendingId === ex.id}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
-                        aria-label="Eliminar"
+                        className="p-1.5 text-red-400 hover:text-red-300 transition-colors"
+                        title="Eliminar"
                       >
                         <Trash2 className="size-3.5" />
                       </button>
@@ -338,6 +388,7 @@ export function ClientExercisesManager({
         </div>
       )}
 
+      {/* Modal de Crear/Editar */}
       {formOpen && (
         <ClientExerciseForm
           exercise={editTarget}
@@ -346,6 +397,7 @@ export function ClientExercisesManager({
         />
       )}
 
+      {/* Modal de Detalle */}
       {viewTarget && (
         <ExerciseDetailModal
           exercise={viewTarget}
@@ -356,85 +408,26 @@ export function ClientExercisesManager({
   )
 }
 
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
   return (
     <button
       onClick={onClick}
-      className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-colors cursor-pointer ${
-        active ? "btn-glossy-red text-white" : "border border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800"
+      className={`flex-1 rounded-full py-2.5 text-xs font-semibold transition-all cursor-pointer ${
+        active
+          ? "btn-glossy-red text-white shadow-lg shadow-red-600/20"
+          : "border border-white/5 bg-[#121214] text-zinc-400 hover:text-zinc-200 hover:bg-[#18181b]"
       }`}
     >
       {children}
     </button>
-  )
-}
-
-function RowList({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="space-y-3">
-      {children}
-    </div>
-  )
-}
-
-function ExerciseRowItem({
-  ex,
-  action,
-  pending,
-  onView,
-}: {
-  ex: Exercise
-  action: React.ReactNode
-  pending: boolean
-  onView: (ex: Exercise) => void
-}) {
-  const [imgError, setImgError] = useState(false)
-  const subtitle = [
-    ex.muscle_group ? MUSCLE_GROUP_LABELS[ex.muscle_group] : null,
-    ex.equipment ? EQUIPMENT_LABELS[ex.equipment] : null,
-  ].filter(Boolean).join(" · ")
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onView(ex)}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onView(ex) }}
-      className={`flex w-full items-center gap-3 rounded-2xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] px-4 py-3 text-left cursor-pointer hover:border-zinc-600 transition-colors ${pending ? "opacity-50" : ""}`}
-    >
-      {ex.media_url && !imgError ? (
-        (ex.media_url.includes("supabase.co") || ex.media_url.includes(".r2.dev")) ? (
-          <Image
-            src={ex.media_url}
-            alt={ex.name}
-            width={44}
-            height={44}
-            sizes="44px"
-            className="h-11 w-11 shrink-0 rounded-xl border border-zinc-700 object-cover bg-zinc-950"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <img
-            src={ex.media_url}
-            alt={ex.name}
-            loading="lazy"
-            className="h-11 w-11 shrink-0 rounded-xl border border-zinc-700 object-cover bg-zinc-950"
-            onError={() => setImgError(true)}
-          />
-        )
-      ) : (
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 text-zinc-600">
-          <Dumbbell className="size-4" />
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <p className="font-bebas text-base tracking-wide uppercase text-white truncate">{ex.name}</p>
-        {subtitle && <p className="text-[11px] text-zinc-500 truncate">{subtitle}</p>}
-      </div>
-      <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-        {action}
-      </div>
-    </div>
   )
 }
 
@@ -445,22 +438,78 @@ function EmptyState({
   onAction,
 }: {
   text: string
-  subtext?: string
+  subtext: string
   actionLabel?: string
   onAction?: () => void
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-700/40 via-zinc-900/50 to-zinc-950/90 shadow-[0_4px_25px_rgba(0,0,0,0.65)] py-10 text-center px-6">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-zinc-600 bg-zinc-950 mb-3">
-        <Dumbbell className="size-5 text-zinc-500" />
-      </div>
-      <p className="text-xs text-zinc-500">{text}</p>
-      {subtext && <p className="text-xs text-zinc-500 mt-1">{subtext}</p>}
+    <div className="rounded-2xl border border-white/5 bg-[#0f0f10] p-8 text-center space-y-2">
+      <p className="text-sm font-semibold text-zinc-300">{text}</p>
+      <p className="text-xs text-zinc-500 max-w-sm mx-auto">{subtext}</p>
       {actionLabel && onAction && (
-        <button onClick={onAction} className="mt-3 text-xs text-red-500 font-semibold hover:text-red-400">
-          {actionLabel}
-        </button>
+        <div className="pt-2">
+          <button
+            onClick={onAction}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-red-500 hover:text-red-400 transition-colors cursor-pointer"
+          >
+            {actionLabel}
+          </button>
+        </div>
       )}
+    </div>
+  )
+}
+
+function RowList({ children }: { children: React.ReactNode }) {
+  return <div className="space-y-2">{children}</div>
+}
+
+function ExerciseRowItem({
+  ex,
+  pending,
+  onView,
+  action,
+}: {
+  ex: Exercise
+  pending?: boolean
+  onView: (ex: Exercise) => void
+  action?: React.ReactNode
+}) {
+  const muscleText = ex.muscle_group ? MUSCLE_GROUP_LABELS[ex.muscle_group] : null
+  const equipText = ex.equipment ? EQUIPMENT_LABELS[ex.equipment] : null
+  const metaText = [muscleText, equipText].filter(Boolean).join(" · ")
+
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 rounded-2xl border border-white/5 bg-[#0f0f10] p-3 transition-colors hover:border-white/10 ${
+        pending ? "opacity-50 pointer-events-none" : ""
+      }`}
+    >
+      <div
+        onClick={() => onView(ex)}
+        className="flex flex-1 items-center gap-3 min-w-0 cursor-pointer group"
+      >
+        <div className="relative size-12 shrink-0 overflow-hidden rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center">
+          {ex.media_url ? (
+            <Image
+              src={ex.media_url}
+              alt={ex.name}
+              fill
+              className="object-cover"
+              sizes="48px"
+            />
+          ) : (
+            <Dumbbell className="size-5 text-zinc-600 group-hover:text-red-500 transition-colors" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-bebas font-bold text-lg tracking-wide uppercase text-white truncate group-hover:text-red-400 transition-colors">
+            {ex.name}
+          </p>
+          {metaText && <p className="text-xs text-zinc-500 truncate">{metaText}</p>}
+        </div>
+      </div>
+      {action}
     </div>
   )
 }
