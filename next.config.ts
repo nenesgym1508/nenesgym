@@ -2,15 +2,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    unoptimized: true,
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'nqhkfqoroisszycdxwuy.supabase.co',
+        hostname: 'pub-5e1d912ef2bd446cb76d60013bb0240b.r2.dev',
       },
       {
         protocol: 'https',
-        hostname: 'pub-5e1d912ef2bd446cb76d60013bb0240b.r2.dev',
+        hostname: 'nqhkfqoroisszycdxwuy.supabase.co',
       },
       {
         protocol: 'https',
@@ -18,21 +19,21 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '*.githubusercontent.com',
+        hostname: '**',
       },
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
+        protocol: 'http',
+        hostname: '**',
       },
     ],
   },
   experimental: {
     // Reactiva el Router Cache del cliente para rutas dinámicas: al volver a una pantalla
-    // ya visitada se reusa por ~30s (navegación instantánea). Las páginas son force-dynamic
+    // ya visitada se reusa por 60s (navegación instantánea). Las páginas son force-dynamic
     // (render fresco en navegación real) y las mutaciones usan revalidatePath, así que sigue fresco.
     staleTimes: {
-      dynamic: 30,
-      static: 180,
+      dynamic: 60,
+      static: 300,
     },
   },
   async headers() {
