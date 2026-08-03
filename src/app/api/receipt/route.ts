@@ -21,12 +21,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
   }
 
-  const adminClient = createAdminClient()
-  const { data, error } = await adminClient.storage.from("receipts").createSignedUrl(path, 300)
-
-  if (error || !data) {
-    return NextResponse.json({ error: "No se pudo obtener el comprobante" }, { status: 500 })
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return NextResponse.redirect(path)
   }
 
-  return NextResponse.redirect(data.signedUrl)
+  const publicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "")
+  const fullUrl = publicUrl ? `${publicUrl}/${path}` : path
+  return NextResponse.redirect(fullUrl)
 }

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { GYM_ID } from "@/constants/plans"
 import { ROUTES } from "@/constants/routes"
+import { uploadToR2, deleteFromR2 } from "@/lib/r2"
 
 export const maxDuration = 60
 
@@ -567,13 +568,12 @@ export async function POST(req: NextRequest) {
 
     // Subir imagen a Storage
     const buf = Buffer.from(imageBase64 as string, "base64")
-    const storagePath = `${GYM_ID}/${clientRow.id}/${Date.now()}.jpg`
-    const { error: uploadError } = await admin.storage
-      .from("receipts")
-      .upload(storagePath, buf, { contentType: "image/jpeg", upsert: false })
-
-    if (uploadError) {
-      return NextResponse.json({ error: "Error al subir el comprobante." }, { status: 500 })
+    const storageKey = `receipts/${GYM_ID}/${clientRow.id}/${Date.now()}.jpg`
+    let receiptUrl: string
+    try {
+      receiptUrl = await uploadToR2(storageKey, buf, "image/jpeg")
+    } catch (e: unknown) {
+      return NextResponse.json({ error: "Error al subir el comprobante a Cloudflare R2: " + (e instanceof Error ? e.message : "desconocido") }, { status: 500 })
     }
 
     // Insertar pago con campos IA
@@ -586,7 +586,7 @@ export async function POST(req: NextRequest) {
         amount_cents: amountCents,
         method: paymentMethod,
         status: "pending",
-        receipt_path: storagePath,
+        receipt_path: receiptUrl,
         imagen_hash: imageHash,
         imagen_phash: phash ?? null,
         ai_monto: datos.montoDetectado,
@@ -603,7 +603,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (paymentError || !payment) {
-      await admin.storage.from("receipts").remove([storagePath])
+      await deleteFromR2(storageKey).catch(() => {})
       return NextResponse.json({ error: "Error al registrar el pago." }, { status: 500 })
     }
 

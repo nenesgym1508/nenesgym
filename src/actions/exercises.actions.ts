@@ -132,11 +132,6 @@ export async function deleteExerciseAction(id: string) {
       const r2Key = r2KeyFromPublicUrl(existing.media_url)
       if (r2Key) {
         await deleteFromR2(r2Key).catch(() => {})
-      } else {
-        const supabasePath = getStoragePathFromUrl(existing.media_url)
-        if (supabasePath) {
-          await supabase.storage.from("exercises").remove([supabasePath])
-        }
       }
     }
   }
@@ -145,22 +140,12 @@ export async function deleteExerciseAction(id: string) {
   return { success: true }
 }
 
-function isWebPBuffer(buffer: Buffer): boolean {
-  if (buffer.length < 12) return false
-  const riff = buffer.toString("ascii", 0, 4)
-  const webp = buffer.toString("ascii", 8, 12)
-  return riff === "RIFF" && webp === "WEBP"
-}
-
-// Imágenes viejas (subidas antes de migrar a R2) siguen en Supabase Storage.
-function getStoragePathFromUrl(url: string | null): string | null {
-  if (!url) return null
-  const marker = "/storage/v1/object/public/exercises/"
-  const idx = url.indexOf(marker)
-  if (idx !== -1) {
-    return url.substring(idx + marker.length)
-  }
-  return null
+function isValidImageBuffer(buffer: Buffer): boolean {
+  if (buffer.length < 4) return false
+  const isWebP = buffer.length >= 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP"
+  const isJpeg = buffer[0] === 0xff && buffer[1] === 0xd8
+  const isPng = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47
+  return isWebP || isJpeg || isPng
 }
 
 export async function uploadExerciseImageAction(
@@ -184,16 +169,15 @@ export async function uploadExerciseImageAction(
 
   if (!file || file.size === 0) return { error: "No se seleccionó ningún archivo" }
 
-  const MAX_FILE_SIZE = 500 * 1024 // 500 KB estricto final
+  const MAX_FILE_SIZE = 1000 * 1024 // 1 MB estricto final
   if (file.size > MAX_FILE_SIZE) {
-    return { error: "La imagen optimizada supera el límite máximo de 500 KB." }
+    return { error: "La imagen optimizada supera el límite máximo permitido (1 MB)." }
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())
 
-  // Inspección de la firma real del archivo (Magic Bytes: RIFF...WEBP)
-  if (!isWebPBuffer(buffer)) {
-    return { error: "El archivo enviado no es una imagen WebP válida." }
+  if (!isValidImageBuffer(buffer)) {
+    return { error: "El archivo enviado no es una imagen válida (JPG, PNG o WebP)." }
   }
 
   let clientId: string | null = null
@@ -231,15 +215,16 @@ export async function uploadExerciseImageAction(
   }
 
   const randomStr = Math.random().toString(36).substring(2, 8)
+  const ext = file.type === "image/png" ? "png" : file.type === "image/jpeg" ? "jpg" : "webp"
   const path = role === "admin"
-    ? `gym/${GYM_ID}/${Date.now()}_${randomStr}.webp`
-    : `client/${clientId}/${Date.now()}_${randomStr}.webp`
+    ? `gym/${GYM_ID}/${Date.now()}_${randomStr}.${ext}`
+    : `client/${clientId}/${Date.now()}_${randomStr}.${ext}`
 
   let publicUrl: string
   try {
-    publicUrl = await uploadToR2(path, buffer, "image/webp")
+    publicUrl = await uploadToR2(path, buffer, file.type || "image/webp")
   } catch (e) {
-    return { error: "Error al subir la imagen: " + (e instanceof Error ? e.message : "error desconocido") }
+    return { error: "Error al subir la imagen a Cloudflare R2: " + (e instanceof Error ? e.message : "error desconocido") }
   }
 
   // Eliminar la imagen previa únicamente si no está compartida por otro ejercicio
@@ -253,12 +238,6 @@ export async function uploadExerciseImageAction(
       const oldR2Key = r2KeyFromPublicUrl(oldMediaUrl)
       if (oldR2Key) {
         await deleteFromR2(oldR2Key).catch(() => {})
-      } else {
-        // Imagen vieja (pre-R2), sigue en Supabase Storage.
-        const oldSupabasePath = getStoragePathFromUrl(oldMediaUrl)
-        if (oldSupabasePath) {
-          await supabase.storage.from("exercises").remove([oldSupabasePath])
-        }
       }
     }
   }

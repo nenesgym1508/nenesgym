@@ -60,11 +60,10 @@ export function getAllPayments() {
 }
 
 export async function getReceiptSignedUrl(path: string) {
-  const supabase = await createClient()
-  const { data } = await supabase.storage
-    .from("receipts")
-    .createSignedUrl(path, 3600)
-  return data?.signedUrl ?? null
+  if (!path) return null
+  if (path.startsWith("http://") || path.startsWith("https://")) return path
+  const publicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "")
+  return publicUrl ? `${publicUrl}/${path}` : path
 }
 
 export const getAvailablePlans = unstable_cache(
