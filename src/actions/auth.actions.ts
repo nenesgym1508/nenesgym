@@ -96,7 +96,6 @@ export async function updateProfileNameAction(fullName: string) {
   if (error) return { error: "Error al actualizar el nombre" }
   revalidatePath(ROUTES.ADMIN_MAS)
   revalidatePath(ROUTES.ADMIN_DASHBOARD)
-  revalidatePath(ROUTES.CLIENTE_PERFIL)
   revalidatePath(ROUTES.CLIENTE_DASHBOARD)
   return { success: true }
 }
@@ -110,7 +109,10 @@ export async function updateProfilePhoneAction(phone: string) {
     .update({ phone: phone || null })
     .eq("id", user.id)
   if (error) return { error: "Error al actualizar el teléfono" }
-  revalidatePath(ROUTES.CLIENTE_PERFIL)
+  // El perfil del cliente se edita desde un modal del dashboard; /cliente/perfil
+  // no existe como pantalla. Antes solo se revalidaba esa ruta inexistente, así
+  // que tras cambiar el teléfono no se refrescaba nada.
+  revalidatePath(ROUTES.CLIENTE_DASHBOARD)
   return { success: true }
 }
 

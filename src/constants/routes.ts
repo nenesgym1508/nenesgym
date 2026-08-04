@@ -11,7 +11,9 @@ export const ROUTES = {
   CLIENTE_PAGOS: '/cliente/pagos',
   CLIENTE_ASISTENCIA: '/cliente/asistencia',
   CLIENTE_PROGRESO: '/cliente/progreso',
-  CLIENTE_PERFIL: '/cliente/perfil',
+  // Sin CLIENTE_PERFIL: el perfil del cliente se edita en un modal del
+  // dashboard, no hay pantalla propia. La constante existía apuntando a una
+  // ruta inexistente y solo servía para revalidar la nada.
 
   // Admin
   ADMIN_DASHBOARD: '/admin/dashboard',

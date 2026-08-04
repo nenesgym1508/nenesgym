@@ -159,8 +159,13 @@ export function DashboardCalendar({
             dayClasses += "bg-green-600/60 border border-green-500/50 text-white font-bold scale-110"
           } else if (isAttended) {
             dayClasses += "bg-green-600/60 border border-green-500/50 text-white font-semibold"
-          } else if (isMissed || isUpcomingPlanDay) {
+          } else if (isMissed) {
             dayClasses += "bg-red-500/25 border border-red-500/40 text-red-200"
+          } else if (isUpcomingPlanDay) {
+            // Gris neutro, NO el rojo de "Falta": son días que todavía no han
+            // llegado. Compartir estilo hacía que estrenar plan se viera como
+            // un mes entero de entrenamientos perdidos.
+            dayClasses += "bg-white/5 border border-white/20 text-zinc-300"
           } else if (isCurrentDay) {
             dayClasses += "text-white font-bold scale-110"
           } else if (!inSameMonth) {
