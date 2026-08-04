@@ -147,8 +147,19 @@ export function ImageCropModal({
     }
   }
 
+  // El portal escapa del DOM del padre, pero React sigue propagando los eventos por el
+  // árbol de componentes: sin esto, cualquier clic aquí dentro dispara el onClick de cierre
+  // del modal que lo renderiza (ej. exercise-form) y se cierra todo a mitad del recorte.
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation()
+
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-xs">
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-xs"
+      onClick={stop}
+      onMouseDown={stop}
+      onPointerDown={stop}
+      onTouchStart={stop}
+    >
       <div className="flex w-full max-w-2xl max-h-[95dvh] flex-col gap-3 rounded-3xl bg-zinc-950 p-4 sm:p-6 shadow-2xl border border-white/10 overflow-y-auto">
         {/* Cabecera */}
         <div className="flex items-center justify-between shrink-0">
