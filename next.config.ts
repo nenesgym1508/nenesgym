@@ -1,6 +1,21 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV !== "production";
+
 const nextConfig: NextConfig = {
+  // Protección contra "version skew": que a un usuario le queden mezclados
+  // archivos de un despliegue viejo con respuestas del nuevo.
+  //
+  // Con esto Next cuelga el id del despliegue de cada asset (?dpl=...) y lo
+  // manda en las cabeceras de navegación. Si el cliente detecta que su id no
+  // coincide con el del servidor, hace una recarga completa en vez de una
+  // navegación de cliente — o sea, el usuario pasa a la versión nueva solo,
+  // sin tener que pulsar Ctrl+Shift+R.
+  //
+  // Sin esto, una pestaña abierta durante un deploy sigue ejecutando el
+  // JavaScript viejo contra el servidor nuevo hasta que alguien recargue a
+  // mano. Es lo que provocó el error de hidratación de esta sesión.
+  deploymentId: process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA,
   images: {
     // El optimizador se deja ACTIVO, pero ya no lo usa nada que crezca con el
     // contenido: las imágenes de ejercicio pasan `unoptimized` y piden su
@@ -27,10 +42,13 @@ const nextConfig: NextConfig = {
     // Reactiva el Router Cache del cliente para rutas dinámicas: al volver a una pantalla
     // ya visitada se reusa por 60s (navegación instantánea). Las páginas son force-dynamic
     // (render fresco en navegación real) y las mutaciones usan revalidatePath, así que sigue fresco.
-    staleTimes: {
-      dynamic: 60,
-      static: 300,
-    },
+    //
+    // En desarrollo se desactiva (0): con el caché activo, editar un componente
+    // y volver a la pantalla te servía la versión anterior desde el caché del
+    // router, dando la impresión de que el cambio "no se aplicó".
+    staleTimes: isDev
+      ? { dynamic: 0, static: 0 }
+      : { dynamic: 60, static: 300 },
   },
   async headers() {
     return [
