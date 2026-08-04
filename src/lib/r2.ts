@@ -24,6 +24,16 @@ function getR2Client(): S3Client {
   return client
 }
 
+// Un año, inmutable. La key lleva timestamp + sufijo aleatorio, así que un
+// archivo nunca se reemplaza en su sitio: reemplazar la foto de un ejercicio
+// genera una key nueva. Por eso es seguro cachearla indefinidamente.
+//
+// Importa más de lo que parece: el optimizador de Next caduca la imagen
+// optimizada según el mayor entre su `minimumCacheTTL` (4 h por defecto) y el
+// `Cache-Control` del origen. Sin esta cabecera, cada foto subida desde el
+// panel se revalidaba contra R2 cada 4 horas en vez de una vez al año.
+const R2_CACHE_CONTROL = "public, max-age=31536000, immutable"
+
 /** Sube un archivo a R2 y devuelve su URL pública (bajo NEXT_PUBLIC_R2_PUBLIC_URL). */
 export async function uploadToR2(
   key: string,
@@ -32,7 +42,13 @@ export async function uploadToR2(
 ): Promise<string> {
   const bucket = requiredEnv("R2_BUCKET_NAME")
   await getR2Client().send(
-    new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType })
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      CacheControl: R2_CACHE_CONTROL,
+    })
   )
   const publicUrl = requiredEnv("NEXT_PUBLIC_R2_PUBLIC_URL").replace(/\/$/, "")
   return `${publicUrl}/${key}`
