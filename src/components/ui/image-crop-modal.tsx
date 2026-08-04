@@ -154,7 +154,16 @@ export function ImageCropModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-xs"
+      data-crop-modal=""
+      // El posicionamiento va en estilo en línea, no en clases de Tailwind, a
+      // propósito. Este modal SIEMPRE tiene que quedar por encima del
+      // formulario que lo abre, y depender de que una clase concreta llegue en
+      // el CSS lo hace frágil: si falta, el modal se pinta como un bloque
+      // normal DENTRO del formulario y queda tapado — se ve el formulario
+      // encima y parece que "no deja recortar". El estilo en línea no puede
+      // faltar ni perder una guerra de especificidad.
+      style={{ position: "fixed", inset: 0, zIndex: 99999 }}
+      className="flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-xs"
       onClick={stop}
       onMouseDown={stop}
       onPointerDown={stop}

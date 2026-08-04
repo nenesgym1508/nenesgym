@@ -52,7 +52,12 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
       return
     }
 
-    setCropSrc(URL.createObjectURL(file))
+    try {
+      setCropSrc(URL.createObjectURL(file))
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setImageError(`No se pudo leer la foto: ${msg}`)
+    }
   }
 
   const handleCropCancel = () => {
@@ -267,6 +272,7 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
                 {imageError}
               </p>
             )}
+
           </div>
 
           <SelectField
