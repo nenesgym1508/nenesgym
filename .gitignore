@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...salvo la plantilla, que no lleva valores reales y es la unica referencia de
+# que variables hacen falta para levantar el proyecto. El patron .env* de arriba
+# la estaba ignorando, asi que nunca habia llegado al repo.
+!.env.example
 
 # vercel
 .vercel
