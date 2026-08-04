@@ -60,6 +60,20 @@ El dueño reportó que "el botón Recortar no abre la imagen" al editar un ejerc
 **9. `.env.example` versionado**
 - El `.gitignore` tenía `.env*` sin excepción y se tragaba la plantilla: clonar el proyecto no daba ninguna pista de qué variables hacen falta. Revisado antes de subirlo — solo marcadores de posición.
 
+**10. El recorte de imagen no funcionaba en el navegador del dueño**
+- Reportado como "no me deja subir fotos". Eran **tres fallos encadenados**, y ninguno daba error:
+  1. El archivo se rechazaba (formato o tamaño) y el motivo se pintaba **al pie** de un modal con scroll → invisible. Ahora va junto al control de subida, con mensajes que dicen el peso real y detectan HEIC de iPhone. Límite del original subido de 10 a 30 MB (el navegador reescala antes de enviar, así que era hostil sin motivo).
+  2. `z-[99999]` no llegaba a su navegador → el modal se pintaba **dentro** del formulario y quedaba tapado.
+  3. `h-[40dvh]` tampoco → el área de recorte colapsaba a altura cero: modal "sin imagen".
+- **Arreglo:** la geometría esencial del modal (posición, capa, alto) pasa a **estilo en línea**, en `vh` en vez de `dvh`. Verificado con Playwright **bloqueando la hoja de estilos entera**: sigue funcionando.
+- ⚠️ **Sin resolver:** por qué a ese navegador le faltan esas reglas. Se comprobó que están en el CSS generado y que el archivo no llega truncado. Ver `LECCIONES_APRENDIDAS.md`.
+- La validación estaba duplicada entre el formulario del admin y el del cliente, con el mismo bug del mensaje invisible en ambos → extraída a `validateImageFile`.
+
+**11. Que el navegador no se quede en una versión vieja**
+- `deploymentId` (desde `VERCEL_DEPLOYMENT_ID`): si el cliente detecta que su versión no coincide con la del servidor, **recarga solo**. Sin esto, una pestaña abierta durante un deploy sigue con el JavaScript viejo — es lo que provocó el error de hidratación de esta sesión.
+- `staleTimes` a 0 en desarrollo: el Router Cache guardaba las pantallas 60s también en local, y al editar un componente servía la versión anterior. En producción se mantienen los 60s.
+- ⚠️ Ojo: `staleTimes.static` **no admite 0** (mínimo 30). El build lo acepta sin avisar, pero Next descarta la opción entera y usa los defaults. Solo el arranque del servidor de desarrollo lo reporta.
+
 ### 📁 Archivos tocados:
 `src/components/ui/image-crop-modal.tsx`, `src/components/ui/exercise-image-thumbnail.tsx`, `src/components/ui/select-field.tsx` (nuevo), `src/lib/check-in-shift.ts` (nuevo), `src/lib/dates/index.ts`, `src/actions/exercises.actions.ts`, `src/services/exercises.service.ts`, `src/components/admin/{exercise-form,exercises-list,class-editor,clases-agenda,activate-plan-modal}.tsx`, `src/components/cliente/{today-status-card,client-exercise-form,exercise-detail-modal}.tsx`, `src/components/asistencia/client-checkin-button.tsx`, `src/actions/generate-routine-draft.action.ts`, `src/app/(admin)/admin/{entrenamiento,clases/[id],rutinas/[id],rutinas/biblioteca/[id]}/page.tsx`, `src/app/(cliente)/cliente/asistencia/page.tsx`, `next.config.ts`, `scripts/migrate-exercise-images-to-r2.mjs` (nuevo), `supabase/migrations/023_accumulate_membership_on_renewal.sql` (repuesto), `supabase/migrations/025_seed_warmup_and_stretching_exercises.sql`, `public/exercises/` (borrado).
 

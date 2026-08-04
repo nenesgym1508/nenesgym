@@ -6,6 +6,23 @@ Este documento almacena la memoria de errores y gotchas resueltos en el proyecto
 
 ## 📌 Lecciones Recientes (Sesión 17 - 2026-08-03)
 
+### Lección: la geometría esencial de un overlay no puede depender de una clase de CSS
+*   **Síntoma:** al crear un ejercicio, elegir una foto "no hacía nada". Ni error, ni modal. Después, ya con el modal visible, se abría **sin imagen**: cabecera, botones de formato y zoom, pero nada entre medias.
+*   **Eran dos capas del mismo fallo**, las dos por lo mismo:
+    1. `z-[99999]` no llegaba → el modal se pintaba como un bloque en flujo **dentro** del formulario y quedaba tapado por él.
+    2. `h-[40dvh]` no llegaba → el contenedor del recorte colapsaba a altura cero, y como `react-easy-crop` posiciona su lienzo en absoluto dentro, no quedaba nada visible.
+*   **Por qué costó tanto encontrarlo:** ninguna de las dos produce un error. El navegador simplemente ignora una regla que no tiene y sigue. El resultado se lee como "el botón está roto" o "la foto no carga", que apuntan a sitios completamente distintos del real. Y no se reproducía en otro navegador con el **mismo servidor y el mismo código**.
+*   **Lo que lo destapó:** un panel de diagnóstico temporal dentro del propio formulario, que tras abrir el recorte inspeccionaba el DOM real y reportaba tamaño, `z-index` y qué elemento estaba encima del centro de la pantalla. Tres líneas bastaron:
+    ```
+    7. modal montado 453×772     ← ventana de 481px: debería ocuparla entera
+    8. z=auto                    ← debería ser 99999
+    9. encima del centro: <div class="space-y-1.5">   ← el propio formulario
+    ```
+    Cuando un fallo no se reproduce en tu máquina, **llevar el diagnóstico a la máquina del usuario** es más rápido que seguir formulando hipótesis. Y sacarlo a la pantalla evita depender de que abra la consola.
+*   **Regla a futuro:** en un componente que se pinta con `createPortal` y **debe** quedar por encima, `position`, `inset`, `zIndex` y el alto del área útil van en **estilo en línea**. No pueden faltar ni perder una guerra de especificidad. El resto del estilo (colores, bordes, espaciado) puede seguir en clases: si falta se ve feo, pero no se rompe.
+*   **De paso:** usar `vh` en vez de `dvh` en ese estilo, y acompañarlo de `minHeight`/`maxHeight`. `dvh` tiene peor soporte y, si el navegador no lo entiende, la declaración se descarta entera y vuelves al mismo colapso.
+*   ⚠️ **Causa de fondo sin resolver.** Se verificó que las cuatro clases (`z-[99999]`, `h-[40dvh]`, `h-[45dvh]`, `max-h-[95dvh]`) **sí están** en el CSS generado, y que el archivo no llega truncado (`max-w-md` está *después* de `z-[99999]` en el fichero y sí se aplica en ese mismo navegador). Es decir: el cliente aplica unas reglas y otras no del mismo archivo. Si aparecen más rarezas visuales en otras pantallas, empezar por aquí.
+
 ### Lección: pre-generar tamaños sale gratis; redimensionar al vuelo se paga siempre
 *   **Contexto:** el dueño quiso salir del optimizador de imágenes de Vercel antes del lanzamiento, porque en **TodoAquiApp ya se le agotó el cupo y empezó a recibir 402 en producción**. Experiencia propia, no teoría.
 *   **Las tres formas de servir una miniatura, y su coste real:**
