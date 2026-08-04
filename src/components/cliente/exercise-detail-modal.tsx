@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import { Dumbbell, X } from "lucide-react"
+import { exerciseImageUrl, IMAGE_RESIZING_ENABLED } from "@/lib/images"
 import {
   MUSCLE_GROUP_LABELS,
   EQUIPMENT_LABELS,
@@ -41,10 +42,11 @@ export function ExerciseDetailModal({ exercise, onClose }: ExerciseDetailModalPr
           {exercise.media_url ? (
             <div className="relative w-full h-56 bg-zinc-800">
               <Image
-                src={exercise.media_url}
+                src={exerciseImageUrl(exercise.media_url, "detail")!}
                 alt={exercise.name}
                 fill
                 sizes="(max-width: 768px) 100vw, 512px"
+                unoptimized={IMAGE_RESIZING_ENABLED}
                 className="object-cover"
               />
             </div>

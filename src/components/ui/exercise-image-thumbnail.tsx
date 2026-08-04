@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import { Dumbbell } from "lucide-react"
+import { exerciseImageUrl, IMAGE_RESIZING_ENABLED } from "@/lib/images"
 
 interface ExerciseImageThumbnailProps {
   src?: string | null
@@ -29,8 +30,9 @@ export function ExerciseImageThumbnail({
   size = 40,
 }: ExerciseImageThumbnailProps) {
   const [error, setError] = useState(false)
+  const url = exerciseImageUrl(src, "thumbnail")
 
-  if (!src || error) {
+  if (!url || error) {
     return (
       <div className={`flex items-center justify-center bg-zinc-800 text-zinc-500 shrink-0 ${className}`}>
         <Dumbbell className={iconSizeClassName} />
@@ -40,11 +42,14 @@ export function ExerciseImageThumbnail({
 
   return (
     <Image
-      src={src}
+      src={url}
       alt={alt}
       width={size}
       height={size}
       loading="lazy"
+      // Con el redimensionado en el borde activo, la URL ya viene recortada al
+      // tamaño exacto: que Next la vuelva a procesar seria pagar dos veces.
+      unoptimized={IMAGE_RESIZING_ENABLED}
       className={className}
       onError={() => setError(true)}
     />

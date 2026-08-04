@@ -2,6 +2,15 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // Cuando Cloudflare Image Resizing esté activo (ver src/lib/images.ts), la URL
+    // que se pinta ya viene recortada al tamaño exacto desde el borde: dejar que
+    // el optimizador de Vercel la procese otra vez seria pagar el mismo trabajo
+    // dos veces, y es lo que agotó el cupo (error 402) en TodoAquiApp.
+    //
+    // Encender solo DESPUÉS de tener el dominio propio conectado al bucket: sin él
+    // no hay quien redimensione y las miniaturas pasarían de ~1 KB a ~37 KB, con
+    // cada visita pegándole directo a R2.
+    unoptimized: process.env.NEXT_PUBLIC_R2_IMAGE_RESIZING === 'true',
     formats: ['image/avif', 'image/webp'],
     // Solo los orígenes que servimos de verdad. Antes había además
     // `{hostname: '*'}` para http y https: no llegaba a abrir el optimizador a
