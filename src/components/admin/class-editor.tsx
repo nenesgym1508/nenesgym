@@ -29,7 +29,7 @@ import { ActionMenu } from "@/components/ui/action-menu"
 import { ExerciseImageThumbnail } from "@/components/ui/exercise-image-thumbnail"
 import { ROUTES } from "@/constants/routes"
 import { addDays } from "@/lib/dates"
-import { exerciseImageUrl, IMAGE_RESIZING_ENABLED } from "@/lib/images"
+import { exerciseImageUrl } from "@/lib/images"
 import {
   CLASS_OBJECTIVE_LABELS,
   type DailyClassWithBlocks,
@@ -1251,7 +1251,7 @@ function ExerciseDetailSheet({
                 alt=""
                 fill
                 sizes="(max-width: 768px) 100vw, 512px"
-                unoptimized={IMAGE_RESIZING_ENABLED}
+                unoptimized
                 className="object-cover"
               />
             </div>

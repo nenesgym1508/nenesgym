@@ -1,58 +1,73 @@
-// Resolución de URLs de imagen del catálogo.
+// Variantes pre-generadas de las imágenes de ejercicio.
 //
-// Hay dos formas de servir una imagen de R2, y cuál se usa depende de una sola
-// variable de entorno:
+// Al subir una imagen se guardan en R2 tres archivos en vez de uno: el original
+// y dos versiones ya recortadas al tamaño en que se muestran. La lista de
+// ejercicios pide directamente la miniatura de ~4 KB en vez de un original de
+// ~37 KB que alguien tenga que encoger al vuelo.
 //
-//   NEXT_PUBLIC_R2_IMAGE_RESIZING = "false"  (hoy)
-//     Se devuelve la URL cruda y el optimizador de Next/Vercel se encarga del
-//     redimensionado. Funciona sobre cualquier host, incluida la URL de
-//     desarrollo pub-*.r2.dev.
+// Por qué así y no redimensionando bajo demanda:
+//   - El optimizador de Vercel cobra por transformación única y tiene cupo; es
+//     lo que agotó TodoAquiApp y le devolvía 402.
+//   - Cloudflare Image Resizing haría el mismo trabajo en el borde, pero es de
+//     pago y exige un dominio propio conectado al bucket.
+//   - Pre-generar no cuesta nada: el trabajo se hace una vez al subir, y las
+//     variantes son archivos estáticos que cualquier CDN sirve. 116 imágenes ×
+//     3 variantes ≈ 10 MB, sobre 10 GB gratuitos en R2.
 //
-//   NEXT_PUBLIC_R2_IMAGE_RESIZING = "true"   (tras conectar el dominio propio)
-//     Se construye una URL de Cloudflare Image Resizing y el redimensionado lo
-//     hace Cloudflare en el borde. Requiere DOS cosas, las dos obligatorias:
-//       1. Que NEXT_PUBLIC_R2_PUBLIC_URL sea un dominio propio conectado al
-//          bucket. La ruta /cdn-cgi/image/ NO existe en pub-*.r2.dev.
-//       2. Que el plan de Cloudflare incluya Image Resizing (es de pago).
-//     Al activarlo hay que poner además `unoptimized: true` en next.config.ts,
-//     si no se pagan las dos transformaciones.
+// El precio a pagar: las variantes hay que borrarlas junto al original (lo hace
+// deleteR2ImageIfUnused), y añadir un preset nuevo obliga a regenerar el
+// histórico con scripts/generate-image-variants.mjs.
 //
-// El patrón (interruptor por env var, con el proveedor viejo como red de
-// seguridad) está copiado de TodoAquiApp, que ya hizo este mismo camino.
+// La tabla de presets por uso está tomada del `resizingOptionsFor()` de
+// TodoAquiApp: `cover` recorta al encuadre exacto, `scaleDown` nunca agranda ni
+// recorta, solo limita el lado mayor.
+
+export interface VariantSpec {
+  /** Sufijo que se inserta antes de la extensión: foto.webp -> foto-thumb.webp */
+  suffix: string
+  width: number
+  height?: number
+  fit: "cover" | "scaleDown"
+}
+
+export const IMAGE_VARIANTS = {
+  /** Miniatura de lista. Se muestra a ~40 px; 96 cubre pantallas retina. */
+  thumbnail: { suffix: "-thumb", width: 96, height: 96, fit: "cover" },
+  /** Cabecera del modal de detalle. */
+  detail: { suffix: "-detail", width: 1024, fit: "scaleDown" },
+} as const satisfies Record<string, VariantSpec>
+
+export type ImagePreset = keyof typeof IMAGE_VARIANTS
+
+/** `full` no es una variante: es el archivo original, sin sufijo. */
+export type ImageSize = ImagePreset | "full"
 
 const R2_BASE = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? "").replace(/\/$/, "")
 
-export const IMAGE_RESIZING_ENABLED = process.env.NEXT_PUBLIC_R2_IMAGE_RESIZING === "true"
+/** Añade el sufijo de variante a una key o URL que termina en extensión. */
+export function withVariantSuffix(pathOrUrl: string, suffix: string): string {
+  return pathOrUrl.replace(/(\.[^./]+)$/, `${suffix}$1`)
+}
+
+/** Todas las keys derivadas de una original, para borrarlas juntas. */
+export function variantKeysFor(key: string): string[] {
+  return Object.values(IMAGE_VARIANTS).map((v) => withVariantSuffix(key, v.suffix))
+}
 
 /**
- * Presets por uso. `cover` recorta al encuadre exacto; `scale-down` nunca
- * agranda ni recorta, solo limita el lado mayor.
- */
-const PRESETS = {
-  /** Miniatura de lista (~40 px en pantalla, x2 para retina). */
-  thumbnail: "width=96,height=96,fit=cover",
-  /** Imagen de cabecera del modal de detalle. */
-  detail: "width=1024,fit=scale-down",
-  /** Original acotado, para el recorte. */
-  full: "width=1600,fit=scale-down",
-} as const
-
-export type ImagePreset = keyof typeof PRESETS
-
-/**
- * Devuelve la URL a pintar para una `media_url` de ejercicio.
+ * URL a pintar para una `media_url` de ejercicio.
  *
- * Si el redimensionado en el borde está apagado, o la imagen no vive en nuestro
- * bucket, devuelve la URL tal cual: quien optimice será Next.
+ * Devuelve la original tal cual si se pide `full`, si la imagen no vive en
+ * nuestro bucket, o si no hay bucket configurado — en esos casos no hay
+ * variantes que pedir. Quien la pinte debe caer de vuelta a la original si la
+ * variante no existiera (imágenes subidas antes de este cambio).
  */
 export function exerciseImageUrl(
   mediaUrl: string | null | undefined,
-  preset: ImagePreset = "thumbnail"
+  size: ImageSize = "thumbnail"
 ): string | null {
   if (!mediaUrl) return null
-  if (!IMAGE_RESIZING_ENABLED) return mediaUrl
+  if (size === "full") return mediaUrl
   if (!R2_BASE || !mediaUrl.startsWith(`${R2_BASE}/`)) return mediaUrl
-
-  const key = mediaUrl.slice(R2_BASE.length + 1)
-  return `${R2_BASE}/cdn-cgi/image/${PRESETS[preset]},format=auto,quality=auto/${key}`
+  return withVariantSuffix(mediaUrl, IMAGE_VARIANTS[size].suffix)
 }

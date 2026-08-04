@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import { Dumbbell } from "lucide-react"
-import { exerciseImageUrl, IMAGE_RESIZING_ENABLED } from "@/lib/images"
+import { exerciseImageUrl } from "@/lib/images"
 
 interface ExerciseImageThumbnailProps {
   src?: string | null
@@ -17,10 +17,10 @@ interface ExerciseImageThumbnailProps {
 /**
  * Miniatura de ejercicio.
  *
- * Pasa por `next/image` a propósito: las fotos del catálogo son de 50–450 KB en
- * origen y aquí se muestran a 36–40 px. Servidas en crudo, la lista de ~120
- * ejercicios descargaba varios MB; por el optimizador cada una queda en ~1 KB.
- * Los hosts permitidos están en `next.config.ts` → `images.remotePatterns`.
+ * Pide la variante `-thumb` pre-generada en R2 (~4 KB) en vez del original
+ * (~37 KB). Si esa variante no existiera —una imagen subida antes de que
+ * existieran las variantes, o una subida en la que fallaron— cae de vuelta al
+ * original antes de rendirse y mostrar el icono.
  */
 export function ExerciseImageThumbnail({
   src,
@@ -29,10 +29,19 @@ export function ExerciseImageThumbnail({
   iconSizeClassName = "size-4",
   size = 40,
 }: ExerciseImageThumbnailProps) {
-  const [error, setError] = useState(false)
-  const url = exerciseImageUrl(src, "thumbnail")
+  const variant = exerciseImageUrl(src, "thumbnail")
+  const [current, setCurrent] = useState(variant)
 
-  if (!url || error) {
+  // La lista se reordena y filtra en cliente: si cambia el ejercicio de esta
+  // fila hay que volver a intentar con su variante, no quedarse en el fallback
+  // del anterior.
+  const [seen, setSeen] = useState(variant)
+  if (seen !== variant) {
+    setSeen(variant)
+    setCurrent(variant)
+  }
+
+  if (!current) {
     return (
       <div className={`flex items-center justify-center bg-zinc-800 text-zinc-500 shrink-0 ${className}`}>
         <Dumbbell className={iconSizeClassName} />
@@ -42,16 +51,16 @@ export function ExerciseImageThumbnail({
 
   return (
     <Image
-      src={url}
+      src={current}
       alt={alt}
       width={size}
       height={size}
       loading="lazy"
-      // Con el redimensionado en el borde activo, la URL ya viene recortada al
-      // tamaño exacto: que Next la vuelva a procesar seria pagar dos veces.
-      unoptimized={IMAGE_RESIZING_ENABLED}
+      // La variante ya viene al tamaño exacto: volver a optimizarla seria pagar
+      // dos veces el mismo trabajo.
+      unoptimized
       className={className}
-      onError={() => setError(true)}
+      onError={() => setCurrent(current !== src && src ? src : null)}
     />
   )
 }

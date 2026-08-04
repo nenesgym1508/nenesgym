@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server"
 import { GYM_ID } from "@/constants/plans"
 import { ROUTES } from "@/constants/routes"
 import { uploadToR2, deleteFromR2, r2KeyFromPublicUrl } from "@/lib/r2"
+import { variantKeysFor } from "@/lib/images"
+import { generateAndUploadVariants } from "@/lib/image-variants.server"
 import type { MuscleGroup, Equipment, ExerciseType, Exercise, UsageTag } from "@/services/exercises.service"
 
 interface ExerciseData {
@@ -37,7 +39,11 @@ async function deleteR2ImageIfUnused(
     .eq("media_url", mediaUrl)
 
   if ((count ?? 0) === 0) {
-    await deleteFromR2(key).catch(() => {})
+    // El original y sus variantes se borran juntos: si no, las variantes quedan
+    // huérfanas en el bucket para siempre, sin nada que las referencie.
+    await Promise.all(
+      [key, ...variantKeysFor(key)].map((k) => deleteFromR2(k).catch(() => {}))
+    )
   }
 }
 
@@ -237,6 +243,11 @@ export async function uploadExerciseImageAction(
   } catch (e) {
     return { error: "Error al subir la imagen a Cloudflare R2: " + (e instanceof Error ? e.message : "error desconocido") }
   }
+
+  // Variantes ya recortadas al tamaño en que se muestran, para que la lista no
+  // descargue el original ni dependa de que nadie lo encoja al vuelo. Si alguna
+  // falla no se aborta: el original ya está guardado y la UI cae de vuelta a él.
+  await generateAndUploadVariants(path, buffer).catch(() => ({ uploaded: [], failed: [] }))
 
   // La imagen anterior NO se borra aquí: la fila sigue apuntando a ella hasta que
   // el usuario guarde el formulario, y puede cancelar. El borrado lo hace

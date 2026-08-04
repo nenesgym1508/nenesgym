@@ -2,15 +2,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    // Cuando Cloudflare Image Resizing esté activo (ver src/lib/images.ts), la URL
-    // que se pinta ya viene recortada al tamaño exacto desde el borde: dejar que
-    // el optimizador de Vercel la procese otra vez seria pagar el mismo trabajo
-    // dos veces, y es lo que agotó el cupo (error 402) en TodoAquiApp.
+    // El optimizador se deja ACTIVO, pero ya no lo usa nada que crezca con el
+    // contenido: las imágenes de ejercicio pasan `unoptimized` y piden su
+    // variante pre-generada en R2 (ver src/lib/images.ts).
     //
-    // Encender solo DESPUÉS de tener el dominio propio conectado al bucket: sin él
-    // no hay quien redimensione y las miniaturas pasarían de ~1 KB a ~37 KB, con
-    // cada visita pegándole directo a R2.
-    unoptimized: process.env.NEXT_PUBLIC_R2_IMAGE_RESIZING === 'true',
+    // Lo que sigue optimizándose son los ~8 assets de /public (logo, hero,
+    // banner). El cupo de Vercel se cuenta por imagen origen única, así que un
+    // conjunto fijo de 8 genera 8 transformaciones una sola vez y nunca puede
+    // agotar nada — a diferencia del catálogo de ejercicios, que sí crece. Y
+    // apagarlo también para ellas solo conseguiría servir el hero de 75 KB sin
+    // encoger en la portada.
     formats: ['image/avif', 'image/webp'],
     // Solo los orígenes que servimos de verdad. Antes había además
     // `{hostname: '*'}` para http y https: no llegaba a abrir el optimizador a
