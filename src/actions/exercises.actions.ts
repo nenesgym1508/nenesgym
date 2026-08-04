@@ -18,6 +18,29 @@ interface ExerciseData {
   media_url?: string
 }
 
+// Borra el archivo de R2 asociado a una media_url, pero solo si (a) vive en
+// nuestro bucket (las URLs externas devuelven key null) y (b) ninguna fila de
+// exercises sigue apuntando a ella. Llamar SIEMPRE después de que la DB haya
+// dejado de referenciarla, nunca antes.
+async function deleteR2ImageIfUnused(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  mediaUrl: string | null | undefined
+): Promise<void> {
+  if (!mediaUrl) return
+  const key = r2KeyFromPublicUrl(mediaUrl)
+  if (!key) return
+
+  const { count } = await (supabase as any)
+    .from("exercises")
+    .select("id", { count: "exact", head: true })
+    .eq("gym_id", GYM_ID)
+    .eq("media_url", mediaUrl)
+
+  if ((count ?? 0) === 0) {
+    await deleteFromR2(key).catch(() => {})
+  }
+}
+
 export async function createExerciseAction(
   data: ExerciseData
 ): Promise<{ success: true; exercise: Exercise } | { error: string }> {
@@ -53,6 +76,13 @@ export async function updateExerciseAction(id: string, data: ExerciseData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "No autenticado" }
 
+  const { data: before } = await supabase
+    .from("exercises")
+    .select("media_url")
+    .eq("id", id)
+    .eq("gym_id", GYM_ID)
+    .single()
+
   const { error } = await (supabase as any)
     .from("exercises")
     .update({
@@ -70,6 +100,13 @@ export async function updateExerciseAction(id: string, data: ExerciseData) {
     .eq("gym_id", GYM_ID)
 
   if (error) return { error: error.message }
+
+  // La imagen anterior solo deja de usarse aquí: si se borrase al subir la nueva,
+  // cancelar el formulario dejaría la fila apuntando a un archivo inexistente.
+  if (before?.media_url && before.media_url !== (data.media_url ?? null)) {
+    await deleteR2ImageIfUnused(supabase, before.media_url)
+  }
+
   revalidatePath(ROUTES.ADMIN_CLASES_EJERCICIOS)
   return { success: true }
 }
@@ -120,21 +157,7 @@ export async function deleteExerciseAction(id: string) {
     return { error: error.message }
   }
 
-  // Borrar el archivo asociado (solo si vive en nuestro storage, no en URLs externas,
-  // y solo si ningún otro ejercicio sigue apuntando a la misma imagen)
-  if (existing?.media_url) {
-    const { count } = await (supabase as any)
-      .from("exercises")
-      .select("id", { count: "exact", head: true })
-      .eq("media_url", existing.media_url)
-
-    if ((count ?? 0) === 0) {
-      const r2Key = r2KeyFromPublicUrl(existing.media_url)
-      if (r2Key) {
-        await deleteFromR2(r2Key).catch(() => {})
-      }
-    }
-  }
+  await deleteR2ImageIfUnused(supabase, existing?.media_url)
 
   revalidatePath(ROUTES.ADMIN_CLASES_EJERCICIOS)
   return { success: true }
@@ -181,7 +204,6 @@ export async function uploadExerciseImageAction(
   }
 
   let clientId: string | null = null
-  let oldMediaUrl: string | null = null
 
   if (role === "client") {
     const { data: client } = await supabase
@@ -195,22 +217,12 @@ export async function uploadExerciseImageAction(
     if (exerciseId) {
       const { data: existingEx } = await supabase
         .from("exercises")
-        .select("owner_client_id, visibility, media_url")
+        .select("owner_client_id, visibility")
         .eq("id", exerciseId)
         .single()
       if (!existingEx || existingEx.owner_client_id !== clientId || existingEx.visibility !== "client") {
         return { error: "Sin permisos para modificar la imagen de este ejercicio." }
       }
-      oldMediaUrl = existingEx.media_url
-    }
-  } else if (role === "admin" && exerciseId) {
-    const { data: existingEx } = await supabase
-      .from("exercises")
-      .select("media_url")
-      .eq("id", exerciseId)
-      .single()
-    if (existingEx) {
-      oldMediaUrl = existingEx.media_url
     }
   }
 
@@ -226,21 +238,9 @@ export async function uploadExerciseImageAction(
     return { error: "Error al subir la imagen a Cloudflare R2: " + (e instanceof Error ? e.message : "error desconocido") }
   }
 
-  // Eliminar la imagen previa únicamente si no está compartida por otro ejercicio
-  if (oldMediaUrl) {
-    const { count } = await (supabase as any)
-      .from("exercises")
-      .select("id", { count: "exact", head: true })
-      .eq("media_url", oldMediaUrl)
-
-    if ((count ?? 0) <= 1) {
-      const oldR2Key = r2KeyFromPublicUrl(oldMediaUrl)
-      if (oldR2Key) {
-        await deleteFromR2(oldR2Key).catch(() => {})
-      }
-    }
-  }
-
+  // La imagen anterior NO se borra aquí: la fila sigue apuntando a ella hasta que
+  // el usuario guarde el formulario, y puede cancelar. El borrado lo hace
+  // updateExerciseAction / updateMyExerciseAction una vez la DB ya no la referencia.
   return { success: true, url: publicUrl }
 }
 
@@ -320,6 +320,13 @@ export async function updateMyExerciseAction(id: string, data: MyExerciseData) {
 
   if (!data.name.trim()) return { error: "El nombre es obligatorio" }
 
+  const { data: before } = await supabase
+    .from("exercises")
+    .select("media_url")
+    .eq("id", id)
+    .eq("owner_client_id", ctx.clientId)
+    .single()
+
   const { error } = await (supabase as any)
     .from("exercises")
     .update({
@@ -335,6 +342,11 @@ export async function updateMyExerciseAction(id: string, data: MyExerciseData) {
     .eq("owner_client_id", ctx.clientId)
 
   if (error) return { error: error.message }
+
+  if (before?.media_url && before.media_url !== (data.media_url ?? null)) {
+    await deleteR2ImageIfUnused(supabase, before.media_url)
+  }
+
   revalidatePath(ROUTES.CLIENTE_RUTINAS_EJERCICIOS)
   return { success: true }
 }
