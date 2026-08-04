@@ -46,8 +46,9 @@ const nextConfig: NextConfig = {
     // En desarrollo se desactiva (0): con el caché activo, editar un componente
     // y volver a la pantalla te servía la versión anterior desde el caché del
     // router, dando la impresión de que el cambio "no se aplicó".
+    // (`static` no admite 0: Next exige un mínimo de 30.)
     staleTimes: isDev
-      ? { dynamic: 0, static: 0 }
+      ? { dynamic: 0, static: 30 }
       : { dynamic: 60, static: 300 },
   },
   async headers() {
