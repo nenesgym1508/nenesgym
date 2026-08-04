@@ -40,12 +40,12 @@ export function ExerciseDetailModal({ exercise, onClose }: ExerciseDetailModalPr
         <div className="flex-1 overflow-y-auto">
           {exercise.media_url ? (
             <div className="relative w-full h-56 bg-zinc-800">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={exercise.media_url}
                 alt={exercise.name}
-                loading="lazy"
-                className="w-full h-full object-cover"
+                fill
+                sizes="(max-width: 768px) 100vw, 512px"
+                className="object-cover"
               />
             </div>
           ) : (

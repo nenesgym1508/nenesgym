@@ -1,0 +1,587 @@
+[
+  {
+    "id": "8011636c-5c6b-4f3f-aaad-92b4859a2be4",
+    "name": "Curl con barra",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Curl/0.jpg"
+  },
+  {
+    "id": "3d6ad685-1e5e-4a67-9589-936a4f0cfb25",
+    "name": "Rotación con polea (Judo Flip)",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Judo_Flip/0.jpg"
+  },
+  {
+    "id": "3c48788a-d692-4115-90d0-dc1cc8305e5c",
+    "name": "Aperturas declinadas con mancuernas",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Decline_Dumbbell_Flyes/0.jpg"
+  },
+  {
+    "id": "1be9ae33-3193-4155-bd1c-7ab48810f559",
+    "name": "Press de banca con barra",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Bench_Press_-_Medium_Grip/0.jpg"
+  },
+  {
+    "id": "eedef296-a243-48d6-a3aa-6608fe432e7f",
+    "name": "Press de banca agarre cerrado con barra",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Close-Grip_Barbell_Bench_Press/0.jpg"
+  },
+  {
+    "id": "42eb022f-4a87-4cec-b390-de1317415825",
+    "name": "Press de banca declinado con barra",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Decline_Barbell_Bench_Press/0.jpg"
+  },
+  {
+    "id": "0b5866b2-efc0-4618-a4ba-54648d9be38d",
+    "name": "Press de banca declinado con mancuernas",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Decline_Dumbbell_Bench_Press/0.jpg"
+  },
+  {
+    "id": "0e1b2c16-3b04-403c-844e-5344b1951a59",
+    "name": "Sentadilla con barra",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Squat/0.jpg"
+  },
+  {
+    "id": "4fd0cf68-d1ce-47db-9b7e-e4a7cdf7584e",
+    "name": "Peso muerto olímpico",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Clean_Deadlift/0.jpg"
+  },
+  {
+    "id": "209ec2ee-b4e2-434a-b6b0-37101dff3e03",
+    "name": "Curl martillo alternado",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Alternate_Hammer_Curl/0.jpg"
+  },
+  {
+    "id": "22a8d4e9-f195-472f-ab52-0cb8f419ac1c",
+    "name": "Fondos en paralelas",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dips_-_Triceps_Version/0.jpg"
+  },
+  {
+    "id": "c879046e-709f-4612-a6af-868d34e6352f",
+    "name": "Sit-Up ¾",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/3_4_Sit-Up/0.jpg"
+  },
+  {
+    "id": "77739c0b-e5f0-4eef-bf75-2b0631c629ce",
+    "name": "Giros rusos con polea",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Russian_Twists/0.jpg"
+  },
+  {
+    "id": "3746a885-926c-4627-b161-d7c22ceea47a",
+    "name": "Crunch cruzado",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cross-Body_Crunch/0.jpg"
+  },
+  {
+    "id": "83d647a6-a23e-4b5b-ae4e-856ca7111be2",
+    "name": "Bicho muerto",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dead_Bug/0.jpg"
+  },
+  {
+    "id": "1727dd0b-d367-4ea2-90fa-6d73c8076480",
+    "name": "Cruce de pecho con bandas",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cross_Over_-_With_Bands/0.jpg"
+  },
+  {
+    "id": "d515ed2f-7a7d-44d8-8d92-3a6639efcf74",
+    "name": "Encogimiento compacto (Cocoon)",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cocoons/0.jpg"
+  },
+  {
+    "id": "08f687fe-5aa9-4d17-9c26-0f35d97d88da",
+    "name": "Aperturas posteriores con banda",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Back_Flyes_-_With_Bands/0.jpg"
+  },
+  {
+    "id": "67976de4-aa30-4472-9a67-96771cdb91dd",
+    "name": "Crunch oblicuo en banco declinado",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Decline_Oblique_Crunch/0.jpg"
+  },
+  {
+    "id": "73cd18a4-2ccd-426c-b52c-a5167570bb2b",
+    "name": "Crunch inverso en banco declinado",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Decline_Reverse_Crunch/0.jpg"
+  },
+  {
+    "id": "d06d1736-291a-4ba5-87ea-5ddfe81faa5a",
+    "name": "Press agarre cerrado con mancuernas",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Close-Grip_Dumbbell_Press/0.jpg"
+  },
+  {
+    "id": "b76b48c1-9a19-42b2-b8c9-e9b1731ea027",
+    "name": "Press agarre cerrado con barra EZ",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Close-Grip_EZ-Bar_Press/0.jpg"
+  },
+  {
+    "id": "4247e659-c636-4191-b8f7-abc244c087fe",
+    "name": "Fondos en máquina",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dip_Machine/0.jpg"
+  },
+  {
+    "id": "da892dac-b121-4bdd-8dde-cab40ea362eb",
+    "name": "Press JM",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/JM_Press/0.jpg"
+  },
+  {
+    "id": "4414e03d-f9c9-469e-9d05-efb56dfb4755",
+    "name": "Press agarre cerrado en Smith",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Smith_Machine_Close-Grip_Bench_Press/0.jpg"
+  },
+  {
+    "id": "e69115bd-804b-4b26-92b6-599cfde0f9ac",
+    "name": "Curl deslizante con barra",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Drag_Curl/0.jpg"
+  },
+  {
+    "id": "34f8c8d1-8552-422e-bc0f-433605cce317",
+    "name": "Curl en polea alta",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/High_Cable_Curls/0.jpg"
+  },
+  {
+    "id": "b956f840-519b-4265-bc91-bb9ca5dce180",
+    "name": "Curl inclinado alternado con mancuerna",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Alternate_Incline_Dumbbell_Curl/0.jpg"
+  },
+  {
+    "id": "ef08a684-2dbd-46d9-852a-543789de915f",
+    "name": "Curl con barra en banco inclinado",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Curls_Lying_Against_An_Incline/0.jpg"
+  },
+  {
+    "id": "b1860d5f-31b8-43d0-864d-e7b859be427d",
+    "name": "Curl martillo en polea con cuerda",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Hammer_Curls_-_Rope_Attachment/0.jpg"
+  },
+  {
+    "id": "c9ee1e96-0203-4876-b946-5533bf42578b",
+    "name": "Press declinado en Smith",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Decline_Smith_Press/0.jpg"
+  },
+  {
+    "id": "77b32e24-e885-46a7-8d95-c68f3d50152f",
+    "name": "Remo alto en máquina",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Leverage_High_Row/0.jpg"
+  },
+  {
+    "id": "77dc70f5-a249-4f7f-b80e-bab8485dc1f8",
+    "name": "Remo isométrico en máquina",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Leverage_Iso_Row/0.jpg"
+  },
+  {
+    "id": "72382446-4426-430c-a295-d3e54897720a",
+    "name": "Remo a un brazo con barra larga",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/One-Arm_Long_Bar_Row/0.jpg"
+  },
+  {
+    "id": "11a53ceb-4765-40fb-9ad3-bb8c5b97c3ef",
+    "name": "Press de banca con mancuernas",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Bench_Press/0.jpg"
+  },
+  {
+    "id": "5ac1f511-8daf-4a3b-98fa-15cfc64226fd",
+    "name": "Patadas de mariposa",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flutter_Kicks/0.jpg"
+  },
+  {
+    "id": "9c883965-f3f9-49cc-bd38-a1f92cb38771",
+    "name": "Patada de glúteo",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Glute_Kickback/0.jpg"
+  },
+  {
+    "id": "e5f77154-d185-413c-8ad1-09815ad4f55f",
+    "name": "Elevación de cadera con banda",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hip_Lift_with_Band/0.jpg"
+  },
+  {
+    "id": "07cd7739-10ec-4391-aad1-e6c7202d98d6",
+    "name": "Caminata lateral con banda",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Monster_Walk/0.jpg"
+  },
+  {
+    "id": "e82792f0-d45b-42d8-97a9-55e6cc2ef73d",
+    "name": "Pull Through en polea",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Pull_Through/0.jpg"
+  },
+  {
+    "id": "de8aa9b6-cda6-449b-a7ca-dc1874319918",
+    "name": "Step-up con elevación de rodilla",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Step-up_with_Knee_Raise/0.jpg"
+  },
+  {
+    "id": "1131d786-75a7-4bd0-9b35-acd60880ae3c",
+    "name": "Puente de glúteo con barra",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Glute_Bridge/0.jpg"
+  },
+  {
+    "id": "bcc5dc7c-0a13-4378-89d1-43a04e3ce877",
+    "name": "Flexión de cadera con banda",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hip_Flexion_with_Band/0.jpg"
+  },
+  {
+    "id": "36ae6227-cdb9-49f4-9849-774ec07d82f6",
+    "name": "Press de hombro en polea",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Shoulder_Press/0.jpg"
+  },
+  {
+    "id": "fc81dfd4-8c66-4223-b3c1-61fd7ea7b78a",
+    "name": "Elevación de Rodillas al Pecho (High Knees)",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/High_Knees/0.jpg"
+  },
+  {
+    "id": "75332976-c10e-4d24-8d92-7ffedf8af9fd",
+    "name": "Hack squat",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hack_Squat/0.jpg"
+  },
+  {
+    "id": "dc25684e-3dfb-4860-b23e-544ee2b5ebc0",
+    "name": "Elevación lateral con mancuerna",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Raise/0.jpg"
+  },
+  {
+    "id": "c74108e9-6f67-4f8f-89c6-317f3b6b63f3",
+    "name": "Rotación externa con banda",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/External_Rotation_with_Band/0.jpg"
+  },
+  {
+    "id": "40844f94-ec84-4d6c-90e2-9fb5cbb244c5",
+    "name": "Peso muerto en polea",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Deadlifts/0.jpg"
+  },
+  {
+    "id": "6b811e62-fc86-4797-8e47-7a7a604d643e",
+    "name": "Press de banca con mancuernas agarre neutro",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Bench_Press_with_Neutral_Grip/0.jpg"
+  },
+  {
+    "id": "7e0f376d-8883-43ed-bcfc-001a1e31f206",
+    "name": "Zancadas con mancuernas",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Lunges/0.jpg"
+  },
+  {
+    "id": "f4ca8288-c28f-42c5-a02c-757869c7590f",
+    "name": "Estiramiento de Isquiotibiales de Pie",
+    "media_url": "/exercises/estiramiento_isquios.jpg"
+  },
+  {
+    "id": "fc6f0b1c-5c18-4da3-87e2-85e1a2a49b8b",
+    "name": "Sentadilla con mancuernas",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Squat/0.jpg"
+  },
+  {
+    "id": "a17cc0e7-e47a-4b23-b030-8dbe2caf3714",
+    "name": "Salto de cuerda rápido",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Fast_Skipping/0.jpg"
+  },
+  {
+    "id": "37d2d53e-e56e-4de7-bada-ac6420b5b857",
+    "name": "Sentadilla goblet",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Goblet_Squat/0.jpg"
+  },
+  {
+    "id": "15832277-9bb7-4a3d-9a4f-a2c464861d0a",
+    "name": "Extensión de cadera con banda",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hip_Extension_with_Bands/0.jpg"
+  },
+  {
+    "id": "233d5922-bc8c-4624-a440-b770ee88ac39",
+    "name": "Remo con barra inclinado",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bent_Over_Barbell_Row/0.jpg"
+  },
+  {
+    "id": "3881417c-d4e4-4369-ae20-d43b7301d70d",
+    "name": "Remo en banco inclinado con mancuerna",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Incline_Row/0.jpg"
+  },
+  {
+    "id": "b3762f58-f538-42a2-a3dd-6f6a710458fc",
+    "name": "Estiramiento Cruzado de Hombro (Deltoides)",
+    "media_url": "/exercises/estiramiento_deltoides.jpg"
+  },
+  {
+    "id": "f9cca84a-a8f6-4df5-8251-657d7d50b84d",
+    "name": "Estiramiento de Aductores (Mariposa)",
+    "media_url": "/exercises/estiramiento_mariposa.jpg"
+  },
+  {
+    "id": "f483dd7d-8640-4415-80f0-8458e772d8d0",
+    "name": "Curl predicador en polea",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Preacher_Curl/0.jpg"
+  },
+  {
+    "id": "8bb5e7ba-d398-4ad4-a41f-8f24d1b2375d",
+    "name": "Remo a un brazo con barra larga (inclinado)",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bent_Over_One-Arm_Long_Bar_Row/0.jpg"
+  },
+  {
+    "id": "aa470772-5bee-4f0b-a8b1-534196c7d310",
+    "name": "Remo inclinado con dos mancuernas",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bent_Over_Two-Dumbbell_Row/0.jpg"
+  },
+  {
+    "id": "9f70497b-aec3-4521-b819-0758458ceaf6",
+    "name": "Remo inclinado con mancuernas agarre neutro",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bent_Over_Two-Dumbbell_Row_With_Palms_In/0.jpg"
+  },
+  {
+    "id": "cc827f9a-4faa-4b03-ad5d-65fa1c8491c7",
+    "name": "Remo a un brazo en polea alta arrodillado",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Kneeling_Single-Arm_High_Pulley_Row/0.jpg"
+  },
+  {
+    "id": "78946ba0-4145-4f2e-9db9-433c99a2de23",
+    "name": "Press de hombro alternado en polea",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Alternating_Cable_Shoulder_Press/0.jpg"
+  },
+  {
+    "id": "289e2e69-b16b-4294-b5d4-25ba904ae7f1",
+    "name": "Buenos días con banda (Pull Through)",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Band_Good_Morning_Pull_Through/0.jpg"
+  },
+  {
+    "id": "7f20fcc4-e89b-44ea-88a7-3a5625bf6346",
+    "name": "Sentadilla lateral con barra",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Side_Split_Squat/0.jpg"
+  },
+  {
+    "id": "d7a33ece-e44d-4099-8300-00e96c86e6c7",
+    "name": "Zancada caminando con barra",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Walking_Lunge/0.jpg"
+  },
+  {
+    "id": "f58987a3-3394-4273-853b-05ada8ff0ad8",
+    "name": "Sentadilla en silla",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Chair_Squat/0.jpg"
+  },
+  {
+    "id": "c9c86846-5073-4387-abfd-406c43176110",
+    "name": "Talones al glúteo (doble pierna)",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Double_Leg_Butt_Kick/0.jpg"
+  },
+  {
+    "id": "803326cc-0aac-4430-9ded-9162ffaf58f6",
+    "name": "Carrera en caminadora",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Running_Treadmill/0.jpg"
+  },
+  {
+    "id": "a7b09a9b-2c7b-4e33-bcef-87c1747c2016",
+    "name": "Press anti-gravedad",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Anti-Gravity_Press/0.jpg"
+  },
+  {
+    "id": "a46a6da8-e686-462c-a7b0-f3ba6fc71fd8",
+    "name": "Elevación de hombros en banco inclinado",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Incline_Shoulder_Raise/0.jpg"
+  },
+  {
+    "id": "e3ac80bd-7783-4f95-903b-abf9e90853e1",
+    "name": "Remo de deltoides posterior con barra",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Rear_Delt_Row/0.jpg"
+  },
+  {
+    "id": "207901ab-e4dc-4f53-82de-20acbf696555",
+    "name": "Caminata en caminadora",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Walking_Treadmill/0.jpg"
+  },
+  {
+    "id": "d2218c3c-4b93-4da1-a890-465a5c1fa2e2",
+    "name": "Press inclinado con barra",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Incline_Bench_Press_-_Medium_Grip/0.jpg"
+  },
+  {
+    "id": "04173699-8e44-4455-80a1-f09c18ddb596",
+    "name": "Hip thrust con barra",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Hip_Thrust/0.jpg"
+  },
+  {
+    "id": "750a5a23-d355-4521-8dfc-6605c2f67b7c",
+    "name": "Sentadilla libre",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bodyweight_Squat/0.jpg"
+  },
+  {
+    "id": "9b56de9a-db63-406c-a40c-9faf3c466625",
+    "name": "Clean invertido desde posición colgada",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bottoms-Up_Clean_From_The_Hang_Position/0.jpg"
+  },
+  {
+    "id": "a025d818-c3bc-416b-80fb-ce313e250ded",
+    "name": "Flexión inclinada agarre cerrado",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Incline_Push-Up_Close-Grip/0.jpg"
+  },
+  {
+    "id": "1c3ce11b-a47a-424a-a7ac-cc6e0dff8238",
+    "name": "Fondos en banco",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bench_Dips/0.jpg"
+  },
+  {
+    "id": "090e0716-98b9-4ad7-9e3c-86f406e2adbf",
+    "name": "Elevaciones en plancha (Butt-Up)",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Butt-Ups/0.jpg"
+  },
+  {
+    "id": "1227031a-7c0a-4e4b-9059-9c1be0f47fcf",
+    "name": "Press de banca con bandas",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bench_Press_-_With_Bands/0.jpg"
+  },
+  {
+    "id": "5bcedcde-3c6e-4c69-a015-1d9cdfaec812",
+    "name": "Press de pecho en polea",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Chest_Press/0.jpg"
+  },
+  {
+    "id": "d491b763-8d3c-42da-b571-8f80e4ed1fa7",
+    "name": "Press en suelo alternado",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Alternating_Floor_Press/0.jpg"
+  },
+  {
+    "id": "a372f708-1050-4077-a4e9-7a1598d5f22c",
+    "name": "Encogimiento olímpico",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Clean_Shrug/0.jpg"
+  },
+  {
+    "id": "ff021468-0369-44e9-aec1-8c6b84853150",
+    "name": "Rotaciones y Círculos de Brazos (Arm Circles)",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Arm_Circles/0.jpg"
+  },
+  {
+    "id": "bca6bfd8-94d2-4998-9c5f-03186ae718cd",
+    "name": "Movilidad Rotacional de Cadera (Círculos)",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hip_Circles/0.jpg"
+  },
+  {
+    "id": "2424d601-3cca-4c12-8787-45533183a4ec",
+    "name": "Dominada supina",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Chin-Up/0.jpg"
+  },
+  {
+    "id": "a3b9e8a9-27fe-4c76-9aef-e85aa8d608fb",
+    "name": "Jalón al pecho agarre cerrado",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Close-Grip_Front_Lat_Pulldown/0.jpg"
+  },
+  {
+    "id": "43a22219-1e93-4413-ae34-990b56ae4dad",
+    "name": "Jumping Jacks (Saltos de Tijera)",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Jumping_Jacks/0.jpg"
+  },
+  {
+    "id": "39762cbf-ea44-4b89-ad12-31baa4d8bdb1",
+    "name": "Remo a un brazo con mancuerna",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/One-Arm_Dumbbell_Row/0.jpg"
+  },
+  {
+    "id": "ea277324-d87d-49f6-901d-c1e10ff63f69",
+    "name": "Caminata de Manos (Inchworm)",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Inchworm/0.jpg"
+  },
+  {
+    "id": "852d963d-0cb3-4dd9-b88a-49f7da0a6267",
+    "name": "Remo en polea alta arrodillado",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Kneeling_High_Pulley_Row/0.jpg"
+  },
+  {
+    "id": "87c16684-b6e0-4e42-a5d3-88a54ecb9ab1",
+    "name": "Estiramiento de Gemelos en Pared",
+    "media_url": "/exercises/estiramiento_gemelos.jpg"
+  },
+  {
+    "id": "b31c14ad-914f-46cc-9727-0d829baa86a2",
+    "name": "Buenos días con banda",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Band_Good_Morning/0.jpg"
+  },
+  {
+    "id": "3746aa1e-07a2-4e11-8428-9af4f0635852",
+    "name": "Estiramiento de Cobra (Abdomen y Psoas)",
+    "media_url": "/exercises/estiramiento_cobra.jpg"
+  },
+  {
+    "id": "4dc52377-9f1c-4db1-820c-6f98ec60f11e",
+    "name": "Estiramiento de Cuádriceps de Pie",
+    "media_url": "/exercises/estiramiento_quads.jpg"
+  },
+  {
+    "id": "b8d6a87c-60c4-43a9-b3fa-93ceb768a3b0",
+    "name": "Estiramiento de Dorsal y Espalda Colgado",
+    "media_url": "/exercises/estiramiento_dorsal.jpg"
+  },
+  {
+    "id": "33574974-e293-4bcb-9bac-95af83a4a46e",
+    "name": "Estiramiento de Glúteo Piriforme (Figura 4)",
+    "media_url": "/exercises/estiramiento_gluteo.jpg"
+  },
+  {
+    "id": "cf6ad1f2-ce6a-4638-9b40-c9bd8fb4a33e",
+    "name": "Estiramiento de Pectoral en Marco de Puerta",
+    "media_url": "/exercises/estiramiento_pecho.jpg"
+  },
+  {
+    "id": "1c93d9a1-d4ea-4170-84c1-6486762fc9cf",
+    "name": "Estiramiento de Tríceps sobre la Cabeza",
+    "media_url": "/exercises/estiramiento_triceps.jpg"
+  },
+  {
+    "id": "032a13ac-974d-4c71-a34a-e945899f536d",
+    "name": "Gato-Camello Dinámico (Cat-Cow)",
+    "media_url": "/exercises/calentamiento_catcow.jpg"
+  },
+  {
+    "id": "06db8c65-8502-4dc2-909e-ca347cba2629",
+    "name": "Zancada Dinámica con Torsión de Tronco",
+    "media_url": "/exercises/calentamiento_zancada.jpg"
+  },
+  {
+    "id": "748a52a1-ffcb-4432-8ef4-abdb87a122f8",
+    "name": "Sentadilla de Movilidad sin Peso (Air Squat)",
+    "media_url": "/exercises/calentamiento_squat.jpg"
+  },
+  {
+    "id": "fd6413a9-c171-4d16-8589-3c4d48c490f2",
+    "name": "Press Bradford",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bradford_Rocky_Presses/0.jpg"
+  },
+  {
+    "id": "fa84844c-1231-4a5e-a867-5c1474409d13",
+    "name": "Rotación interna en polea",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Internal_Rotation/0.jpg"
+  },
+  {
+    "id": "9fb9c092-edcc-401e-9d47-a1df49ac294d",
+    "name": "Remo deltoides posterior en polea con cuerda",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Rope_Rear-Delt_Rows/0.jpg"
+  },
+  {
+    "id": "8b66b339-5065-4eeb-ab7d-b81213bcbfa0",
+    "name": "Elíptica",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Elliptical_Trainer/0.jpg"
+  },
+  {
+    "id": "f734a171-68f5-409c-9027-a8539b41d3b9",
+    "name": "Bicicleta aérea",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Air_Bike/0.jpg"
+  },
+  {
+    "id": "cf482758-9709-4994-a1e1-0c3cd5aa014a",
+    "name": "Elevación de cadera con rodillas flexionadas",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bent-Knee_Hip_Raise/0.jpg"
+  },
+  {
+    "id": "22796249-634f-4fbb-9006-cdb56f5e079b",
+    "name": "Inversión de cadera",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bottoms_Up/0.jpg"
+  },
+  {
+    "id": "72c112d3-74b0-4b30-acb4-e4f26a579d52",
+    "name": "Bicicleta estática",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bicycling_Stationary/0.jpg"
+  },
+  {
+    "id": "157c7f62-3ff0-4cee-8ef7-97580a08935c",
+    "name": "Péndulo con kettlebell",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Kettlebell_Pirate_Ships/0.jpg"
+  },
+  {
+    "id": "6523eec1-5309-4bf3-9c0c-7059bea40da1",
+    "name": "Bicicleta reclinada",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Recumbent_Bike/0.jpg"
+  },
+  {
+    "id": "fd946232-4b14-4a8c-8a8d-432a8a36577a",
+    "name": "Trote en caminadora",
+    "media_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Jogging_Treadmill/0.jpg"
+  }
+]

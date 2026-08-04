@@ -141,7 +141,7 @@ BEGIN
   ) VALUES (
     v_gym_id, 'Movilidad Rotacional de Cadera (Círculos)', 'gluteo', ARRAY['pierna'], 'peso_corporal',
     'movilidad', 'De pie apoyándote en un soporte, eleva la rodilla a 90 grados y dibuja círculos amplios con la articulación de la cadera hacia afuera y luego hacia adentro.',
-    ARRAY['calentamiento'], 'gym', true, 'admin', 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hip_Circles/0.jpg'
+    ARRAY['calentamiento'], 'gym', true, 'admin', NULL  -- Hip_Circles: la imagen no existe en el catálogo de origen (404). Se siembra sin foto.
   ) ON CONFLICT DO NOTHING;
 
   -- 14. Zancada Dinámica con Torsión de Tronco
@@ -171,7 +171,7 @@ BEGIN
   ) VALUES (
     v_gym_id, 'Jumping Jacks (Saltos de Tijera)', 'cardio', ARRAY['pierna'], 'peso_corporal',
     'cardio', 'Da saltos rítmicos abriendo simultáneamente las piernas hacia los lados y elevando las manos sobre la cabeza para activar el pulso cardíaco.',
-    ARRAY['calentamiento'], 'gym', true, 'admin', 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Jumping_Jacks/0.jpg'
+    ARRAY['calentamiento'], 'gym', true, 'admin', NULL  -- Jumping_Jacks: la imagen no existe en el catálogo de origen (404). Se siembra sin foto.
   ) ON CONFLICT DO NOTHING;
 
   -- 17. Caminata de Manos (Inchworm)
@@ -191,7 +191,7 @@ BEGIN
   ) VALUES (
     v_gym_id, 'Elevación de Rodillas al Pecho (High Knees)', 'cardio', ARRAY['pierna','abdomen'], 'peso_corporal',
     'cardio', 'Trote dinámico en el mismo sitio elevando activamente las rodillas hasta la altura de la cadera de forma rápida y continua.',
-    ARRAY['calentamiento'], 'gym', true, 'admin', 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/High_Knees/0.jpg'
+    ARRAY['calentamiento'], 'gym', true, 'admin', NULL  -- High_Knees: la imagen no existe en el catálogo de origen (404). Se siembra sin foto.
   ) ON CONFLICT DO NOTHING;
 
 END $$;
