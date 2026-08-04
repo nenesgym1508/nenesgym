@@ -1,4 +1,18 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+
+  "//": [
+    "regions: pdx1 = Portland (Oregón). Debe coincidir con la región de",
+    "Supabase, que es us-west-2. Por defecto Vercel despliega en iad1",
+    "(Washington DC): con esa configuración CADA consulta a la base cruzaba",
+    "Estados Unidos de costa a costa —unos 3.700 km, ~60-70 ms de ida y vuelta",
+    "solo en propagación— y las pantallas que encadenan varias consultas",
+    "pagaban ese peaje una vez por consulta.",
+    "Si algún día se mueve el proyecto de Supabase a otra región, hay que",
+    "cambiar esto a la equivalente o se vuelve al problema."
+  ],
+  "regions": ["pdx1"],
+
   "headers": [
     {
       "source": "/(.*)",
