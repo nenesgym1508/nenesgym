@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Loader2, X, Crop } from "lucide-react"
 import { createExerciseAction, updateExerciseAction, uploadExerciseImageAction } from "@/actions/exercises.actions"
-import { processExerciseImage } from "@/lib/image-processor"
+import { processExerciseImage, validateImageFile } from "@/lib/image-processor"
 import { ImageCropModal } from "@/components/ui/image-crop-modal"
 import { Input, Textarea } from "@/components/ui/input"
 import { SelectField } from "@/components/ui/select-field"
@@ -33,22 +33,21 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
   const [uploading, setUploading] = useState(false)
   const [cropSrc, setCropSrc] = useState<string | null>(null)
   const [fileInputKey, setFileInputKey] = useState(0)
-
-  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
-  const MAX_ORIGINAL_SIZE = 10 * 1024 * 1024 // 10 MB
+  // Los errores de la foto se muestran JUNTO al control de subida, no en el
+  // `error` general del pie del formulario: en un modal con scroll ese pie
+  // queda fuera de pantalla, y el usuario veía el archivo rechazado "sin
+  // motivo" — parecía que el botón no hacía nada.
+  const [imageError, setImageError] = useState<string | null>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     setError(null)
+    setImageError(null)
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setError("Formato no permitido. Selecciona una imagen JPG, PNG o WebP.")
-      setFileInputKey((k) => k + 1)
-      return
-    }
-    if (file.size > MAX_ORIGINAL_SIZE) {
-      setError("La imagen seleccionada no puede superar los 10 MB.")
+    const check = validateImageFile(file)
+    if (!check.ok) {
+      setImageError(check.message)
       setFileInputKey((k) => k + 1)
       return
     }
@@ -64,6 +63,7 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
   const handleCropExisting = () => {
     if (!mediaUrl) return
     setError(null)
+    setImageError(null)
     setCropSrc(mediaUrl)
   }
 
@@ -85,14 +85,14 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
       setUploading(false)
 
       if ("error" in res) {
-        setError(res.error)
+        setImageError(res.error)
       } else {
         setMediaUrl(res.url)
       }
     } catch (err: unknown) {
       setUploading(false)
       const msg = err instanceof Error ? err.message : "Error al procesar la imagen."
-      setError(msg)
+      setImageError(msg)
     }
   }
 
@@ -261,6 +261,12 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
                 )}
               </div>
             </div>
+
+            {imageError && (
+              <p className="text-xs text-red-400 leading-relaxed" role="alert">
+                {imageError}
+              </p>
+            )}
           </div>
 
           <SelectField
