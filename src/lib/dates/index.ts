@@ -87,6 +87,18 @@ export function membershipRemainingDays(
  * un corte robusto. IMPORTANTE: debe coincidir con el umbral del RPC
  * `process_check_in` en Supabase.
  */
+/**
+ * Suma (o resta, con días negativos) días a una fecha `YYYY-MM-DD` y devuelve
+ * otra fecha `YYYY-MM-DD`. Se ancla al mediodía a propósito: parsear una fecha
+ * pelada la interpretaría como UTC-00:00 y en Bogotá (UTC-5) caería en el día
+ * anterior al volver a formatearla.
+ */
+export function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr + "T12:00:00")
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split("T")[0]!
+}
+
 export const GYM_SESSION_CUTOFF_HOUR = 14
 
 /**

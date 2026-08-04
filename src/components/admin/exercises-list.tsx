@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import Image from "next/image"
 import { Plus, Pencil, Star, Trash2, Search } from "lucide-react"
 import { ExerciseImageThumbnail } from "@/components/ui/exercise-image-thumbnail"
 import { toggleExerciseAction, deleteExerciseAction } from "@/actions/exercises.actions"
@@ -221,8 +220,6 @@ interface ExerciseRowProps {
 }
 
 function ExerciseRow({ ex, isLast, togglingId, deletingId, onEdit, onToggle, onDelete, onView }: ExerciseRowProps) {
-  const [imgError, setImgError] = useState(false)
-
   return (
     <div className={`flex items-center gap-3 px-4 py-3 ${!isLast ? "border-b border-white/5" : ""}`}>
       <button

@@ -22,7 +22,9 @@ export default async function TrainingRoutineDetailPage({
 
   const [routine, exercises, clients] = await Promise.all([
     getTrainingRoutineWithDays(id),
-    getExercises(),
+    // Solo el catálogo del gimnasio: sin este filtro el selector mezclaría los
+    // ejercicios personales de TODOS los clientes (visibility = 'client').
+    getExercises({ visibility: "gym" }),
     getAllClients()
   ])
 

@@ -3,14 +3,8 @@ import { Plus, Dumbbell, ChevronRight, CheckCircle2 } from "lucide-react"
 import { getDailyClasses, getWeekMuscleBalance, CLASS_OBJECTIVE_LABELS } from "@/services/classes.service"
 import { Card } from "@/components/ui/card"
 import { ROUTES, adminClaseDetalle } from "@/constants/routes"
-import { todayInBogota } from "@/lib/dates"
+import { todayInBogota, addDays } from "@/lib/dates"
 import { MUSCLE_GROUP_LABELS } from "@/types/exercise"
-
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr + "T12:00:00")
-  d.setDate(d.getDate() + days)
-  return d.toISOString().split("T")[0]!
-}
 
 function getMondayDate(today: string): string {
   const d = new Date(today + "T12:00:00")

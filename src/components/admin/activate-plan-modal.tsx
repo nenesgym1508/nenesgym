@@ -8,7 +8,7 @@ import { LoadingButton } from "@/components/ui/loading-button"
 import { formatCOP, computePlanDiscount } from "@/lib/utils"
 import { PAYMENT_METHOD_LABELS } from "@/constants/plans"
 import type { PaymentMethod } from "@/types/payment"
-import { formatDate } from "@/lib/dates"
+import { formatDate, addDays } from "@/lib/dates"
 
 interface Plan {
   id: string
@@ -25,12 +25,6 @@ interface ActivatePlanModalProps {
   triggerVariant?: 'default' | 'card'
   isActive?: boolean
   currentEndDate?: string
-}
-
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr + "T12:00:00")
-  d.setDate(d.getDate() + days)
-  return d.toISOString().split("T")[0]!
 }
 
 const METHODS: PaymentMethod[] = ["cash", "transfer", "nequi", "daviplata", "other"]

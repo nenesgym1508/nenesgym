@@ -17,7 +17,7 @@ export default async function AdminClaseDetallePage({
 
   const [dailyClass, exercises] = await Promise.all([
     getDailyClassWithBlocks(id),
-    getExercises({ includeInactive: false }),
+    getExercises({ includeInactive: false, visibility: "gym" }),
   ])
 
   if (!dailyClass) notFound()

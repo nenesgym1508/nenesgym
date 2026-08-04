@@ -6,6 +6,7 @@ import { createExerciseAction, updateExerciseAction, uploadExerciseImageAction }
 import { processExerciseImage } from "@/lib/image-processor"
 import { ImageCropModal } from "@/components/ui/image-crop-modal"
 import { Input, Textarea } from "@/components/ui/input"
+import { SelectField } from "@/components/ui/select-field"
 import { Button } from "@/components/ui/button"
 import {
   MUSCLE_GROUP_LABELS,
@@ -365,31 +366,3 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
   )
 }
 
-function SelectField({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  options: { value: string; label: string }[]
-}) {
-  return (
-    <div className="space-y-1.5">
-      <label className="text-xs font-medium text-zinc-400">{label}</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-white/10 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-red-600/50"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  )
-}

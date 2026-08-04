@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { updateTag } from "next/cache"
 import { GYM_ID } from "@/constants/plans"
+import { addDays } from "@/lib/dates"
 import { MUSCLE_GROUP_LABELS } from "@/types/exercise"
 import type { ClassObjective, ClassLevel } from "@/services/classes.service"
 import type { MuscleGroup } from "@/services/exercises.service"
@@ -16,12 +17,6 @@ const COMPLEMENTARY_GROUPS: Partial<Record<MuscleGroup, MuscleGroup[]>> = {
   biceps: ["espalda"],
   triceps: ["pecho", "hombro"],
   abdomen: ["movilidad"],
-}
-
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr + "T12:00:00")
-  d.setDate(d.getDate() + days)
-  return d.toISOString().split("T")[0]!
 }
 
 function getMonday(dateStr: string): string {

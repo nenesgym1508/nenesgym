@@ -28,6 +28,7 @@ import { ExerciseForm } from "@/components/admin/exercise-form"
 import { ActionMenu } from "@/components/ui/action-menu"
 import { ExerciseImageThumbnail } from "@/components/ui/exercise-image-thumbnail"
 import { ROUTES } from "@/constants/routes"
+import { addDays } from "@/lib/dates"
 import {
   CLASS_OBJECTIVE_LABELS,
   type DailyClassWithBlocks,
@@ -53,12 +54,6 @@ interface ClassEditorProps {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr + "T12:00:00")
-  d.setDate(d.getDate() + days)
-  return d.toISOString().split("T")[0]!
-}
 
 type BalanceLevel = "Alto" | "Medio" | "Bajo"
 
@@ -991,14 +986,6 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMulti
     setSelectedExercises([])
   }
 
-  const handleAddDirect = (ex: Exercise) => {
-    if (onSelectMultiple) {
-      onSelectMultiple([{ exercise: ex }])
-    } else if (onSelect) {
-      onSelect(ex)
-    }
-  }
-
   return (
     <div
       className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 md:backdrop-blur-sm"
@@ -1257,12 +1244,15 @@ function ExerciseDetailSheet({
 
         <div className="flex-1 overflow-y-auto">
           {exercise.media_url ? (
-            <img
-              src={exercise.media_url}
-              alt=""
-              className="w-full h-56 object-cover bg-zinc-800"
-              onError={(e) => { e.currentTarget.style.display = "none" }}
-            />
+            <div className="relative w-full h-56 bg-zinc-800">
+              <Image
+                src={exercise.media_url}
+                alt=""
+                fill
+                sizes="(max-width: 768px) 100vw, 512px"
+                className="object-cover"
+              />
+            </div>
           ) : (
             <div className="flex h-40 w-full items-center justify-center bg-zinc-800 text-zinc-600">
               <Dumbbell className="size-12" />
