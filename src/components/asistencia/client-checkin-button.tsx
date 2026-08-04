@@ -9,59 +9,18 @@ import { SuccessToast } from "@/components/ui/success-toast"
 import { clientCheckInAction } from "@/actions/client.actions"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { toZonedTime } from "date-fns-tz"
-import { nowInBogota, GYM_TIMEZONE } from "@/lib/dates"
+import { getCheckInShiftValidation } from "@/lib/check-in-shift"
 
 interface ClientCheckInButtonProps {
   alreadyToday: boolean
+  /** Ingresos ya registrados hoy. Sin esto no se puede aplicar el tope diario. */
+  sessionsToday?: number
   lastCheckedInAt?: string | null
-}
-
-function getCheckInShiftValidation(
-  lastCheckedInAt?: string | null,
-  alreadyToday: boolean = false
-): { canCheckIn: boolean; message: string | null; buttonText: string } {
-  const now = nowInBogota()
-  const currentHour = now.getHours()
-  const currentShift = currentHour < 14 ? "am" : "pm"
-
-  if (!alreadyToday || !lastCheckedInAt) {
-    return {
-      canCheckIn: true,
-      message: null,
-      buttonText: "Sí, ingresar",
-    }
-  }
-
-  const lastCheckInDate = toZonedTime(new Date(lastCheckedInAt), GYM_TIMEZONE)
-  const lastHour = lastCheckInDate.getHours()
-  const lastShift = lastHour < 14 ? "am" : "pm"
-  const formattedLastTime = format(lastCheckInDate, "h:mm a", { locale: es })
-
-  if (lastShift === "am") {
-    if (currentShift === "am") {
-      return {
-        canCheckIn: false,
-        message: `Ya registraste tu ingreso del turno de la mañana (a las ${formattedLastTime}). Podrás registrar tu segundo ingreso en el turno de la tarde.`,
-        buttonText: "Turno mañana registrado",
-      }
-    }
-    return {
-      canCheckIn: true,
-      message: null,
-      buttonText: "Sí, ingresar",
-    }
-  }
-
-  return {
-    canCheckIn: false,
-    message: `Ya registraste tu ingreso del día de hoy (a las ${formattedLastTime}).`,
-    buttonText: "Ingreso de hoy registrado",
-  }
 }
 
 export function ClientCheckInButton({
   alreadyToday,
+  sessionsToday = 0,
   lastCheckedInAt,
 }: ClientCheckInButtonProps) {
   const router = useRouter()
@@ -70,7 +29,7 @@ export function ClientCheckInButton({
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successData, setSuccessData] = useState<{ title: string; subtitle: string; message: string } | null>(null)
 
-  const shiftValidation = getCheckInShiftValidation(lastCheckedInAt, alreadyToday)
+  const shiftValidation = getCheckInShiftValidation(lastCheckedInAt, sessionsToday, alreadyToday)
 
   async function handleCheckIn() {
     if (!shiftValidation.canCheckIn) return

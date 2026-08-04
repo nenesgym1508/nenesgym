@@ -48,7 +48,8 @@ export default async function ClienteAsistenciaPage() {
     : null
 
   const hasActivePlan = effectiveStatus === "active" || effectiveStatus === "grace"
-  const alreadyToday = recent[0]?.check_in_date === today
+  const sessionsToday = recent.filter((r) => r.check_in_date === today).length
+  const alreadyToday = sessionsToday > 0
 
   return (
     <div>
@@ -94,6 +95,7 @@ export default async function ClienteAsistenciaPage() {
 
             <ClientCheckInButton
               alreadyToday={alreadyToday}
+              sessionsToday={sessionsToday}
               lastCheckedInAt={recent[0]?.checked_in_at}
             />
           </>

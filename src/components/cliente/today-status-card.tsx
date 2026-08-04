@@ -7,8 +7,8 @@ import { useRouter } from "next/navigation"
 import { CheckCircle2, ChevronRight, Clock, Hourglass, AlertTriangle, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { toZonedTime } from "date-fns-tz"
-import { formatDatetime, nowInBogota, GYM_TIMEZONE } from "@/lib/dates"
+import { formatDatetime } from "@/lib/dates"
+import { getCheckInShiftValidation } from "@/lib/check-in-shift"
 import { ROUTES } from "@/constants/routes"
 import { SuccessToast } from "@/components/ui/success-toast"
 import { clientCheckInAction } from "@/actions/client.actions"
@@ -24,64 +24,6 @@ interface TodayStatusCardProps {
   paymentAlert?: PaymentAlert | null
   showRegisterCta?: boolean
   hasActivePlan?: boolean
-}
-
-function getCheckInShiftValidation(
-  lastCheckInAt?: string | null,
-  sessionsToday: number = 0,
-  trainedToday: boolean = false
-): { canCheckIn: boolean; message: string | null; buttonText: string; showDoubleCounter: boolean } {
-  const now = nowInBogota()
-  const currentHour = now.getHours()
-  const currentShift = currentHour < 14 ? "am" : "pm"
-
-  if (sessionsToday >= 2) {
-    return {
-      canCheckIn: false,
-      message: "Ya completaste tus 2 ingresos permitidos por día (Turno Mañana y Turno Tarde).",
-      buttonText: "Ingresos de hoy completados",
-      showDoubleCounter: true,
-    }
-  }
-
-  if (!trainedToday || !lastCheckInAt) {
-    return {
-      canCheckIn: true,
-      message: null,
-      buttonText: "Sí, ingresar",
-      showDoubleCounter: false,
-    }
-  }
-
-  const lastCheckInDate = toZonedTime(new Date(lastCheckInAt), GYM_TIMEZONE)
-  const lastHour = lastCheckInDate.getHours()
-  const lastShift = lastHour < 14 ? "am" : "pm"
-  const formattedLastTime = format(lastCheckInDate, "h:mm a", { locale: es })
-
-  if (lastShift === "am") {
-    if (currentShift === "am") {
-      return {
-        canCheckIn: false,
-        message: `Ya registraste tu ingreso del turno de la mañana (a las ${formattedLastTime}). Podrás registrar tu segundo ingreso en el turno de la tarde.`,
-        buttonText: "Turno mañana registrado",
-        showDoubleCounter: true,
-      }
-    }
-    return {
-      canCheckIn: true,
-      message: null,
-      buttonText: "Sí, ingresar",
-      showDoubleCounter: true,
-    }
-  }
-
-  // Si su registro de hoy fue en el turno PM (y no asistió en la mañana), ya no tiene más turnos hoy
-  return {
-    canCheckIn: false,
-    message: `Ya registraste tu ingreso del día de hoy (a las ${formattedLastTime}).`,
-    buttonText: "Ingreso de hoy registrado",
-    showDoubleCounter: false,
-  }
 }
 
 export function TodayStatusCard({
