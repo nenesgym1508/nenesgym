@@ -27,12 +27,13 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${geist.variable} ${bebas.variable} h-full dark`}>
-      <body className="h-full bg-background text-foreground antialiased">
+      <body className="h-full bg-background text-foreground antialiased overflow-x-clip">
         {children}
         <script
           dangerouslySetInnerHTML={{

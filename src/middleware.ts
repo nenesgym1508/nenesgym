@@ -25,16 +25,21 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh session — must be called before any redirect
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
   const { pathname } = request.nextUrl
 
   const isAuthRoute = pathname === ROUTES.LOGIN || pathname === ROUTES.REGISTER
   const isProtectedRoute =
     pathname.startsWith('/cliente') || pathname.startsWith('/admin')
+
+  // Si no es ni una ruta protegida ni una ruta de auth, retornamos directamente sin hacer llamada a auth de red
+  if (!isAuthRoute && !isProtectedRoute) {
+    return supabaseResponse
+  }
+
+  // Refresh session — solo para rutas que realmente lo necesitan
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   // Unauthenticated user trying to access protected route
   if (!user && isProtectedRoute) {

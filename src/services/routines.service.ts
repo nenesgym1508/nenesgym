@@ -100,15 +100,14 @@ export async function getAssignedRoutine(clientId: string): Promise<ClientRoutin
 }
 
 export async function getActiveRoutineForClient(clientId: string): Promise<ClientRoutine | null> {
-  const adminAssigned = await getAssignedRoutine(clientId)
-  if (adminAssigned) return adminAssigned
-
   const supabase = await createClient()
+  // Consulta directa de 1 solo rountrip: prioriza creada por admin si existe, o cualquier activa
   const { data } = await supabase
     .from("client_routines")
     .select("*")
     .eq("client_id", clientId)
     .eq("status", "active")
+    .order("created_by_role", { ascending: true }) // 'admin' va antes que 'client' alfabéticamente
     .order("created_at", { ascending: false })
     .limit(1)
 
