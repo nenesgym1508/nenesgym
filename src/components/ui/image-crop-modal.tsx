@@ -96,6 +96,22 @@ async function getFullSizeFile(imageSrc: string, fileName: string): Promise<File
   })
 }
 
+/**
+ * Alto del área donde se ve la imagen a recortar.
+ *
+ * En línea y en `vh`, no como clase `h-[40dvh]`, por el mismo motivo que el
+ * posicionamiento del overlay: si esa clase no llega, el contenedor colapsa a
+ * altura cero. Y como `react-easy-crop` posiciona su lienzo en absoluto dentro
+ * de él, el resultado es un modal que se abre "sin imagen" — sin ningún error,
+ * como si la foto no cargara. Con `minHeight` se garantiza un área usable
+ * incluso en ventanas muy bajas.
+ */
+const CANVAS_STYLE: React.CSSProperties = {
+  height: "45vh",
+  minHeight: 220,
+  maxHeight: 460,
+}
+
 interface ImageCropModalProps {
   src: string
   aspect?: number
@@ -169,7 +185,10 @@ export function ImageCropModal({
       onPointerDown={stop}
       onTouchStart={stop}
     >
-      <div className="flex w-full max-w-2xl max-h-[95dvh] flex-col gap-3 rounded-3xl bg-zinc-950 p-4 sm:p-6 shadow-2xl border border-white/10 overflow-y-auto">
+      <div
+        style={{ maxHeight: "95vh" }}
+        className="flex w-full max-w-2xl flex-col gap-3 rounded-3xl bg-zinc-950 p-4 sm:p-6 shadow-2xl border border-white/10 overflow-y-auto"
+      >
         {/* Cabecera */}
         <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
@@ -230,13 +249,13 @@ export function ImageCropModal({
 
         {/* Área del Cropper */}
         {useFullImage ? (
-          <div className="relative h-[40dvh] sm:h-[45dvh] w-full shrink-0 overflow-hidden rounded-2xl bg-black border border-white/5 flex items-center justify-center">
+          <div style={CANVAS_STYLE} className="relative w-full shrink-0 overflow-hidden rounded-2xl bg-black border border-white/5 flex items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={effectiveSrc} alt={label} className="max-h-full max-w-full object-contain" />
           </div>
         ) : (
           <>
-            <div className="relative h-[40dvh] sm:h-[45dvh] w-full shrink-0 overflow-hidden rounded-2xl bg-black border border-white/5">
+            <div style={CANVAS_STYLE} className="relative w-full shrink-0 overflow-hidden rounded-2xl bg-black border border-white/5">
               <Cropper
                 image={effectiveSrc}
                 crop={crop}
