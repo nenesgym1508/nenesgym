@@ -888,6 +888,10 @@ export function PaymentUploadForm({ plans, comprobanteBloqueado, clientId }: Pay
           onConfirm={processCroppedReceipt}
           onCancel={() => setCropTarget(null)}
           aspect={4 / 5}
+          // Abre en "Imagen completa": recortar un comprobante puede dejar
+          // fuera la referencia o el monto, que es justo lo que lee la
+          // verificación con IA. Quien quiera recortar, puede.
+          defaultFullImage
         />
       )}
     </div>

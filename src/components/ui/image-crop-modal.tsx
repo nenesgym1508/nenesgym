@@ -121,6 +121,14 @@ interface ImageCropModalProps {
   allowAspectChange?: boolean
   cropShape?: "rect" | "round"
   showGrid?: boolean
+  /**
+   * Abrir directamente en "Imagen completa", sin recorte.
+   *
+   * Para comprobantes de pago: recortar puede dejar fuera la referencia o el
+   * monto, que es justo lo que lee la verificación con IA. Quien quiera
+   * recortar puede hacerlo, pero el que no toque nada envía la foto entera.
+   */
+  defaultFullImage?: boolean
 }
 
 export function ImageCropModal({
@@ -132,6 +140,7 @@ export function ImageCropModal({
   allowAspectChange = true,
   cropShape = "rect",
   showGrid = true,
+  defaultFullImage = false,
 }: ImageCropModalProps) {
   const [currentAspect, setCurrentAspect] = useState<number>(aspect)
   const [crop, setCrop] = useState({ x: 0, y: 0 })
@@ -139,7 +148,7 @@ export function ImageCropModal({
   const [croppedAreaPx, setCroppedAreaPx] = useState<Area | null>(null)
   const [processing, setProcessing] = useState(false)
   const [cropError, setCropError] = useState("")
-  const [useFullImage, setUseFullImage] = useState(false)
+  const [useFullImage, setUseFullImage] = useState(defaultFullImage)
 
   const effectiveSrc = (src.startsWith("http://") || src.startsWith("https://"))
     ? `/api/proxy-image?url=${encodeURIComponent(src)}`

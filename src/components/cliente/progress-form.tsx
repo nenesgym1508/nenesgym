@@ -2,17 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2, CheckCircle, Plus, X, Pencil, ChevronDown, ChevronUp } from "lucide-react"
-import { progressRecordSchema } from "@/schemas/progress.schema"
+import { progressResolver, type ProgressInput } from "@/schemas/progress.client"
 import { addProgressRecord } from "@/actions/progress.actions"
 import { adminSaveProgressRecordAction } from "@/actions/admin.actions"
 import { Input, Textarea } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import type { z } from "zod"
 import type { ProgressRecord } from "@/types/progress"
 
-type ProgressInput = z.infer<typeof progressRecordSchema>
 
 interface ProgressFormProps {
   todayRecord?: ProgressRecord | null
@@ -52,7 +49,7 @@ export function ProgressForm({ todayRecord, latestHeightCm, clientId }: Progress
     reset,
     formState: { errors, isSubmitting },
   } = useForm<ProgressInput>({
-    resolver: zodResolver(progressRecordSchema),
+    resolver: progressResolver,
     defaultValues: buildDefaultValues(),
   })
 

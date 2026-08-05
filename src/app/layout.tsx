@@ -35,22 +35,44 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" className={`${geist.variable} ${bebas.variable} h-full dark`}>
       <body className="h-full bg-background text-foreground antialiased overflow-x-clip">
         {children}
+        {/*
+          Limpieza de Service Workers viejos (quedaron instalados en teléfonos
+          reales durante las pruebas del modo offline, que se revirtió).
+
+          La versión anterior de este script provocaba BUCLES DE RECARGA: no
+          esperaba a la promesa de unregister() y recargaba a los 150 ms. Pero
+          desregistrar un worker que está controlando la página no surte efecto
+          hasta que deja de controlarla, así que al recargar seguía apareciendo
+          en getRegistrations() → volvía a recargar → y así indefinidamente. Es
+          el "se queda cargando y toca cerrar y volver a abrir".
+
+          Ahora: se espera a los unregister, se borran también las cachés que el
+          worker dejó (sobreviven al desregistro), y la recarga ocurre COMO
+          MUCHO UNA VEZ por pestaña gracias al centinela en sessionStorage —
+          que es lo que hace imposible el bucle aunque algo falle.
+        */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                  var removed = false;
-                  for (var i = 0; i < registrations.length; i++) {
-                    registrations[i].unregister();
-                    removed = true;
-                  }
-                  if (removed) {
-                    console.log('Stale Service Worker unregistered.');
-                    setTimeout(function() { window.location.reload(); }, 150);
-                  }
-                });
-              }
+              (function () {
+                if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+                var FLAG = 'sw-cleanup-done';
+                if (sessionStorage.getItem(FLAG)) return;
+
+                navigator.serviceWorker.getRegistrations().then(function (regs) {
+                  if (!regs.length) { sessionStorage.setItem(FLAG, '1'); return; }
+                  return Promise.all(regs.map(function (r) { return r.unregister(); }))
+                    .then(function () {
+                      return window.caches ? caches.keys().then(function (keys) {
+                        return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+                      }) : null;
+                    })
+                    .then(function () {
+                      sessionStorage.setItem(FLAG, '1');
+                      window.location.reload();
+                    });
+                }).catch(function () { sessionStorage.setItem(FLAG, '1'); });
+              })();
             `,
           }}
         />
