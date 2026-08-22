@@ -20,9 +20,12 @@ const ActivatePlanModal = dynamicImport(() => import("@/components/admin/activat
 import { AutoAprobacionToggle } from "@/components/admin/auto-aprobacion-toggle"
 import { DesbloquearToggle } from "@/components/admin/desbloquear-toggle"
 import { AdjustMembershipModal } from "@/components/admin/adjust-membership-modal"
+import { ClientAccessCard } from "@/components/admin/client-access-card"
+import { getClientAccessState } from "@/services/invitations.service"
 import { ROUTES } from "@/constants/routes"
 import { formatDate, todayInBogota, nowInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
 import { formatCOP } from "@/lib/utils"
+import { isPlaceholderEmail } from "@/lib/placeholder-email"
 import type { MembershipStatus } from "@/types/membership"
 import type { ProgressRecord } from "@/types/progress"
 
@@ -46,6 +49,8 @@ export default async function AdminClienteDetallePage({
     getAvailablePlans(),
   ])
   if (!clientData) notFound()
+
+  const accessState = await getClientAccessState(clientData.id)
 
   const now = nowInBogota()
   const year = now.getFullYear()
@@ -102,7 +107,14 @@ export default async function AdminClienteDetallePage({
             <p className="text-sm font-semibold text-zinc-100 truncate">
               {clientProfile?.full_name ?? "Sin nombre"}
             </p>
-            <p className="text-[11px] text-zinc-500 truncate">{clientProfile?.email ?? ""}</p>
+            {/* El correo marcador (socio dado de alta sin correo) no se muestra nunca. */}
+            {isPlaceholderEmail(clientProfile?.email) ? (
+              <span className="inline-flex items-center rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
+                Sin cuenta de acceso
+              </span>
+            ) : (
+              <p className="text-[11px] text-zinc-500 truncate">{clientProfile?.email ?? ""}</p>
+            )}
           </div>
         </div>
         {effectiveStatus && <MembershipBadge status={effectiveStatus} />}
@@ -114,6 +126,10 @@ export default async function AdminClienteDetallePage({
           {clientExt.comprobante_bloqueado && <DesbloquearToggle clientId={clientData.id} />}
           <AutoAprobacionToggle clientId={clientData.id} initialValue={clientExt.auto_aprobacion ?? false} />
         </div>
+
+        {/* La invitación no forma parte del cobro: se puede enviar (o reenviar)
+            en cualquier momento después del alta. */}
+        <ClientAccessCard clientId={clientData.id} state={accessState} />
 
         <ClienteDetalleTabs clientId={clientData.id} active={activeTab} />
 

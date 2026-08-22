@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { UserCheck, X, CheckCircle } from "lucide-react"
 import { createManualPaymentAction } from "@/actions/admin.actions"
@@ -37,6 +37,20 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle")
   const [errorMsg, setErrorMsg] = useState("")
 
+  // Idempotencia del cobro: un doble clic reutiliza este id y la RPC devuelve
+  // ALREADY_APPLIED en vez de cobrar dos veces.
+  //
+  // ⚠️ REGENERARLO al abrir el modal y tras cada éxito es obligatorio, no
+  // higiene. Si se reutilizara entre cobros, la segunda RENOVACIÓN del mismo
+  // cliente devolvería ALREADY_APPLIED y **no se cobraría** — el mismo bug del
+  // doble cobro, pero al revés y mucho más difícil de detectar.
+  const requestIdRef = useRef<string>("")
+
+  const openModal = () => {
+    requestIdRef.current = crypto.randomUUID()
+    setOpen(true)
+  }
+
   const selectedPlan = plans.find((p) => p.id === planId)
 
   const reset = () => {
@@ -50,19 +64,31 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
     if (!selectedPlan) return
     setStatus("loading")
     setErrorMsg("")
-    const result = await createManualPaymentAction({
+    let result: Awaited<ReturnType<typeof createManualPaymentAction>>
+    try {
+      result = await createManualPaymentAction({
       clientId,
       planId: selectedPlan.id,
       amountCents: selectedPlan.price_cents,
       method,
       totalDays: selectedPlan.days,
       durationDays: selectedPlan.duration_days,
-    })
+        clientRequestId: requestIdRef.current,
+      })
+    } catch {
+      // Un Server Action que falla RECHAZA la promesa: sin este catch el estado
+      // se quedaba en "loading" y LoadingButton dejaba el botón muerto.
+      setErrorMsg("No se pudo conectar. Revisa la conexión e intenta de nuevo.")
+      setStatus("error")
+      return
+    }
     if (result.error) {
       setErrorMsg(result.error)
       setStatus("error")
     } else {
       setStatus("done")
+      // Cobro consumido: el siguiente necesita una intención nueva.
+      requestIdRef.current = crypto.randomUUID()
       router.refresh()
     }
   }
@@ -76,7 +102,7 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
     <>
       {triggerVariant === 'card' ? (
         <button
-          onClick={() => setOpen(true)}
+          onClick={openModal}
           className="w-full flex items-center justify-center gap-1.5 rounded-xl btn-glossy-red py-3 text-xs font-semibold text-white cursor-pointer hover:scale-[1.01] transition-transform"
         >
           <UserCheck className="size-4" />
@@ -84,7 +110,7 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
         </button>
       ) : (
         <button
-          onClick={() => setOpen(true)}
+          onClick={openModal}
           className="flex items-center gap-1.5 rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-900/40 transition-colors shrink-0 cursor-pointer"
         >
           <UserCheck className="size-3.5" />

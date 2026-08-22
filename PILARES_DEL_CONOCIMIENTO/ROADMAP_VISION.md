@@ -39,6 +39,37 @@ Ninguna bloquea la entrega, pero conviene no dejarlas crecer:
 
 ---
 
+### Fase 5: Cerrar el ciclo del socio dado de alta a mano (abierto en Sesión 18)
+El admin ya puede registrar a un socio que llega sin celular (`createClientAction` + `NewClientModal`). Falta lo que convierte esa cuenta "sin acceso" en una cuenta normal:
+*   ~~Editar datos del socio / darle acceso~~ — **resuelto en Sesión 18** con el sistema de invitaciones (`client_invitations` + `accept_client_invitation`). ✅ Migraciones `026` y `027` **aplicadas y verificadas en producción** el 2026-08-22.
+*   **Aviso de socio parecido ANTES de cobrar (lo más rentable que queda).** El alta bloquea duplicados por WhatsApp, y desde la migración 028 eso ya cubre a quien se registró por `/register`. Pero **Google no entrega teléfono**, así que ese socio sigue con `profiles.phone` NULL y puede duplicarse: el admin le crea ficha nueva, le cobra, y el socio no puede reclamarla (`ACCOUNT_HAS_DATA`) — el dinero queda en la ficha huérfana. Falta avisar en el paso 1 del alta si existe un socio con nombre parecido, con dos salidas: "Ver su ficha" o "Es otro socio, continuar".
+*   **Segundo factor para el enlace de invitación (recomendado).** El enlace es una credencial reenviable por WhatsApp. Pedir los **4 últimos dígitos del celular** antes de habilitar el botón de Google lo volvería inútil si se filtra. El celular ya es obligatorio en el alta, así que cuesta un input. Es lo primero que añadiría si se quiere endurecer.
+*   **Fusionar dos fichas con historial.** Hoy la RPC aborta con `ACCOUNT_HAS_DATA` cuando el Google del socio ya es otro socio con datos, y lo resuelve un humano. Automatizarlo exige reasignar 11 tablas y decidir qué membresía sobrevive: alto riesgo para un caso raro.
+*   **Buscar por celular (y documento) en `admin_search_clients`** — hoy solo filtra por `full_name` y `email`, justo lo que le falta al socio sin correo. Se implementó en Sesión 18 y **se retiró a petición del usuario** junto con la cédula; el enfoque técnico quedó documentado en el CHANGELOG por si se retoma.
+*   **Aviso de posible duplicado por nombre** antes de crear. Al haberse retirado la cédula, hoy **no hay ninguna defensa** contra registrar dos veces a la misma persona: el nombre es lo único que se puede comparar.
+
+---
+
+### Fase 6: Vincular el correo del socio por WhatsApp (propuesta del usuario, Sesión 18 — 2026-08-22)
+
+**Contexto.** El socio dado de alta a mano tiene una cuenta con correo marcador: existe en el sistema pero no puede entrar a la app. Falta el paso que la convierte en cuenta real. Desde 2026-08-22 el **celular es obligatorio** en el alta, así que ya hay un canal garantizado para ese socio.
+
+**Decisión del usuario: NO integrar la API de Meta.** En vez de enviar el mensaje automáticamente, el panel abre un enlace `wa.me` con el mensaje **ya escrito**, y el admin solo pulsa enviar desde su propio WhatsApp. Cero verificación de negocio, cero número dedicado, cero plantillas aprobadas, cero coste por conversación. Como el admin está delante del socio en ese momento, el resultado práctico es el mismo.
+
+**Enfoque técnico propuesto (sin migraciones ni tablas nuevas):**
+1. El mensaje lleva un **magic link de Supabase** generado en el servidor con `auth.admin.generateLink({ type: 'magiclink', email: <correo marcador> })`. `generateLink` **devuelve** el enlace sin enviar ningún correo — que es justo lo que hace falta, porque ese buzón no existe.
+2. El socio pulsa el enlace desde su WhatsApp → entra a su propia cuenta sin contraseña.
+3. Ya dentro, pone su correo y su contraseña con **lo que ya existe**: el modal de perfil del cliente, `updateEmailAction` y `setPasswordAction` (esta última escrita justo para cuentas sin contraseña, ver Sesión 12).
+4. El botón vive en la ficha del cliente y en el paso final del alta: `https://wa.me/57{celular}?text={mensaje url-encoded}`.
+
+**Puntos a resolver antes de implementar:**
+*   **Caducidad.** Los magic links de Supabase expiran (1 h por defecto) y son de un solo uso. Si el socio lo abre tres días después, está muerto y el admin tiene que reenviarlo. Hay que decidir si se sube la caducidad en Supabase o si se asume el reenvío (el botón estará siempre disponible en la ficha).
+*   **Redirect permitido.** La URL de retorno tiene que estar en la lista de *Redirect URLs* de Supabase Auth.
+*   **Confirmación del correo nuevo.** `updateEmailAction` usa `supabase.auth.updateUser({ email })`, que manda correo de confirmación a la dirección nueva (verifica que es real, pero depende del SMTP de Supabase). La alternativa es `admin.updateUserById({ email, email_confirm: true })` desde una action, sin confirmación. Decidir cuál.
+*   **Seguridad.** Un magic link es una credencial: quien lo tenga entra a esa cuenta. Va por WhatsApp al número que el admin acaba de teclear — si se equivoca de número, se lo manda a un desconocido. Mitiga que caduque pronto y que la cuenta nueva no tenga datos sensibles todavía.
+
+---
+
 ## 💡 Ideas a futuro (no priorizadas)
 
 ### Modo offline como panel aparte (propuesto Sesión 16 — 2026-08-03)

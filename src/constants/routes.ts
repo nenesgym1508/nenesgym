@@ -5,6 +5,8 @@ export const ROUTES = {
   REGISTER: '/register',
   PRIVACIDAD: '/privacidad',
   TERMINOS: '/terminos',
+  INVITACION_EXITO: '/invitacion/exito',
+  INVITACION_ERROR: '/invitacion/error',
 
   // Cliente
   CLIENTE_DASHBOARD: '/cliente/dashboard',
@@ -42,6 +44,10 @@ export const ROUTES = {
   CLIENTE_RUTINAS_EJERCICIOS: '/cliente/rutinas/ejercicios',
   CLIENTE_RUTINAS_BIBLIOTECA: '/cliente/rutinas/biblioteca',
 } as const
+
+export function invitacionUrl(token: string) {
+  return `/invitacion/${token}` as const
+}
 
 export function adminClienteDetalle(id: string) {
   return `/admin/clientes/${id}` as const

@@ -4,6 +4,133 @@
 
 ---
 
+## 📌 Sesión 18 — 2026-08-21 (Alta manual de clientes desde el panel admin: el socio que llega sin celular)
+**Dev:** Claude (AI Agent)
+**Branch:** main
+**Commits:** pendiente de commit al cierre de esta entrada. `git push` sigue pendiente de autorización con la clave.
+
+### 🎯 Contexto:
+Hasta hoy **el único camino para que existiera un cliente era que la persona se registrara ella misma** en `/register` (correo + contraseña). El admin solo podía *activar un plan* a alguien que ya existía. El socio que llega al gimnasio sin celular no podía quedar en el sistema, y por lo tanto no podía tener membresía, ingresos ni historial.
+
+### ✅ Qué se hizo:
+- **`createClientAction`** (`src/actions/admin.actions.ts`): alta de socio con solo el nombre como obligatorio. Crea el usuario de auth (service role), completa `profiles`/`clients` de forma idempotente y, opcionalmente, activa el plan reutilizando `createManualPaymentAction` sin tocarla.
+- **Correo marcador** (`src/lib/placeholder-email.ts`, nuevo): si el admin no escribe correo, se genera `nombre.a3f91c@socios.nenesgym.com`. `isPlaceholderEmail()` lo detecta para que la UI nunca lo pinte.
+- **`NewClientModal`** (`src/components/admin/new-client-modal.tsx`, nuevo): modal de 2 pasos (datos → plan) con opción explícita "Registrar sin plan", aviso de que sin correo el socio no podrá entrar a la app, y enlace a la ficha al terminar.
+- **Botón "Registrar cliente"** en `/admin/dashboard` (primario, rojo — "Registrar pago" pasó a secundario) y en la cabecera de `/admin/clientes` (variante discreta, que es donde el admin descubre que el socio no está).
+- **`traducirErrorAuth` extraído** a `src/lib/auth/auth-errors.ts`: vivía dentro de `auth.actions.ts`, que es `"use server"` y por tanto no puede exportar funciones síncronas. Ahora la comparten `auth.actions.ts` y `admin.actions.ts` sin duplicar la tabla de mensajes.
+- **Fase 3 (correo marcador oculto)** en los 2 únicos puntos de la UI que pintan el correo: `client-search-box.tsx` y `admin/clientes/[id]/page.tsx` (chip "Sin cuenta de acceso").
+
+
+### 🪪 Cédula como identificador — propuesta, implementada y RETIRADA (misma sesión):
+El usuario propuso pedir la cédula para distinguir a la cuenta sin correo. Se implementó completa (campo destacado, normalización, índice único parcial, búsqueda por documento y celular, `CC 1012345678` como identificador visible) y después el usuario decidió **quitarla**: *"mejor quita la cédula"*.
+
+**Estado: revertido por completo.** Se borraron `src/lib/document-id.ts` y `supabase/migrations/026_client_document_id_search.sql`, y el campo salió del formulario de alta. **La base nunca se tocó** — se verificó antes de revertir que la migración 026 no llegó a aplicarse (la RPC `admin_search_clients` sigue devolviendo sus 7 columnas originales, sin `document_id`), así que no hay nada que deshacer en producción.
+
+⚠️ **La columna `clients.document_id` sigue existiendo** en la base (es de la V1, no la creó esta sesión). Simplemente ya no la escribe ni la lee nadie.
+
+Si se retoma algún día, el análisis que se hizo sigue siendo válido y está en el `CHANGELOG` de esta entrada y en `planes/plan-alta-manual-de-clientes.md`: la clave era que un dato tecleado por humanos necesita **normalizarse** antes de indexarlo como único, o el índice es decorativo.
+
+### 📱 Celular obligatorio (2026-08-22):
+Tras retirar la cédula, el usuario decidió que **el celular/WhatsApp sea obligatorio** en el alta manual. Aclara además el caso de uso original: el socio *no trae el celular encima* (por eso no puede registrarse solo), pero **sí tiene número**.
+- Obligatorio en `adminCreateClientSchema`, en `createClientAction` y en el formulario (el botón "Continuar" no se habilita sin él).
+- **Se guarda canonizado**: solo dígitos y sin el indicativo `57`. `"+57 300-123-4567"`, `"573001234567"` y `"3001234567"` convergen al mismo valor. Sin esto serían tres socios distintos y la detección de duplicados no vería nada (misma lección que dejó la cédula).
+- **Duplicados por celular**: `createClientAction` comprueba antes de crear y devuelve el nombre de quien ya tiene ese número. Es la única defensa contra registrar dos veces a la misma persona, ahora que no hay cédula. Sin migración: es una consulta en la action, igual que la de correo que ya existía.
+- Motivo de fondo: el celular es el canal para el flujo de vinculación por WhatsApp que el usuario propuso (ver `ROADMAP_VISION.md` → Fase 6).
+
+### 🧭 El plan parecía no estar (2026-08-22):
+El usuario miró el paso 1 del modal y preguntó *"faltaría la opción para añadir el plan de una vez, no?"*. **Sí estaba** — es el paso 2 — pero un botón que solo dice "Continuar" no promete nada, así que la pantalla se lee como si el flujo terminara ahí. Que lo dijera justamente quien va a usar la pantalla a diario es la señal más fuerte posible de que el diseño no comunicaba.
+- Botón: "Continuar" → **"Continuar y elegir plan"** + flecha.
+- Indicador **"Paso 1 de 2"** / **"Paso 2 de 2"** en la cabecera de cada paso.
+- No se fusionaron los dos pasos en una sola pantalla: el paso 2 lleva la lista de planes, los descuentos y los 5 métodos de pago, y todo junto haría un modal demasiado largo en móvil, que es donde se usa.
+
+### 🔗 Invitaciones: separar "socio del gimnasio" de "cuenta de la app" (2026-08-22)
+
+**El problema.** El socio dado de alta a mano tenía una cuenta inerte (correo marcador + contraseña aleatoria que nadie conoce): existía en el gimnasio pero no podía entrar. Y si entraba con Google por su cuenta, el trigger de `auth.users` le creaba **una segunda ficha** y su membresía, pagos y asistencias quedaban huérfanos en la primera.
+
+**Decisión de arquitectura (consultada con el usuario).** Se **mantiene `clients.profile_id NOT NULL`**. El dato que la decidió: el trigger de `auth.users` crea una fila en `clients` para **cada** usuario nuevo, así que hacer `profile_id` nullable **no habría evitado** la fusión al aceptar con Google — solo habría quitado la cuenta marcador, a cambio de reescribir `admin_search_clients` (hoy `INNER JOIN`: los clientes sin perfil desaparecerían del listado y del contador), 4 servicios con `profiles!inner`, y tocar a ciegas ~25 policies RLS que **no están versionadas en el repo**.
+
+**Vincular = repuntar `clients.profile_id`.** El historial cuelga **todo** de `clients.id` (11 tablas); de `profiles.id` solo cuelgan `clients.profile_id` y `payments.reviewed_by`. Mover el puntero conserva el 100% del historial con un solo `UPDATE`, sin migrar ni duplicar nada.
+
+**Migración `026_client_invitations.sql`:** tabla `client_invitations` (token_hash sha256, expires_at, accepted_by, revoked_by, replaced_profile_id, attempts), índice único parcial de "una sola invitación viva por socio", RLS **solo admin** (sin policy de cliente: si un socio pudiera leer la tabla podría cosechar hashes), y 3 funciones `SECURITY DEFINER`: `client_has_history`, `create_client_invitation`, `accept_client_invitation`.
+
+**Flujo:** admin registra + cobra → paso 3 genera la invitación → WhatsApp con `wa.me` prellenado → el socio abre la landing pública `/invitacion/[token]` → Google (recomendado) o correo → se vincula → encuentra todo su historial.
+
+### 🧪 Verificado:
+- `tsc --noEmit` limpio; `eslint src/` = **69 errores, exactamente la línea base documentada, y 0 en los archivos tocados**; `npm run build` OK con las 3 rutas nuevas registradas.
+- Landing pública probada en el servidor local con un token aleatorio: **HTTP 200 sin auth** (el middleware es denylist, no hubo que tocarlo), cabeceras `Referrer-Policy: no-referrer` y `X-Robots-Tag: noindex, nofollow` aplicadas, y mensaje genérico correcto. **Degrada con gracia con la migración sin aplicar** en vez de romperse.
+- Equivalencia de hash Node ↔ Postgres comprobada con el vector conocido de `"abc"` → `ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad`.
+
+### 🔴 Agujero crítico introducido y cerrado el mismo día (2026-08-22)
+
+Una revisión adversarial (4 revisores en paralelo + refutación de cada hallazgo) encontró **dos vulnerabilidades críticas** en el sistema de invitaciones recién aplicado. Las dos son el mismo origen: **nunca se comprobaba que la ficha destino perteneciera a una cuenta inerte.**
+
+**El encadenamiento, verificado contra producción:**
+1. Un socio se registra **él mismo** (por `/register` o con Google). Tiene ficha propia y **cero invitaciones**.
+2. `getClientAccessState` deducía "activo" **solo** de si había una invitación aceptada → ese socio salía como **"Sin activar"** y la tarjeta ofrecía **"Enviar invitación"**.
+3. Quien abriera ese enlace (número mal tecleado, mensaje reenviado):
+   - **por Google** → `accept_client_invitation` repuntaba `clients.profile_id` y el socio legítimo se quedaba con un perfil **sin ficha**: perdía membresía, pagos, asistencias y progreso;
+   - **por correo** → `acceptWithPasswordAction` hacía `admin.updateUserById` sobre la cuenta **viva**: toma de control del login, no solo de la ficha.
+
+**La condición existía de verdad**: `andersonrua12@gmail.com` (socio auto-registrado con Google, `last_sign_in_at` 2026-08-06, 0 invitaciones) aparecía como invitable.
+
+**El arreglo (migración 027 + código), en tres capas:**
+- `public.client_account_is_claimable(client_id)`: una cuenta es reclamable solo si `auth.users.last_sign_in_at IS NULL` **y** no tiene identidades distintas de `'email'`. ⚠️ **No sirve mirar el correo marcador**: el admin puede dar de alta con el correo real del socio, y esa cuenta también es inerte. El marcador significa "sin correo propio", no "sin acceso".
+- Guarda en `create_client_invitation` (no emitir) **y** en `accept_client_invitation` (no aceptar, defensa en profundidad para enlaces emitidos antes).
+- Guarda en `acceptWithPasswordAction` antes del `updateUserById`, y `getClientAccessState` pasa a decidir "activa" por si la cuenta se ha usado, no por la invitación.
+
+**Verificado después del arreglo:** invitar al socio auto-registrado → `HAS_REAL_ACCOUNT`; invitar al socio inerte creado por el admin → `CREATED`; aceptar una invitación antigua contra una cuenta real → `HAS_REAL_ACCOUNT` y la ficha intacta.
+
+### 🔁 "¿Y si el correo ya estaba registrado?" — análisis y arreglos (2026-08-22)
+
+Pregunta del dueño. Se mapearon los 15 escenarios de los dos caminos (Google y correo+contraseña) contra el código real, con refutación de cada riesgo.
+
+**Respuesta: NO se sobreescribe nada.** Comprobado empíricamente contra producción: `auth.users` tiene índice único de correo y `admin.updateUserById` falla de forma **atómica**. La cuenta anterior conserva correo, contraseña e historial. La integridad nunca estuvo en riesgo — lo que fallaba era el **diagnóstico y el mensaje**.
+
+**Y NO se debe pedir otro correo.** Ese correo es casi seguro suyo; darle otro crearía una segunda cuenta para la misma persona, justo lo que este sistema existe para evitar. Lo correcto es mandarle a entrar con la que ya tiene y **volver al enlace**.
+
+**Cinco arreglos:**
+
+1. **Se consultaba la tabla equivocada.** El chequeo miraba `profiles.email`, que no es la fuente de verdad del login y se desincroniza (`updateEmailAction` cambia Auth y no toca `profiles`). Daba falso negativo (dejaba pasar → error de GoTrue en inglés con consejo falso) y falso positivo (bloqueaba un correo libre). Ahora se pregunta a `auth.users` con la RPC `auth_email_owner` (migración 028).
+2. **`traducirErrorAuth` no capturaba el error de correo duplicado**: GoTrue dice *"already **been** registered"* y las reglas buscan *"already registered"*. Se traduce en el punto donde sí se sabe qué significa.
+3. **El mensaje ahora resuelve**: *"Ese correo ya tiene cuenta. Inicia sesión con ella y vuelve a abrir este enlace"* + botón que lleva a `/login?next=/invitacion/<token>`. `loginAction` acepta `next` **solo** si casa con `^/invitacion/[A-Za-z0-9_-]{20,}$` — no puede volverse un redirect abierto.
+4. **El correo marcador ya no se puede teclear**: quedaría un login en un dominio sin MX (sin recuperación de contraseña posible) y la cuenta dejaría de ser reclamable, así que el gimnasio tampoco podría reenviar invitación. Solo se arreglaba tocando la base.
+5. **Carrera de dos personas con el mismo enlace**: el perdedor recibía *"Cuenta activada. Inicia sesión manualmente"* — mentira, no tenía credenciales válidas. Ahora dice la verdad y ofrece pedir invitación nueva.
+
+**El arreglo más caro, y no era del correo:** `handle_new_user` **no copiaba el teléfono**, así que todo socio auto-registrado quedaba con `profiles.phone = NULL` — y la única defensa antiduplicado del alta manual es `.eq("phone", phone)`. Resultado: el admin creaba una ficha **duplicada** de alguien que ya existía, **le cobraba el plan ahí**, y el socio no podía reclamarla (`ACCOUNT_HAS_DATA`): el dinero quedaba en la ficha huérfana. La migración 028 hace que el trigger copie el teléfono **canonizado igual que el alta manual**. Verificado: `+57 300 999 8877` → `3009998877`, y el alta ahora responde *"Ya existe un cliente con ese WhatsApp (…)"*.
+
+⚠️ **Sigue abierto**: Google no entrega teléfono, así que el socio que entra con Google conserva `phone` NULL y puede duplicarse igual. La defensa pendiente es **avisar al admin de un socio con nombre parecido antes de cobrar** (ver ROADMAP).
+
+### 🧪 Pruebas de punta a punta contra producción (con limpieza completa)
+
+Se crearon socios de prueba, se ejercitó el flujo entero impersonando usuarios reales vía `set_config('request.jwt.claims')`, y se borró todo (0 restos).
+
+**Camino feliz — 11/11 comprobaciones:** mismo `client_id`, `profile_id` repuntado, ficha sobrante borrada, **membresía y pago intactos**, nombre del admin por encima del de Google, teléfono copiado, correo real de Google, `accepted_by` + `attempts` registrados, `replaced_profile_id` guardado, y el socio sigue apareciendo en `admin_search_clients`.
+
+**Defensas, todas correctas:** no-admin no puede emitir (`UNAUTHORIZED`), la cuenta del gimnasio no puede aceptar (`IS_ADMIN`), una cuenta con historial propio no puede absorber otra ficha (`ACCOUNT_HAS_DATA`), token inexistente / corto (`INVALID`), sin sesión (`UNAUTHENTICATED`), reapertura por el mismo usuario (`ALREADY_ACCEPTED`, idempotente), enlace ya usado por otro (`ALREADY_USED`), re-invitar a un socio vinculado (`ALREADY_LINKED`), regenerar mata el enlace anterior (`REVOKED`), vencido (`EXPIRED`).
+
+**Desde fuera, con la clave anónima pública**: los cuatro intentos (leer la tabla, aceptar, crear, `client_has_history`) devuelven `permission denied`.
+
+### 🔎 Hallazgos de la auditoría de base que corrigen la documentación
+
+- **`enforce_exclusive_admin_role` NO EXISTE en la base.** La migración `017` nunca se aplicó. La exclusividad del rol admin se sostiene **solo desde el código** (`loginAction` y `auth/callback`, con el correo `nenesgym1508@gmail.com` incrustado). Cualquier afirmación anterior de que "el trigger lo fuerza en la base" es **falsa**.
+- **El trigger de alta son DOS, encadenados**: `on_auth_user_created` (AFTER INSERT en `auth.users`) → `handle_new_user` crea **solo** `profiles`; y `on_client_profile_created` (AFTER INSERT en `profiles`, **solo INSERT**) → `handle_new_client_profile` crea `clients` con `on conflict (profile_id) do nothing`, únicamente si `role='client'`. Que sea solo-INSERT es lo que hace seguro el `UPDATE` final de `profiles` en la RPC de aceptación.
+- **`attempts` solo cuenta los intentos que superan la validación del token** (no los de enlace vencido/revocado): son justo los que el admin necesita ver.
+- Advisor preexistente que conviene conocer: **`create_and_approve_cash_payment` es ejecutable por `anon`** (se defiende con su `is_admin()` interno, pero está expuesta). Ninguna de las funciones nuevas lo está.
+
+### 🧪 Verificado contra producción (proyecto `nqhkfqoroisszycdxwuy`):
+Se creó y borró un socio de prueba con correo marcador. Resultado: Supabase **acepta** el dominio `@socios.nenesgym.com`; el trigger de `auth.users` crea `profiles` (con `gym_id` y `role='client'` correctos) y `clients`, pero **no copia el teléfono**; el socio aparece en `admin_search_clients`; y `auth.admin.deleteUser()` limpia en cascada sin dejar filas huérfanas.
+
+### 📦 Archivos tocados:
+- **Nuevos:** `src/lib/placeholder-email.ts`, `src/lib/auth/auth-errors.ts`, `src/components/admin/new-client-modal.tsx`
+- **Modificados:** `src/actions/admin.actions.ts`, `src/actions/auth.actions.ts`, `src/schemas/client.schema.ts`, `src/app/(admin)/admin/dashboard/page.tsx`, `src/app/(admin)/admin/clientes/page.tsx`, `src/app/(admin)/admin/clientes/[id]/page.tsx`, `src/components/admin/client-search-box.tsx`
+- **Sin migraciones SQL.** Plan completo en `planes/plan-alta-manual-de-clientes.md`.
+
+### ⏭️ Qué falta:
+- **Editar datos del socio / darle acceso**: pantalla para que el admin cambie nombre, celular y **correo** (`auth.admin.updateUserById` + `profiles.email`), que es lo que convierte una cuenta marcador en una cuenta real. Es la pieza que cierra el ciclo.
+- **Vinculación por WhatsApp** (Fase 6 del roadmap): el paso que convierte la cuenta marcador en cuenta real. Enfoque decidido: enlace `wa.me` con el mensaje ya escrito + magic link de Supabase, sin integrar la API de Meta.
+
+---
+
 ## 📌 Sesión 17 — 2026-08-03 (Revisión de la sección Entrenamiento: bug del recorte, rescate de la migración 023, catálogo completo a R2)
 **Dev:** Claude (AI Agent)
 **Branch:** main

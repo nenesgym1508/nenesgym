@@ -4,6 +4,61 @@ Este documento almacena la memoria de errores y gotchas resueltos en el proyecto
 
 ---
 
+## 📌 Lecciones Recientes (Sesión 18 - 2026-08-21)
+
+### Lección: "no tiene invitación aceptada" NO significa "no tiene cuenta"
+*   **El agujero más grave que ha tenido este proyecto**, y nació de una inferencia que parecía inocente: deducir el estado de acceso de un socio a partir de la tabla de invitaciones.
+*   Un socio que se registra **él mismo** nunca pasa por una invitación. Su fila en `client_invitations` no existe. Con esa inferencia, la ficha lo mostraba como *"Sin activar"* y le ofrecía al admin un botón para invitarlo — a alguien que ya tenía su cuenta. Ese enlace, en las manos equivocadas, se llevaba su historial completo; y por el camino de correo+contraseña, su cuenta de login entera (`updateUserById` sobre una cuenta viva).
+*   **La regla:** un estado que describe *"esta cuenta no se usa"* tiene que leerse de donde vive esa verdad —`auth.users.last_sign_in_at` y las identidades—, **nunca de la ausencia de un registro** en una tabla de proceso. La ausencia de una fila no es evidencia de nada: solo significa que ese proceso no ocurrió.
+*   **El correo marcador tampoco vale como señal.** Significa "sin correo propio", no "sin acceso": el admin puede dar de alta a un socio con su correo real y esa cuenta también es inerte. Confundir las dos cosas habría dejado el agujero medio abierto.
+*   **Cómo se encontró:** una revisión adversarial con revisores independientes por dimensión (SQL, seguridad, flujos, React) y una segunda pasada que intentaba **refutar** cada hallazgo. De los hallazgos brutos, la mayoría se refutaron; los dos que sobrevivieron eran este. Las guardas que sí funcionaban (`ACCOUNT_HAS_DATA`, `ALREADY_LINKED`, `IS_ADMIN`) daban una falsa sensación de cobertura: protegían la ficha *del aceptante*, nunca la *del destino*.
+
+### Lección: un Server Action que rechaza deja el botón muerto para siempre
+*   `LoadingButton` hace `disabled={pending || disabled}`. Los handlers ponían `setStatus("loading")` y solo volvían a `"error"` en la rama `!result.ok`. Pero un Server Action que falla —red caída, 500— **rechaza la promesa**: el `await` lanza, el estado se queda en `"loading"` y el botón no vuelve nunca hasta recargar la página.
+*   Ni los error boundaries lo recogen: el rechazo ocurre dentro de un `onClick` que descarta la promesa, así que queda como *unhandled rejection*.
+*   **Regla:** todo `await` de una server action que gobierne un estado de carga va envuelto en `try/catch`, con el `catch` devolviendo el control al usuario y un mensaje accionable. Aplicado en `new-client-modal`, `activate-plan-modal` e `invitation-actions`.
+
+### Lección: la idempotencia del pago no salva del duplicado que de verdad duele
+*   **El caso:** `payments.client_request_id` con su UNIQUE y su `on conflict do nothing` llevaban meses montados en la base **sin que ningún llamador pasara el parámetro**. Al conectarlo parecía que el problema estaba resuelto. No lo estaba.
+*   **Lo que no cubría:** el admin pulsa "Registrar", la red va lenta, reintenta. El correo marcador se generaba con un sufijo **aleatorio**, así que el segundo intento producía otro correo, `createUser` no colisionaba y salían **dos socios**, cada uno con su membresía cobrada. Dos `clientId` distintos → el `client_request_id` no ve nada.
+*   **Regla:** la clave de idempotencia tiene que sembrar **todo** lo que se crea en la operación, no solo el último paso. Aquí el mismo uuid siembra el correo marcador *y* el pago.
+*   **Y el peligro simétrico, que es peor:** si ese id se reutilizara entre cobros distintos, una **renovación** devolvería `ALREADY_APPLIED` y **no se cobraría**. Un bug de dinero al revés, silencioso, que nadie reporta. De ahí la regla escrita en el código: *un requestId = una intención de cobro; se regenera al abrir el modal y tras cada éxito.*
+*   **Corolario de orden:** la sonda que detecta "esto es mi propio reintento" tiene que ir **antes** de los chequeos de duplicado, o el chequeo encuentra lo que acabas de crear y te bloquea a ti mismo.
+
+### Lección: una cookie HttpOnly no sobrevive al WebView de WhatsApp
+*   **El caso:** para conservar qué invitación se está aceptando durante el OAuth, lo "correcto de manual" es una cookie HttpOnly de corta duración. Y aquí habría fallado en el escenario **más común de todos**.
+*   **Por qué:** el socio abre el enlace desde WhatsApp Android → se carga en el WebView de WhatsApp → Google OAuth salta al **navegador del sistema**, que es otro contexto y **no tiene esa cookie**. Resultado: OAuth completa, se crea un usuario nuevo, la invitación no se acepta, y el socio aterriza en un dashboard vacío creyendo que ya entró.
+*   **La solución no es una capa, son tres:** (1) el token en el `redirectTo` como `?inv=`, que sí cruza de navegador; (2) la cookie como respaldo por si el query se recorta; (3) **reabrir el enlace ya autenticado**, que repara el caso aunque fallen las dos primeras. La tercera es la que convierte el sistema en auto-reparable.
+*   **Regla general:** al diseñar un flujo que se va a abrir desde un chat, asumir siempre que el navegador **cambia a mitad de camino**.
+
+### Lección: `setState` dentro de un `useEffect` no es solo un warning de rendimiento
+*   El lint del proyecto (`react-hooks/set-state-in-effect`) rechazó generar la invitación en un efecto al montar el componente. Tentador saltárselo con un `eslint-disable`.
+*   **Pero aquí la regla tenía razón por un motivo de negocio, no de rendimiento:** generar una invitación **revoca la anterior**. Un efecto mal atado (o un doble montaje en StrictMode) quemaría enlaces ya enviados por WhatsApp.
+*   **Regla:** las acciones con efectos secundarios irreversibles se disparan desde un **evento**, nunca desde un render. Se movió la generación al flujo del padre y el componente pasó a recibir el enlace por props.
+
+### Lección: un archivo `"use server"` no puede exportar helpers síncronos — y por eso se duplica código sin querer
+*   **Síntoma:** al necesitar traducir los errores de Supabase Auth en `admin.actions.ts`, la función `traducirErrorAuth` ya existía… dentro de `auth.actions.ts`, que empieza con `"use server"`. Importarla desde ahí **no es una opción**: Next exige que todo lo exportado por un módulo `"use server"` sea una server action `async`.
+*   **La trampa:** lo cómodo es copiar las 20 líneas de la tabla de mensajes al segundo archivo. A partir de ahí los dos textos divergen y nadie lo nota, porque no rompe nada — solo empeora poco a poco los mensajes que ve el usuario.
+*   **Regla:** cualquier helper puro que quiera vivir cerca de las actions va en `src/lib/`, no dentro del archivo `"use server"`. Se hizo así con `src/lib/auth/auth-errors.ts`.
+
+### Lección: el trigger de `auth.users` crea el perfil y el cliente, pero NO copia el teléfono
+*   Nadie en el repo inserta en `profiles` ni en `clients` — `registerAction` solo llama a `admin.auth.admin.createUser()` y las filas aparecen igual. **Hay un trigger en `auth.users` creado desde el dashboard de Supabase que nunca se versionó** en `supabase/migrations/`.
+*   **Verificado en producción** (Sesión 18, creando y borrando un socio de prueba): el trigger crea `profiles` con `gym_id` y `role='client'` correctos, y crea la fila de `clients`. **El `phone` de `user_metadata` se queda en `null`.**
+*   **Consecuencia práctica:** una action que dé de alta clientes **no puede insertar a ciegas** (chocaría con la fila del trigger) **ni asumir que los datos están completos** (el teléfono no llega). El patrón correcto es `upsert` sobre `profiles` + `select`-antes-de-`insert` sobre `clients`: idempotente y funciona con y sin trigger.
+*   **Bonus verificado:** `auth.admin.deleteUser()` limpia `profiles` y `clients` en cascada, sin dejar filas huérfanas.
+
+### Lección: `create or replace function` no puede cambiar el `returns table`
+*   Al intentar añadir una columna a lo que devuelve `admin_search_clients`, el `create or replace` falla con *"cannot change return type of existing function"*. Hay que `drop function if exists ...(text, text, date, int, int)` **antes**, con la firma completa de parámetros. Sigue siendo relevante: ampliar esa RPC (buscar por celular) está en el roadmap.
+*   **Corolario para el cliente TS:** mientras la migración no esté aplicada, la RPC vieja no devuelve la columna nueva y el campo llega `undefined`. Conviene mapearlo con `?? null` para que la UI degrade sola en vez de romperse — el código puede desplegarse antes que la migración.
+*   Contexto: se aprendió implementando la cédula como identificador (Sesión 18), que **se retiró después** a petición del usuario. La lección sobre la RPC sigue siendo válida.
+
+### Lección: TypeScript tipa `ctx.error` de `requireAdmin()` como `string | undefined`
+*   **Síntoma:** el patrón que usan todas las actions del archivo, `if ("error" in ctx) return { error: ctx.error }`, compila sin problema… hasta que se le pone un **tipo de retorno explícito** a la función. Ahí salta `TS2322: Type 'string | undefined' is not assignable to type 'string'`.
+*   **Causa:** `requireAdmin()` no declara tipo de retorno; TS lo infiere como unión de tres objetos literales y **normaliza** la unión añadiendo `error?: undefined` al miembro de éxito. `"error" in ctx` entonces no descarta ese miembro. Las demás actions se libran solo porque tampoco declaran su retorno.
+*   **Fix local (no tocar `requireAdmin`, lo usan muchas actions):** `return { error: ctx.error ?? "Sin permisos" }`, con comentario de por qué el `??` no es defensa vacía.
+
+---
+
 ## 📌 Lecciones Recientes (Sesión 17 - 2026-08-03)
 
 ### Lección: la geometría esencial de un overlay no puede depender de una clase de CSS

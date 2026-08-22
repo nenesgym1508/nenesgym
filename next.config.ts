@@ -63,6 +63,17 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
+      {
+        // El token de invitación va en la URL y ES una credencial: que no se
+        // filtre por el Referer al pulsar un enlace, que no lo indexe un
+        // buscador, y que ninguna caché intermedia guarde la respuesta.
+        source: "/invitacion/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+        ],
+      },
     ]
   },
 }

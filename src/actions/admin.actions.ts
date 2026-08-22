@@ -9,6 +9,9 @@ import { ROUTES, adminClienteDetalle } from "@/constants/routes"
 import type { MembershipStatus } from "@/types/membership"
 import type { PaymentMethod } from "@/types/payment"
 import type { GoalType } from "@/types/progress"
+import { adminCreateClientSchema } from "@/schemas/client.schema"
+import { buildPlaceholderEmail } from "@/lib/placeholder-email"
+import { traducirErrorAuth } from "@/lib/auth/auth-errors"
 
 const PAYMENT_METHODS: PaymentMethod[] = ["cash", "transfer", "nequi", "daviplata", "other"]
 
@@ -405,6 +408,17 @@ export async function createManualPaymentAction(formData: {
   method: string
   totalDays: number
   durationDays: number
+  /**
+   * Identificador de idempotencia. La RPC hace `on conflict (client_request_id)
+   * do nothing` y devuelve ALREADY_APPLIED si el pago ya se aplicó, así que un
+   * doble clic o un reintento no cobran dos veces.
+   *
+   * ⚠️ Un requestId = UNA intención de cobro. Quien llame a esta acción debe
+   * REGENERARLO al abrir el modal y tras cada éxito. Si se reutilizara entre
+   * cobros distintos, una renovación devolvería ALREADY_APPLIED y **no se
+   * cobraría** — el mismo bug, pero al revés y peor.
+   */
+  clientRequestId?: string
 }) {
   const ctx = await requireAdmin()
   if ("error" in ctx) return { error: ctx.error }
@@ -418,12 +432,13 @@ export async function createManualPaymentAction(formData: {
   // transacción en BD. Elimina el riesgo de pagos huérfanos o membresías
   // duplicadas que existía con el flujo anterior de 2 pasos.
   const { data, error } = await supabase.rpc("create_and_approve_cash_payment", {
-    p_client_id:     formData.clientId,
-    p_amount_cents:  formData.amountCents,
-    p_method:        formData.method,
-    p_plan_id:       formData.planId || undefined,
-    p_total_days:    formData.totalDays,
-    p_duration_days: formData.durationDays,
+    p_client_id:        formData.clientId,
+    p_amount_cents:     formData.amountCents,
+    p_method:           formData.method,
+    p_client_request_id: formData.clientRequestId || undefined,
+    p_plan_id:          formData.planId || undefined,
+    p_total_days:       formData.totalDays,
+    p_duration_days:    formData.durationDays,
   })
 
   if (error) return { error: error.message }
@@ -434,4 +449,188 @@ export async function createManualPaymentAction(formData: {
   revalidatePath(ROUTES.ADMIN_CLIENTES)
   revalidatePath(ROUTES.ADMIN_DASHBOARD)
   return { success: true }
+}
+
+// Alta manual de un socio desde el panel admin. Resuelve el caso del cliente que
+// llega al gimnasio sin el celular encima y no puede registrarse solo.
+//
+// Por qué crea un usuario de auth aunque el socio nunca vaya a iniciar sesión:
+// clients.profile_id es NOT NULL y admin_search_clients hace JOIN con profiles,
+// así que un socio sin cuenta no existiría para ninguna pantalla del admin.
+// Si no hay correo se genera uno marcador (ver @/lib/placeholder-email).
+//
+// Idempotente respecto al trigger de auth.users: ese trigger ya crea las filas de
+// `profiles` y `clients` (verificado en producción: 0 usuarios sin perfil, 0
+// perfiles client sin fila en clients), pero no copia el teléfono. Por eso aquí
+// se completan/corrigen los datos en vez de insertar a ciegas.
+export async function createClientAction(input: {
+  full_name: string
+  email?: string
+  /** Obligatorio: identificador del socio y canal para vincularle luego su correo. */
+  phone: string
+  /**
+   * Identificador de idempotencia del alta completa. Sirve para dos cosas:
+   *  - siembra el correo marcador, haciéndolo determinista → un reintento
+   *    recupera el mismo usuario en vez de crear un socio duplicado;
+   *  - se propaga al pago como `p_client_request_id` → no cobra dos veces.
+   * ⚠️ Debe regenerarse al abrir el modal y tras cada éxito.
+   */
+  clientRequestId?: string
+  plan?: {
+    planId: string
+    amountCents: number
+    method: string
+    totalDays: number
+    durationDays: number
+  }
+}): Promise<{ error: string } | { clientId: string; planWarning?: string }> {
+  const ctx = await requireAdmin()
+  // El `?? ` no es defensa vacía: TS normaliza el union que devuelve requireAdmin
+  // y tipa `ctx.error` como `string | undefined`. En runtime siempre trae mensaje.
+  if ("error" in ctx) return { error: ctx.error ?? "Sin permisos" }
+
+  // Validación en el servidor: el zod del formulario es solo para UX.
+  const parsed = adminCreateClientSchema.safeParse({
+    full_name: input.full_name,
+    email: input.email ?? "",
+    phone: input.phone,
+  })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" }
+  }
+
+  const fullName = parsed.data.full_name.trim()
+  const phone = parsed.data.phone // ya viene solo en dígitos (ver adminCreateClientSchema)
+  const realEmail = parsed.data.email?.trim().toLowerCase() || null
+  // Con clientRequestId el marcador es determinista: es lo que hace idempotente
+  // el alta entera (ver el comentario largo en buildPlaceholderEmail).
+  const email = realEmail ?? buildPlaceholderEmail(fullName, input.clientRequestId)
+
+  const admin = createAdminClient()
+
+  // ── Sonda de reanudación ────────────────────────────────────────────────
+  // Si ya existe un perfil con este correo MARCADOR, es nuestro propio reintento
+  // (el admin pulsó dos veces, o la red se cayó a mitad). Se recupera el usuario
+  // y se salta a completar lo que falte, en vez de dar un error de duplicado.
+  //
+  // Va ANTES de los chequeos de duplicado a propósito: si no, el chequeo de
+  // celular encontraría el perfil que el propio admin acaba de crear y le diría
+  // "ya existe un cliente con ese celular" — bloqueando su propio reintento.
+  let userId: string | null = null
+  if (!realEmail) {
+    const { data: resumed } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle()
+    if (resumed) userId = resumed.id
+  }
+
+  if (!userId) {
+    // Duplicado por correo: el error crudo de Supabase ("User already registered")
+    // no dice de quién, y aquí el admin sí puede saberlo.
+    if (realEmail) {
+      const { data: existing } = await admin
+        .from("profiles")
+        .select("id, full_name")
+        .eq("email", realEmail)
+        .maybeSingle()
+      if (existing) {
+        return { error: `Ya existe un cliente con ese correo (${existing.full_name ?? realEmail})` }
+      }
+    }
+
+    // Duplicado por celular. Al ser obligatorio, es la única defensa contra
+    // registrar dos veces a la misma persona (el nombre se repite y se escribe de
+    // mil formas). Compara contra dígitos porque así es como se guarda siempre.
+    const { data: dupPhone } = await admin
+      .from("profiles")
+      .select("id, full_name")
+      .eq("phone", phone)
+      .limit(1)
+      .maybeSingle()
+    if (dupPhone) {
+      return { error: `Ya existe un cliente con ese WhatsApp (${dupPhone.full_name ?? phone})` }
+    }
+
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email,
+      password: crypto.randomUUID(),
+      email_confirm: true,
+      user_metadata: { full_name: fullName, phone },
+    })
+
+    if (createError) {
+      // Carrera con nuestro propio reintento: el usuario se creó entre la sonda
+      // y esta llamada. Recuperarlo en vez de fallar.
+      if (/already registered|already exists/i.test(createError.message)) {
+        const { data: race } = await admin.from("profiles").select("id").eq("email", email).maybeSingle()
+        if (race) userId = race.id
+      }
+      if (!userId) return { error: traducirErrorAuth(createError.message) }
+    } else {
+      userId = created.user?.id ?? null
+    }
+  }
+
+  if (!userId) return { error: "No se pudo crear la cuenta del cliente" }
+
+  // El trigger ya insertó el perfil; esto completa el teléfono (que no copia) y
+  // fuerza gym_id/role por si el trigger no existiera en algún entorno.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: profileError } = await (admin as any)
+    .from("profiles")
+    .upsert(
+      {
+        id: userId,
+        gym_id: ctx.gymId,
+        full_name: fullName,
+        email,
+        phone,
+        role: "client",
+      },
+      { onConflict: "id" }
+    )
+  if (profileError) return { error: profileError.message }
+
+  // Fila de clients: normalmente la crea el trigger; si no existiera, se inserta.
+  const { data: existingClient } = await admin
+    .from("clients")
+    .select("id")
+    .eq("profile_id", userId)
+    .maybeSingle()
+
+  let clientId = existingClient?.id ?? null
+  if (!clientId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: inserted, error: clientError } = await (admin as any)
+      .from("clients")
+      .insert({ gym_id: ctx.gymId, profile_id: userId })
+      .select("id")
+      .single()
+    if (clientError) return { error: clientError.message }
+    clientId = inserted.id as string
+  }
+
+  revalidatePath(ROUTES.ADMIN_CLIENTES)
+  revalidatePath(ROUTES.ADMIN_DASHBOARD)
+
+  // Plan opcional: reutiliza tal cual el flujo de cobro en efectivo ya existente
+  // (RPC atómica create_and_approve_cash_payment). Si falla, NO se revierte el
+  // alta: el cliente ya quedó bien creado y el admin puede activarle el plan
+  // desde su ficha. Borrar la cuenta para "limpiar" sería peor.
+  if (input.plan) {
+    const planResult = await createManualPaymentAction({
+      clientId,
+      planId: input.plan.planId,
+      amountCents: input.plan.amountCents,
+      method: input.plan.method,
+      totalDays: input.plan.totalDays,
+      durationDays: input.plan.durationDays,
+      clientRequestId: input.clientRequestId,
+    })
+    if (planResult.error) return { clientId, planWarning: planResult.error }
+  }
+
+  return { clientId }
 }

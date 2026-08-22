@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Search, Loader2 } from "lucide-react"
 import { adminClienteDetalle } from "@/constants/routes"
 import { searchClientsQuickAction } from "@/actions/admin.actions"
+import { isPlaceholderEmail } from "@/lib/placeholder-email"
 
 type ClientMatch = { id: string; full_name: string | null; email: string | null }
 
@@ -64,7 +65,10 @@ export function ClientSearchBox() {
                 }`}
               >
                 <span className="text-sm font-medium text-zinc-200 truncate">{c.full_name ?? "Sin nombre"}</span>
-                <span className="text-xs text-zinc-500 truncate">{c.email ?? ""}</span>
+                {/* Nunca pintar el correo marcador: el admin lo copiaría creyendo que es real. */}
+                <span className="text-xs text-zinc-500 truncate">
+                  {isPlaceholderEmail(c.email) ? "Sin cuenta de acceso" : (c.email ?? "")}
+                </span>
               </Link>
             ))
           )}

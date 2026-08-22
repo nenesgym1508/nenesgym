@@ -5,8 +5,10 @@ import { getAuthenticatedSession } from "@/lib/auth/session"
 import { getPendingPayments } from "@/services/payments.service"
 import { getTodayAttendance } from "@/services/attendance.service"
 import { countClients } from "@/services/clients.service"
+import { getAvailablePlans } from "@/services/payments.service"
 import { logoutAction } from "@/actions/auth.actions"
 import { ClientSearchBox } from "@/components/admin/client-search-box"
+import { NewClientModal } from "@/components/admin/new-client-modal"
 import { PendingPaymentsPreview } from "@/components/admin/pending-payments-preview"
 import { formatDatetime } from "@/lib/dates"
 import { GYM_ID } from "@/constants/plans"
@@ -21,11 +23,20 @@ export default async function AdminDashboardPage() {
   const { profile } = session
   if (profile?.role !== "admin") redirect(ROUTES.CLIENTE_DASHBOARD)
 
-  const [pendingPayments, todayAttendance, clientCount] = await Promise.all([
+  const [pendingPayments, todayAttendance, clientCount, plans] = await Promise.all([
     getPendingPayments(),
     getTodayAttendance(GYM_ID),
     countClients(),
+    getAvailablePlans(),
   ])
+
+  const planOptions = plans.map((p) => ({
+    id: p.id,
+    name: p.name,
+    days: p.days,
+    duration_days: p.duration_days,
+    price_cents: p.price_cents,
+  }))
 
   const hasPending = pendingPayments.length > 0
   const initial = (profile?.full_name ?? "A").charAt(0).toUpperCase()
@@ -68,11 +79,14 @@ export default async function AdminDashboardPage() {
       </div>
 
       <div className="flex flex-col gap-3">
+        {/* Único camino para dar de alta a un socio que llega sin celular y no
+            puede registrarse solo. Va primero por eso. */}
+        <NewClientModal plans={planOptions} />
         <Link
           href={ROUTES.ADMIN_CLIENTES}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl btn-glossy-red px-4 md:px-10 py-4 text-sm font-semibold text-white"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-zinc-900/90 hover:bg-zinc-800/90 px-4 md:px-10 py-4 text-sm font-semibold text-zinc-100 transition-colors shadow-sm"
         >
-          <Plus className="size-5" />
+          <Plus className="size-5 text-red-500" />
           Registrar pago
         </Link>
         <Link

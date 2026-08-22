@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -250,6 +250,97 @@ export type Database = {
             columns: ["gym_id"]
             isOneToOne: false
             referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          attempts: number
+          client_id: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          gym_id: string
+          id: string
+          replaced_profile_id: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          token_hash: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          attempts?: number
+          client_id: string
+          created_at?: string
+          created_by: string
+          expires_at: string
+          gym_id: string
+          id?: string
+          replaced_profile_id?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          token_hash: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          attempts?: number
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          gym_id?: string
+          id?: string
+          replaced_profile_id?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_invitations_accepted_by_fkey"
+            columns: ["accepted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_invitations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_invitations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_invitations_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_invitations_replaced_profile_id_fkey"
+            columns: ["replaced_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_invitations_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1551,6 +1642,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_client_invitation: { Args: { p_token: string }; Returns: Json }
       admin_search_clients: {
         Args: {
           p_limit?: number
@@ -1590,6 +1682,12 @@ export type Database = {
         }
         Returns: Json
       }
+      auth_email_owner: { Args: { p_email: string }; Returns: string }
+      client_account_is_claimable: {
+        Args: { p_client_id: string }
+        Returns: boolean
+      }
+      client_has_history: { Args: { p_client_id: string }; Returns: boolean }
       create_and_approve_cash_payment: {
         Args: {
           p_amount_cents: number
@@ -1600,6 +1698,14 @@ export type Database = {
           p_occurred_at?: string
           p_plan_id?: string
           p_total_days?: number
+        }
+        Returns: Json
+      }
+      create_client_invitation: {
+        Args: {
+          p_client_id: string
+          p_token_hash: string
+          p_ttl_hours?: number
         }
         Returns: Json
       }

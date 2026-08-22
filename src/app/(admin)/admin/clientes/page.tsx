@@ -3,6 +3,7 @@ import { getGymSettings } from "@/services/gym.service"
 import { searchAdminClients, type ClientStatusFilter } from "@/services/memberships.service"
 import { getAvailablePlans } from "@/services/payments.service"
 import { ClientsList } from "@/components/admin/clients-list"
+import { NewClientModal } from "@/components/admin/new-client-modal"
 
 export const dynamic = "force-dynamic"
 
@@ -40,11 +41,13 @@ export default async function AdminClientesPage({
   return (
     <div className="md:max-w-6xl md:mx-auto">
       {/* Header unificado estilo cliente */}
-      <header className="flex items-start justify-between mb-6 px-6 pt-12 md:px-10 md:pt-10">
+      <header className="flex items-start justify-between gap-3 mb-6 px-6 pt-12 md:px-10 md:pt-10">
         <div>
           <h1 className="text-3xl md:text-4xl font-bebas font-bold mb-1 tracking-wide uppercase text-white">Clientes</h1>
           <p className="text-zinc-500 text-sm">Gestiona ingresos y membresías</p>
         </div>
+        {/* Atajo desde donde el admin descubre que el socio no está en la lista. */}
+        <NewClientModal plans={planOptions} variant="secondary" />
       </header>
 
       <div className="px-6 pb-24 md:px-10">
