@@ -108,6 +108,10 @@ Este documento describe el estado actual de la arquitectura, base de datos, regl
 
 ---
 
+## 🚀 Despliegue (Vercel)
+*   **Región `pdx1` (Portland, Oregón) — no tocar sin motivo.** Debe coincidir con la región de Supabase, que es `us-west-2`. Por defecto Vercel despliega en `iad1` (Washington DC): con esa configuración **cada** consulta a la base cruzaba Estados Unidos de costa a costa —unos 3.700 km, ~60-70 ms de ida y vuelta solo en propagación— y las pantallas que encadenan varias consultas pagaban ese peaje una vez por consulta. ⚠️ Si algún día se mueve el proyecto de Supabase a otra región, hay que cambiar esto a la equivalente o se vuelve al problema.
+*   ⚠️ **`vercel.json` NO admite comentarios.** Su esquema rechaza cualquier propiedad desconocida, incluida la convención `"//"` que se usaba para documentar la decisión de la región: el despliegue falla entero con *"should NOT have additional property"*. Esa explicación vive aquí por eso. Si hace falta anotar algo del despliegue, se anota en este pilar, nunca dentro del JSON.
+
 ## 🔒 Reglas de Seguridad y RLS
 *   ⚠️ **El rol admin NO está protegido en la base de datos.** El trigger `enforce_exclusive_admin_role` de la migración `017` **nunca se aplicó** — verificado en producción el 2026-08-22 (`pg_trigger` sobre `profiles` solo tiene `on_client_profile_created` y `set_updated_at`; la función ni siquiera existe). La exclusividad del rol se sostiene **solo desde el código**: `loginAction` y `auth/callback` comparan con `nenesgym1508@gmail.com` incrustado y degradan a cualquier otro admin. Si algún día se escribe en `profiles.role` por otra vía, no hay red de seguridad.
 
