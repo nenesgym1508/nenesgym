@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import Link from "next/link"
@@ -14,9 +13,6 @@ import { GoogleAuthButton } from "@/components/auth/google-button"
 import { ROUTES } from "@/constants/routes"
 
 export function LoginForm() {
-  // Solo se usa para volver a un enlace de invitación; loginAction valida el
-  // formato en el servidor y descarta cualquier otra cosa.
-  const next = useSearchParams().get("next") ?? undefined
   const [showPwd, setShowPwd] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [resetSent, setResetSent] = useState(false)
@@ -30,6 +26,12 @@ export function LoginForm() {
 
   const onSubmit = async (data: LoginInput) => {
     setServerError(null)
+    // El ?next= se lee AQUÍ, en el submit, y no con useSearchParams().
+    // useSearchParams() durante el render obliga a un bailout a cliente y exige
+    // envolver la página en <Suspense>; leerlo en un handler no, y así /login
+    // sigue siendo estática. Solo se usa para volver a un enlace de invitación:
+    // loginAction valida el formato en el servidor y descarta cualquier otra cosa.
+    const next = new URLSearchParams(window.location.search).get("next") ?? undefined
     const result = await loginAction({ ...data, next })
     if (result?.error) setServerError(result.error)
   }
