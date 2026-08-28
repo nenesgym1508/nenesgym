@@ -64,12 +64,18 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // El token de invitación va en la URL y ES una credencial: que no se
-        // filtre por el Referer al pulsar un enlace, que no lo indexe un
-        // buscador, y que ninguna caché intermedia guarde la respuesta.
+        // El token de invitación va en la URL y ES una credencial: que no lo
+        // indexe un buscador y que ninguna caché intermedia guarde la respuesta.
+        //
+        // ⚠️ Aquí había también `Referrer-Policy: no-referrer`, y NO se aplicaba:
+        // las cabeceras de `vercel.json` mandan sobre las de Next para una misma
+        // clave, y allí hay un `strict-origin-when-cross-origin` global. Se quitó
+        // en vez de duplicarlo porque no aportaba nada real: con
+        // strict-origin-when-cross-origin, una navegación a otro dominio (Google,
+        // por ejemplo) manda solo `https://nenesgym.com` — sin ruta y por tanto
+        // sin token. Comprobado en producción con curl.
         source: "/invitacion/:path*",
         headers: [
-          { key: "Referrer-Policy", value: "no-referrer" },
           { key: "X-Robots-Tag", value: "noindex, nofollow" },
           { key: "Cache-Control", value: "no-store, max-age=0" },
         ],
