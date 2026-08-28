@@ -16,6 +16,7 @@ import {
   INVITATION_COOKIE,
   INVITATION_COOKIE_MAX_AGE,
   INVITATION_TTL_HOURS,
+  invitationBaseUrlProblem,
 } from "@/lib/invitations"
 
 export type InvitationLink = {
@@ -38,6 +39,12 @@ export async function createInvitationAction(
 ): Promise<{ error: string } | InvitationLink> {
   const ctx = await requireAdmin()
   if ("error" in ctx) return { error: ctx.error ?? "Sin permisos" }
+
+  // Antes de nada: que la dirección con la que se va a construir el enlace sirva
+  // de verdad fuera del gimnasio. Generar un token para un enlace que el socio
+  // no puede abrir solo consigue quemarlo y que nadie se entere hasta la queja.
+  const problema = invitationBaseUrlProblem()
+  if (problema) return { error: problema }
 
   const token = generateInvitationToken()
 

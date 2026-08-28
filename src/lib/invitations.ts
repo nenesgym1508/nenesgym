@@ -37,6 +37,49 @@ export function buildInvitationUrl(token: string): string {
 }
 
 /**
+ * ¿La URL base sirve para un enlace que va a salir del gimnasio?
+ *
+ * Devuelve el motivo si NO sirve, o null si está bien.
+ *
+ * ⚠️ Esto existe por un fallo real: `NEXT_PUBLIC_APP_URL` apuntaba en producción
+ * a la URL `*.vercel.app` del proyecto, y esas URLs están detrás de la
+ * protección de despliegue de Vercel — redirigen a `vercel.com/login`. El socio
+ * recibía el enlace por WhatsApp y aterrizaba en una pantalla de login de
+ * Vercel, sin poder activar nada.
+ *
+ * Lo peor era que fallaba **en silencio**: el admin veía el enlace generado
+ * correctamente y lo enviaba tan tranquilo. El problema solo aparecía del lado
+ * del socio. Por eso se comprueba antes de emitir: más vale que el admin vea un
+ * error inmediato a que se entere por una queja tres días después.
+ *
+ * En desarrollo se permite cualquier cosa (localhost incluido).
+ */
+export function invitationBaseUrlProblem(): string | null {
+  if (process.env.NODE_ENV !== "production") return null
+
+  let host: string
+  try {
+    host = new URL(env.NEXT_PUBLIC_APP_URL).hostname.toLowerCase()
+  } catch {
+    return "La dirección de la app (NEXT_PUBLIC_APP_URL) no es una URL válida."
+  }
+
+  if (host === "localhost" || host === "127.0.0.1") {
+    return "La app está configurada con una dirección local, así que el enlace no funcionaría fuera de este equipo."
+  }
+
+  if (host.endsWith(".vercel.app")) {
+    return (
+      "La app está configurada con una dirección de Vercel (.vercel.app). " +
+      "Esas direcciones piden iniciar sesión en Vercel, así que el socio no podría abrir el enlace. " +
+      "Cámbiala a https://nenesgym.com en Vercel → Settings → Environment Variables → NEXT_PUBLIC_APP_URL."
+    )
+  }
+
+  return null
+}
+
+/**
  * Número listo para wa.me. El teléfono se guarda canonizado (10 dígitos, sin el
  * indicativo 57), así que hay que devolvérselo; un número de otra longitud ya
  * trae el suyo y se deja tal cual. Devuelve null si no hay nada usable.
