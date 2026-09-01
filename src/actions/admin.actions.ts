@@ -492,6 +492,97 @@ export async function checkClientPhoneAction(
   return data ? { taken: true, name: data.full_name ?? undefined } : { taken: false }
 }
 
+/**
+ * Borra un cliente de la base para siempre: su ficha, todo su historial y su
+ * cuenta de acceso.
+ *
+ * ⚠️ NO TIENE VUELTA ATRÁS. No hay papelera ni copia. Por eso:
+ *   · la interfaz obliga a escribir ELIMINAR antes de habilitar el botón, y
+ *   · aquí se vuelve a exigir esa palabra, porque una acción de servidor se
+ *     puede invocar sin pasar por la pantalla.
+ *
+ * Se borra de HIJOS A PADRES a mano. Las FK de este esquema no van todas en
+ * cascada: intentar borrar `clients` con pagos vivos falla con 23503.
+ *
+ * ⚠️ También se lleva el PERFIL MARCADOR que pudo quedar atrás. Cuando alguien
+ * acepta una invitación, `accept_client_invitation` repunta `clients.profile_id`
+ * a su cuenta nueva y deja el perfil viejo huérfano a propósito (para poder
+ * revertir). Si no se limpiara aquí, borrar clientes iría dejando cuentas
+ * sueltas en `auth.users` — pasó de verdad: tras vaciar la base quedaron dos.
+ */
+export async function deleteClientCompletelyAction(
+  clientId: string,
+  confirmacion: string
+): Promise<{ success: true; nombre: string } | { error: string }> {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error ?? "Sin permisos" }
+
+  if (confirmacion.trim().toUpperCase() !== "ELIMINAR") {
+    return { error: 'Escribe ELIMINAR para confirmar' }
+  }
+
+  const admin = createAdminClient()
+
+  const { data: cliente } = await admin
+    .from("clients")
+    .select("id, gym_id, profile_id, profile:profiles(full_name, role)")
+    .eq("id", clientId)
+    .maybeSingle()
+
+  if (!cliente) return { error: "Ese cliente ya no existe" }
+  if (cliente.gym_id !== ctx.gymId) return { error: "Ese cliente no es de este gimnasio" }
+
+  const perfil = cliente.profile as { full_name?: string | null; role?: string } | null
+  // Cinturón de seguridad: la cuenta del gimnasio no se borra por aquí ni
+  // aunque alguien fabrique la petición a mano.
+  if (perfil?.role === "admin") return { error: "No se puede eliminar la cuenta del gimnasio" }
+
+  const nombre = perfil?.full_name ?? "Cliente"
+
+  // Perfiles marcador que este cliente dejó atrás al vincular su cuenta.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: invitaciones } = await (admin as any)
+    .from("client_invitations")
+    .select("replaced_profile_id")
+    .eq("client_id", clientId)
+  const marcadores: string[] = (invitaciones ?? [])
+    .map((i: { replaced_profile_id: string | null }) => i.replaced_profile_id)
+    .filter((id: string | null): id is string => !!id && id !== cliente.profile_id)
+
+  const HIJAS = [
+    "client_invitations", "receipt_verdicts", "attendance", "payments",
+    "progress_records", "progress_goals", "client_routine_sessions",
+    "client_routines", "client_exercise_library",
+    "client_training_routine_favorites", "memberships",
+  ] as const
+
+  for (const tabla of HIJAS) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (admin as any).from(tabla).delete().eq("client_id", clientId)
+    // Una tabla que no exista todavía no debe abortar el borrado entero.
+    if (error && !/does not exist/i.test(error.message)) {
+      return { error: `No se pudo borrar ${tabla}: ${error.message}` }
+    }
+  }
+
+  // Los ejercicios que creó como suyos cuelgan de otra columna.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (admin as any).from("exercises").delete().eq("owner_client_id", clientId)
+
+  const { error: eCliente } = await admin.from("clients").delete().eq("id", clientId)
+  if (eCliente) return { error: `No se pudo borrar la ficha: ${eCliente.message}` }
+
+  // Borrar el usuario de auth arrastra su fila de profiles.
+  for (const id of [cliente.profile_id, ...marcadores]) {
+    await admin.auth.admin.deleteUser(id)
+  }
+
+  updateTag("admin-payments")
+  revalidatePath(ROUTES.ADMIN_CLIENTES)
+  revalidatePath(ROUTES.ADMIN_DASHBOARD)
+  return { success: true, nombre }
+}
+
 export async function createManualPaymentAction(formData: {
   clientId: string
   /**

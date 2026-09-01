@@ -21,6 +21,7 @@ import { AutoAprobacionToggle } from "@/components/admin/auto-aprobacion-toggle"
 import { DesbloquearToggle } from "@/components/admin/desbloquear-toggle"
 import { AdjustMembershipModal } from "@/components/admin/adjust-membership-modal"
 import { ClientAccessCard } from "@/components/admin/client-access-card"
+import { DeleteClientCard } from "@/components/admin/delete-client-card"
 import { getClientAccessState } from "@/services/invitations.service"
 import { ROUTES } from "@/constants/routes"
 import { formatDate, todayInBogota, nowInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
@@ -241,6 +242,13 @@ export default async function AdminClienteDetallePage({
             />
           </div>
         )}
+
+        {/* Al final del todo y fuera de las pestañas: se ve desde cualquiera,
+            pero hay que bajar hasta abajo para encontrarlo. */}
+        <DeleteClientCard
+          clientId={clientData.id}
+          clientName={clientProfile?.full_name ?? "este cliente"}
+        />
       </div>
     </div>
   )
