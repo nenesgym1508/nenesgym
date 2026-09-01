@@ -7,7 +7,12 @@ export type Equipment =
   | "peso_corporal" | "mancuernas" | "barra" | "maquina"
   | "polea" | "banda" | "caminadora" | "bicicleta" | "otro"
 
-export type ExerciseType = "fuerza" | "cardio" | "movilidad" | "estiramiento" | "tecnica"
+// ⚠️ "crossfit" es una metodología, no una clase de movimiento como las otras
+// cinco. Y este campo es de UN SOLO valor, así que marcar un thruster como
+// crossfit lo saca del filtro "Fuerza". Se eligió así a propósito (ver
+// migración 035); si algún día estorba, la salida es un campo de disciplina
+// aparte con varios valores, no quitar este.
+export type ExerciseType = "fuerza" | "cardio" | "movilidad" | "estiramiento" | "tecnica" | "crossfit"
 
 // Uso recomendado del ejercicio dentro de una rutina. Un ejercicio puede
 // tener más de una etiqueta (ej. bicicleta estática: calentamiento + cardio).
@@ -72,6 +77,7 @@ export const EXERCISE_TYPE_LABELS: Record<ExerciseType, string> = {
   movilidad: "Movilidad",
   estiramiento: "Estiramiento",
   tecnica: "Técnica",
+  crossfit: "CrossFit",
 }
 
 export const USAGE_TAG_LABELS: Record<UsageTag, string> = {
@@ -90,6 +96,9 @@ const USAGE_TAG_FALLBACK_BY_TYPE: Record<ExerciseType, UsageTag[]> = {
   estiramiento: ["estiramiento"],
   tecnica: ["trabajo_principal"],
   fuerza: ["trabajo_principal", "complementario"],
+  // Un WOD es el bloque central de la sesión, y muchos movimientos valen
+  // además como complementario. Nunca como calentamiento ni estiramiento.
+  crossfit: ["trabajo_principal", "complementario"],
 }
 
 export function getEffectiveUsageTags(ex: Pick<Exercise, "usage_tags" | "exercise_type">): UsageTag[] {
