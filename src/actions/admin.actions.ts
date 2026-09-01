@@ -428,6 +428,15 @@ export async function createManualPaymentAction(formData: {
     return { error: "Método de pago inválido" }
   }
 
+  // Estos dos ya no son siempre los del plan: el modal los reduce cuando el
+  // socio arrastraba días entrenados sin plan. Al dejar de ser una copia literal
+  // del catálogo hay que acotarlos — un 0 o un negativo crearía una membresía
+  // que nace vencida, y el check-in la daría por agotada desde el primer día.
+  const enteroValido = (n: number) => Number.isInteger(n) && n >= 1 && n <= 400
+  if (!enteroValido(formData.totalDays) || !enteroValido(formData.durationDays)) {
+    return { error: "Los días del plan no son válidos" }
+  }
+
   // Operación atómica: crea el pago y aprueba la membresía en una sola
   // transacción en BD. Elimina el riesgo de pagos huérfanos o membresías
   // duplicadas que existía con el flujo anterior de 2 pasos.
