@@ -139,6 +139,55 @@ export async function savePlanAction(input: {
   return { success: true }
 }
 
+/**
+ * Crea un plan a medida para UN socio concreto y devuelve su id.
+ *
+ * Nace **privado** (`visible_to_clients = false`): es una tarifa negociada con
+ * una persona, no una oferta del gimnasio. Con la regla de
+ * `getPlansVisibleToClient`, el socio al que se le asigne pasa a verlo —y solo
+ * él— así que puede renovarlo por su cuenta sin volver al mostrador.
+ *
+ * ⚠️ Devuelve el id porque el llamador tiene que cobrar CON ese plan. Por eso
+ * no se reutiliza `savePlanAction`, que no lo devuelve.
+ */
+export async function createCustomPlanAction(input: {
+  name: string
+  priceCents: number
+  days: number
+  durationDays: number
+}): Promise<{ id: string } | { error: string }> {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error ?? "Sin permisos" }
+
+  const name = input.name.trim()
+  if (!name) return { error: "El plan a medida necesita un nombre" }
+  if (!Number.isInteger(input.days) || input.days < 1 || input.days > 400)
+    return { error: "Los días del plan no son válidos" }
+  if (!Number.isInteger(input.durationDays) || input.durationDays < 1 || input.durationDays > 400)
+    return { error: "La vigencia del plan no es válida" }
+  if (!Number.isInteger(input.priceCents) || input.priceCents < 0)
+    return { error: "El precio no es válido" }
+
+  const { data, error } = await ctx.supabase
+    .from("plans")
+    .insert({
+      gym_id: ctx.gymId,
+      name,
+      price_cents: input.priceCents,
+      days: input.days,
+      duration_days: input.durationDays,
+      visible_to_clients: false,
+    })
+    .select("id")
+    .single()
+
+  if (error) return { error: error.message }
+
+  updateTag("plans")
+  revalidatePath(ROUTES.ADMIN_MAS)
+  return { id: data.id }
+}
+
 export async function setPlanActiveAction(planId: string, isActive: boolean) {
   const ctx = await requireAdmin()
   if ("error" in ctx) return { error: ctx.error }
@@ -445,7 +494,13 @@ export async function checkClientPhoneAction(
 
 export async function createManualPaymentAction(formData: {
   clientId: string
-  planId: string
+  /**
+   * Opcional. Sin plan, la RPC cobra con los días sueltos que se le pasen y la
+   * membresía queda sin plan asociado — es el "Plan a medida · solo esta vez",
+   * que no deja rastro en el catálogo. La RPC ya lo soportaba
+   * (`p_plan_id DEFAULT NULL`); lo que faltaba era permitirlo aquí.
+   */
+  planId?: string
   amountCents: number
   method: string
   totalDays: number
@@ -528,7 +583,8 @@ export async function createClientAction(input: {
    */
   clientRequestId?: string
   plan?: {
-    planId: string
+    /** Opcional: sin plan es un cobro suelto ("Plan a medida · solo esta vez"). */
+    planId?: string
     amountCents: number
     method: string
     totalDays: number

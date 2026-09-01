@@ -3,7 +3,13 @@
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { UserCheck, X, CheckCircle } from "lucide-react"
-import { createManualPaymentAction } from "@/actions/admin.actions"
+import { createManualPaymentAction, createCustomPlanAction } from "@/actions/admin.actions"
+import {
+  CustomPlanCard,
+  PLAN_MEDIDA_INICIAL,
+  ID_PLAN_MEDIDA,
+  type PlanAMedida,
+} from "@/components/admin/custom-plan-card"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { UsedDaysField, useUsedDays } from "@/components/admin/used-days-field"
 import { formatCOP, computePlanDiscount } from "@/lib/utils"
@@ -52,7 +58,14 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
     setOpen(true)
   }
 
-  const selectedPlan = plans.find((p) => p.id === planId)
+  const [medida, setMedida] = useState<PlanAMedida>(PLAN_MEDIDA_INICIAL)
+
+  // El plan a medida se comporta como uno del catálogo para todo lo de abajo
+  // (descuento de días, resumen, botón). Así no hay que duplicar esa lógica.
+  const esMedida = planId === ID_PLAN_MEDIDA
+  const selectedPlan = esMedida
+    ? { id: ID_PLAN_MEDIDA, name: "Plan a medida", days: medida.days, duration_days: medida.durationDays, price_cents: medida.priceCents }
+    : plans.find((p) => p.id === planId)
 
   // Descuento por días ya entrenados sin plan (ver used-days-field.tsx).
   const used = useUsedDays(selectedPlan)
@@ -60,6 +73,7 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
 
   const reset = () => {
     setPlanId("")
+    setMedida(PLAN_MEDIDA_INICIAL)
     setMethod("cash")
     setStatus("idle")
     setErrorMsg("")
@@ -68,13 +82,49 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
 
   const handleActivate = async () => {
     if (!selectedPlan) return
+    if (esMedida && (medida.days < 1 || medida.durationDays < 1)) {
+      setErrorMsg("El plan a medida necesita días y vigencia")
+      setStatus("error")
+      return
+    }
     setStatus("loading")
     setErrorMsg("")
+
+    // Plan a medida "para él": se crea ANTES de cobrar, para poder cobrar con
+    // su id. Si falla, no se cobra nada — mejor eso que un pago suelto sin el
+    // plan que el socio esperaba poder renovar.
+    let planIdFinal: string | undefined = esMedida ? undefined : selectedPlan.id
+    if (esMedida && medida.guardar) {
+      const nombre = `${medida.days} días · ${clientName.trim().split(/\s+/)[0] || "socio"}`
+      let creado: Awaited<ReturnType<typeof createCustomPlanAction>>
+      try {
+        creado = await createCustomPlanAction({
+          name: nombre,
+          priceCents: medida.priceCents,
+          days: medida.days,
+          durationDays: medida.durationDays,
+        })
+      } catch {
+        setErrorMsg("No se pudo conectar. Revisa la conexión e intenta de nuevo.")
+        setStatus("error")
+        return
+      }
+      if ("error" in creado) {
+        setErrorMsg(creado.error)
+        setStatus("error")
+        return
+      }
+      planIdFinal = creado.id
+    }
+
     let result: Awaited<ReturnType<typeof createManualPaymentAction>>
     try {
       result = await createManualPaymentAction({
         clientId,
-        planId: selectedPlan.id,
+        // Sin plan (undefined) = cobro suelto: la RPC usa los días que le
+        // pasamos y la membresía queda sin plan asociado. Es lo que hace
+        // "Solo esta vez", y por eso no ensucia el catálogo.
+        planId: planIdFinal,
         // El precio NO se descuenta: el socio paga el plan completo y este pasa a
         // cubrir los días que ya entrenó. Descontar días es ajustar lo que le
         // queda, no hacerle una rebaja.
@@ -178,6 +228,17 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
                 <div className="space-y-2 mb-4">
                   <label className="text-xs font-medium text-zinc-400">Plan</label>
                   <div className="space-y-2">
+                    {/* Primero de la lista: es lo que se usa cuando el catálogo
+                        no sirve — cobrarle a alguien unos días sueltos a un
+                        precio pactado. */}
+                    <CustomPlanCard
+                      seleccionado={esMedida}
+                      onSelect={() => setPlanId(ID_PLAN_MEDIDA)}
+                      valor={medida}
+                      onChange={setMedida}
+                      clientName={clientName}
+                    />
+
                     {(() => {
                       const singleDayPlan = plans.find(p => p.days === 1 || p.name.toLowerCase().includes('suelto'))
                       const singleDayPrice = singleDayPlan ? singleDayPlan.price_cents : 500000

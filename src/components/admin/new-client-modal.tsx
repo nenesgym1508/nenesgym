@@ -4,7 +4,13 @@ import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { UserPlus, X, CheckCircle, ArrowLeft, ArrowRight, AlertTriangle } from "lucide-react"
-import { createClientAction, checkClientPhoneAction } from "@/actions/admin.actions"
+import { createClientAction, checkClientPhoneAction, createCustomPlanAction } from "@/actions/admin.actions"
+import {
+  CustomPlanCard,
+  PLAN_MEDIDA_INICIAL,
+  ID_PLAN_MEDIDA,
+  type PlanAMedida,
+} from "@/components/admin/custom-plan-card"
 import { createInvitationAction } from "@/actions/invitations.actions"
 import { Input } from "@/components/ui/input"
 import { PhoneField, usePhoneField } from "@/components/ui/phone-field"
@@ -66,7 +72,14 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
   // tras cada éxito — nunca en un render ni en cada submit.
   const requestIdRef = useRef<string>("")
 
-  const selectedPlan = plans.find((p) => p.id === planId)
+  const [medida, setMedida] = useState<PlanAMedida>(PLAN_MEDIDA_INICIAL)
+
+  // El plan a medida se comporta como uno del catálogo para el resumen, el
+  // descuento de días y el botón: así no se duplica esa lógica.
+  const esMedida = planId === ID_PLAN_MEDIDA
+  const selectedPlan = esMedida
+    ? { id: ID_PLAN_MEDIDA, name: "Plan a medida", days: medida.days, duration_days: medida.durationDays, price_cents: medida.priceCents }
+    : plans.find((p) => p.id === planId)
   const nameOk = fullName.trim().length >= 2
 
   // ── Aviso de socio duplicado, EN EL PASO 1 ────────────────────────────────
@@ -141,6 +154,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
     phone.reset()
     setEmail("")
     setPlanId("")
+    setMedida(PLAN_MEDIDA_INICIAL)
     setMethod("cash")
     used.reset()
     setStatus("idle")
@@ -160,9 +174,41 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
   const submit = async (withPlan: boolean) => {
     if (!canContinue) return
     if (withPlan && !selectedPlan) return
+    if (withPlan && esMedida && (medida.days < 1 || medida.durationDays < 1)) {
+      setErrorMsg("El plan a medida necesita días y vigencia")
+      setStatus("error")
+      return
+    }
     setStatus("loading")
     setErrorMsg("")
     setPlanWarning("")
+
+    // Plan a medida "para él": se crea ANTES de dar de alta, para poder cobrar
+    // con su id. Si falla, no se crea el socio — mejor eso que un alta a medias
+    // con un cobro que no corresponde al plan pactado.
+    let planIdFinal: string | undefined = esMedida ? undefined : selectedPlan?.id
+    if (withPlan && esMedida && medida.guardar) {
+      const nombre = `${medida.days} días · ${fullName.trim().split(/\s+/)[0] || "socio"}`
+      let creado: Awaited<ReturnType<typeof createCustomPlanAction>>
+      try {
+        creado = await createCustomPlanAction({
+          name: nombre,
+          priceCents: medida.priceCents,
+          days: medida.days,
+          durationDays: medida.durationDays,
+        })
+      } catch {
+        setErrorMsg("No se pudo conectar. Revisa la conexión e intenta de nuevo.")
+        setStatus("error")
+        return
+      }
+      if ("error" in creado) {
+        setErrorMsg(creado.error)
+        setStatus("error")
+        return
+      }
+      planIdFinal = creado.id
+    }
 
     let result: Awaited<ReturnType<typeof createClientAction>>
     try {
@@ -174,7 +220,9 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
       plan:
         withPlan && selectedPlan
           ? {
-              planId: selectedPlan.id,
+              // Sin plan = cobro suelto ("solo esta vez"): la membresía queda
+              // sin plan asociado y el catálogo no se ensucia.
+              planId: planIdFinal,
               // El precio no se descuenta: el socio paga el plan completo y este
               // pasa a cubrir los días que ya entrenó. No es una rebaja.
               amountCents: selectedPlan.price_cents,
@@ -428,6 +476,16 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                 <div className="space-y-2 mb-4">
                   <label className="text-xs font-medium text-zinc-400">Plan</label>
                   <div className="space-y-2">
+                    {/* Primero: al dar de alta a alguien es cuando más se pacta
+                        una tarifa propia, no una del catálogo. */}
+                    <CustomPlanCard
+                      seleccionado={esMedida}
+                      onSelect={() => setPlanId(ID_PLAN_MEDIDA)}
+                      valor={medida}
+                      onChange={setMedida}
+                      clientName={fullName || "el socio"}
+                    />
+
                     {(() => {
                       const singleDayPlan = plans.find(
                         (p) => p.days === 1 || p.name.toLowerCase().includes("suelto")
