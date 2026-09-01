@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 // Por eso aquí todas llevan tope explícito: más vale un número que se pueda
 // razonar que un corte invisible que aparecería el día que el gimnasio crezca.
 
-/** Nadie entra más de dos veces al día; 1000 cubre casi tres años de un socio. */
+/** Nadie entra más de dos veces al día; 1000 cubre casi tres años de un cliente. */
 const MAX_ASISTENCIAS_SOCIO = 1000
 /** Aforo diario. Un gimnasio de barrio no pasa de unos cientos. */
 const MAX_ASISTENCIAS_DIA = 500

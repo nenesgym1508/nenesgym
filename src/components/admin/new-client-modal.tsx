@@ -66,7 +66,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
 
   // Idempotencia del alta. Un doble clic o un reintento tras un fallo de red
   // reutilizan este id: el correo marcador sale determinista (no se duplica el
-  // socio) y la RPC del pago devuelve ALREADY_APPLIED (no se cobra dos veces).
+  // cliente) y la RPC del pago devuelve ALREADY_APPLIED (no se cobra dos veces).
   //
   // ⚠️ Un requestId = UNA intención de cobro. Se regenera al ABRIR el modal y
   // tras cada éxito — nunca en un render ni en cada submit.
@@ -82,10 +82,10 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
     : plans.find((p) => p.id === planId)
   const nameOk = fullName.trim().length >= 2
 
-  // ── Aviso de socio duplicado, EN EL PASO 1 ────────────────────────────────
+  // ── Aviso de cliente duplicado, EN EL PASO 1 ────────────────────────────────
   // Antes esta comprobación solo ocurría al guardar: el admin rellenaba todo,
   // elegía plan y método de pago, y solo al final le decíamos que ese WhatsApp
-  // ya era de otro socio. Ahora salta en cuanto el número está completo.
+  // ya era de otro cliente. Ahora salta en cuanto el número está completo.
   //
   // El resultado guarda PARA QUÉ número es (`para`). Con eso, el estado que se
   // pinta se DERIVA en cada render en vez de escribirse desde el efecto:
@@ -184,11 +184,11 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
     setPlanWarning("")
 
     // Plan a medida "para él": se crea ANTES de dar de alta, para poder cobrar
-    // con su id. Si falla, no se crea el socio — mejor eso que un alta a medias
+    // con su id. Si falla, no se crea el cliente — mejor eso que un alta a medias
     // con un cobro que no corresponde al plan pactado.
     let planIdFinal: string | undefined = esMedida ? undefined : selectedPlan?.id
     if (withPlan && esMedida && medida.guardar) {
-      const nombre = `${medida.days} días · ${fullName.trim().split(/\s+/)[0] || "socio"}`
+      const nombre = `${medida.days} días · ${fullName.trim().split(/\s+/)[0] || "cliente"}`
       let creado: Awaited<ReturnType<typeof createCustomPlanAction>>
       try {
         creado = await createCustomPlanAction({
@@ -223,7 +223,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
               // Sin plan = cobro suelto ("solo esta vez"): la membresía queda
               // sin plan asociado y el catálogo no se ensucia.
               planId: planIdFinal,
-              // El precio no se descuenta: el socio paga el plan completo y este
+              // El precio no se descuenta: el cliente paga el plan completo y este
               // pasa a cubrir los días que ya entrenó. No es una rebaja.
               amountCents: selectedPlan.price_cents,
               method,
@@ -373,7 +373,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                 <div className="mb-4">
                   <h3 className="text-base font-bold text-zinc-100">Registrar cliente</h3>
                   <p className="text-xs text-zinc-500">
-                    <span className="text-zinc-300">Paso 1 de 2</span> · Datos del socio
+                    <span className="text-zinc-300">Paso 1 de 2</span> · Datos del cliente
                   </p>
                 </div>
 
@@ -386,7 +386,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                     onChange={(e) => setFullName(e.target.value)}
                     autoFocus
                   />
-                  {/* Obligatorio: identifica al socio, evita duplicados y es el canal
+                  {/* Obligatorio: identifica al cliente, evita duplicados y es el canal
                       por el que se le hará llegar el enlace para vincular su correo. */}
                   <PhoneField
                     id="nc_phone"
@@ -398,7 +398,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                       phone.national.length > 0 && !phone.isValid
                         ? `Ese país usa ${phone.largoEsperado} dígitos (llevas ${phone.national.length})`
                         : dup.estado === "ocupado"
-                          ? `Ese WhatsApp ya es de ${dup.nombre ?? "otro socio"}`
+                          ? `Ese WhatsApp ya es de ${dup.nombre ?? "otro cliente"}`
                           : undefined
                     }
                     hint={
@@ -413,7 +413,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                   {dup.estado === "ocupado" && (
                     <div className="rounded-xl border border-amber-500/25 bg-amber-950/20 p-3 text-[11px] leading-normal text-amber-200">
                       <p>
-                        <strong className="text-zinc-100">{dup.nombre ?? "Un socio"}</strong> ya
+                        <strong className="text-zinc-100">{dup.nombre ?? "Un cliente"}</strong> ya
                         está registrado con ese número. Si quieres venderle un plan, búscalo en
                         Clientes y usa <strong className="text-zinc-100">Activar plan</strong>.
                       </p>
@@ -434,7 +434,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
 
                 {!email.trim() && (
                   <p className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-[11px] leading-normal text-zinc-400">
-                    Sin correo el socio queda registrado (membresía, ingresos e historial),
+                    Sin correo el cliente queda registrado (membresía, ingresos e historial),
                     pero <strong className="text-zinc-300">no podrá entrar a la app</strong>.
                     Podrás agregarle un correo más adelante.
                   </p>
@@ -483,7 +483,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                       onSelect={() => setPlanId(ID_PLAN_MEDIDA)}
                       valor={medida}
                       onChange={setMedida}
-                      clientName={fullName || "el socio"}
+                      clientName={fullName || "el cliente"}
                     />
 
                     {(() => {

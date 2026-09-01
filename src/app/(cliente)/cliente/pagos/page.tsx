@@ -18,7 +18,7 @@ export default async function ClientePagosPage() {
 
   const [payments, plans, clientRow] = await Promise.all([
     client ? getClientPayments(client.id) : Promise.resolve([]),
-    // Solo los planes que ESTE socio puede ver: los públicos más los que ya
+    // Solo los planes que ESTE cliente puede ver: los públicos más los que ya
     // tuvo alguna vez (ver getPlansVisibleToClient).
     getPlansVisibleToClient(client?.id ?? null),
     client

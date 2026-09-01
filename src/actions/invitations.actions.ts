@@ -21,13 +21,13 @@ import {
 
 export type InvitationLink = {
   url: string
-  /** null si el socio no tiene un teléfono usable: la UI solo ofrece copiar. */
+  /** null si el cliente no tiene un teléfono usable: la UI solo ofrece copiar. */
   waUrl: string | null
   expiresAt: string
 }
 
 /**
- * Emite (o regenera) la invitación de un socio y devuelve el enlace.
+ * Emite (o regenera) la invitación de un cliente y devuelve el enlace.
  *
  * ⚠️ El token en claro solo existe aquí y en lo que se devuelve: en la base solo
  * queda su sha256. Por eso "reutilizar" una invitación viva no es posible — no
@@ -41,7 +41,7 @@ export async function createInvitationAction(
   if ("error" in ctx) return { error: ctx.error ?? "Sin permisos" }
 
   // Antes de nada: que la dirección con la que se va a construir el enlace sirva
-  // de verdad fuera del gimnasio. Generar un token para un enlace que el socio
+  // de verdad fuera del gimnasio. Generar un token para un enlace que el cliente
   // no puede abrir solo consigue quemarlo y que nadie se entere hasta la queja.
   const problema = invitationBaseUrlProblem()
   if (problema) return { error: problema }
@@ -105,7 +105,7 @@ export async function revokeInvitationAction(invitationId: string, clientId: str
 /**
  * Guarda el token en una cookie antes de saltar a Google.
  *
- * Es la CAPA 2 del contexto OAuth, no la principal: cuando el socio abre el
+ * Es la CAPA 2 del contexto OAuth, no la principal: cuando el cliente abre el
  * enlace desde el WebView de WhatsApp y Google salta al navegador del sistema,
  * esta cookie no existe allí. La capa que sí sobrevive es el `?inv=` del
  * redirectTo; esta cubre el caso contrario (que Supabase recorte el query).
@@ -168,7 +168,7 @@ export async function acceptWithCurrentSessionAction(token: string): Promise<Acc
  *
  * En vez de signUp (que además exigiría confirmación por correo, porque el
  * proyecto tiene mailer_autoconfirm=false), se reutiliza la cuenta inerte que ya
- * existe: se le pone el correo y la contraseña que elige el socio. Cero fusión,
+ * existe: se le pone el correo y la contraseña que elige el cliente. Cero fusión,
  * cero ficha sobrante, nada que borrar.
  */
 export async function acceptWithPasswordAction(
@@ -217,12 +217,12 @@ export async function acceptWithPasswordAction(
     .select("profile_id")
     .eq("id", inv.client_id)
     .maybeSingle()
-  if (!client) return { ok: false, code: "CLIENT_GONE", message: "El socio ya no existe." }
+  if (!client) return { ok: false, code: "CLIENT_GONE", message: "El cliente ya no existe." }
 
   // ⚠️ GUARDA CRÍTICA. Abajo se hace `updateUserById` con el correo y la
   // contraseña que teclea quien abre el enlace. Si la ficha perteneciera a una
   // cuenta que alguien YA usa, eso sería una toma de cuenta completa: el
-  // atacante se quedaría con el login del socio, no solo con su ficha.
+  // atacante se quedaría con el login del cliente, no solo con su ficha.
   //
   // "Reclamable" = la cuenta la creó el gimnasio y nadie ha entrado nunca con
   // ella (last_sign_in_at NULL, sin identidades distintas de 'email').

@@ -120,7 +120,7 @@ export function InvitationActions({
         // Sin teléfono usable no se pinta un botón que no llevaría a ninguna
         // parte: el admin lo manda por otro medio con "Copiar enlace".
         <p className="rounded-xl border border-white/10 bg-white/[0.02] p-2.5 text-center text-[11px] text-zinc-500">
-          Este socio no tiene un WhatsApp válido. Copia el enlace y mándaselo por otro medio.
+          Este cliente no tiene un WhatsApp válido. Copia el enlace y mándaselo por otro medio.
         </p>
       )}
 
@@ -146,7 +146,7 @@ export function InvitationActions({
       <SuccessToast
         open={copied}
         title="Enlace copiado"
-        subtitle="Pégalo donde quieras enviárselo al socio"
+        subtitle="Pégalo donde quieras enviárselo al cliente"
         onClose={() => setCopied(false)}
       />
     </div>

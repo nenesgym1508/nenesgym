@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const next = searchParams.get("next") ?? "/cliente/dashboard"
 
   // Contexto de invitación. El query param es la capa PRINCIPAL: la cookie no
-  // sobrevive cuando el socio abre el enlace en el WebView de WhatsApp y Google
+  // sobrevive cuando el cliente abre el enlace en el WebView de WhatsApp y Google
   // salta al navegador del sistema. La cookie queda como respaldo por si
   // Supabase recortara el query string.
   const invFromQuery = searchParams.get(INVITATION_QUERY_PARAM)

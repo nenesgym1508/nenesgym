@@ -14,7 +14,7 @@ interface ClientAccessCardProps {
 }
 
 /**
- * "Acceso a la app" en la ficha del socio.
+ * "Acceso a la app" en la ficha del cliente.
  *
  * La invitación NO es parte del cobro: esta tarjeta existe para poder mandarla
  * (o volver a mandarla) en cualquier momento después del alta.
@@ -90,7 +90,7 @@ export function ClientAccessCard({ clientId, state }: ClientAccessCardProps) {
       )}
       {state.status === "sin_activar" && (
         <p className="mt-1.5 text-[11px] text-zinc-500">
-          El socio existe en el gimnasio pero todavía no puede entrar a la app.
+          El cliente existe en el gimnasio pero todavía no puede entrar a la app.
         </p>
       )}
 

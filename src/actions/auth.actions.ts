@@ -29,7 +29,7 @@ export async function loginAction(data: { email: string; password: string; next?
     return { error: traducirErrorAuth(error.message) }
   }
 
-  // Volver al enlace de invitación que el socio estaba intentando activar. Sin
+  // Volver al enlace de invitación que el cliente estaba intentando activar. Sin
   // esto, "inicia sesión con tu cuenta" era un consejo sin salida: al entrar
   // aterrizaba en su panel y perdía el enlace.
   const volverA = destinoSeguro(data.next)

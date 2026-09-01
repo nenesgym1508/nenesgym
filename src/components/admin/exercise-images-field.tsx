@@ -10,7 +10,7 @@ import { ImageCropModal } from "@/components/ui/image-crop-modal"
  * Galería de imágenes de un ejercicio: hasta 3.
  *
  * Vive en un solo sitio porque la usan los DOS formularios —el del admin y el
- * del socio para sus ejercicios propios— y antes eran ~80 líneas duplicadas
+ * del cliente para sus ejercicios propios— y antes eran ~80 líneas duplicadas
  * casi idénticas. Cada arreglo había que aplicarlo dos veces.
  *
  * ⚠️ La PRIMERA imagen es la portada y se guarda además en `exercises.media_url`

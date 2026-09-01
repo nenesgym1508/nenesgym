@@ -48,7 +48,7 @@ export function ExerciseDetailModal({ exercise, onClose }: ExerciseDetailModalPr
         <div className="flex-1 overflow-y-auto">
           {galeria.length > 0 ? (
             // Con una sola foto se ve igual que siempre. Con varias, se deslizan
-            // en horizontal: es lo natural en móvil, que es donde el socio
+            // en horizontal: es lo natural en móvil, que es donde el cliente
             // consulta su rutina, y no necesita flechas ni puntitos.
             <div
               className={`flex w-full snap-x snap-mandatory bg-zinc-800 ${

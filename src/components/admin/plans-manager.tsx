@@ -16,7 +16,7 @@ interface Plan {
   days: number
   duration_days: number
   is_active: boolean
-  /** false = tarifa privada: el socio no la ve en su lista de pago. */
+  /** false = tarifa privada: el cliente no la ve en su lista de pago. */
   visible_to_clients?: boolean
 }
 
@@ -277,12 +277,12 @@ export function PlansManager({ plans }: { plans: Plan[] }) {
             </span>
             <span className="min-w-0">
               <span className="block text-sm font-medium text-zinc-200">
-                No mostrar este plan a los socios
+                No mostrar este plan a los clientes
               </span>
               <span className="mt-0.5 block text-[11px] leading-normal text-zinc-500">
                 {editing.visible
-                  ? "Ahora mismo cualquier socio lo ve al ir a pagar."
-                  : "Solo tú puedes asignarlo. Al socio que ya se lo hayas asignado una vez sí le aparecerá, para que pueda renovar solo."}
+                  ? "Ahora mismo cualquier cliente lo ve al ir a pagar."
+                  : "Solo tú puedes asignarlo. Al cliente que ya se lo hayas asignado una vez sí le aparecerá, para que pueda renovar solo."}
               </span>
             </span>
           </button>

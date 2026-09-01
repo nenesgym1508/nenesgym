@@ -14,9 +14,9 @@ import { formatDate, todayInBogota, addDays } from "@/lib/dates"
  *
  * Las dos formas de guardarlo NO son lo mismo, y la diferencia importa:
  *
- *   · GUARDAR PARA EL SOCIO → se crea un plan de verdad, pero **privado**
+ *   · GUARDAR PARA EL CLIENTE → se crea un plan de verdad, pero **privado**
  *     (`visible_to_clients = false`). Nadie más lo ve en su lista, pero ese
- *     socio sí —porque ya lo tuvo— y puede renovarlo solo. Para tarifas que se
+ *     cliente sí —porque ya lo tuvo— y puede renovarlo solo. Para tarifas que se
  *     van a repetir cada mes.
  *
  *   · SOLO ESTA VEZ → no se crea ningún plan. El cobro va con `plan_id` nulo y
@@ -26,7 +26,7 @@ export type PlanAMedida = {
   days: number
   durationDays: number
   priceCents: number
-  /** true = queda guardado como plan privado del socio y podrá renovarlo. */
+  /** true = queda guardado como plan privado del cliente y podrá renovarlo. */
   guardar: boolean
 }
 
@@ -59,7 +59,7 @@ export function CustomPlanCard({ seleccionado, onSelect, valor, onChange, client
 
   const completo = valor.days >= 1 && valor.durationDays >= 1
   const vence = completo ? addDays(todayInBogota(), valor.durationDays - 1) : null
-  const nombreGenerado = `${valor.days} días · ${clientName.trim().split(/\s+/)[0] || "socio"}`
+  const nombreGenerado = `${valor.days} días · ${clientName.trim().split(/\s+/)[0] || "cliente"}`
 
   return (
     <div
@@ -120,7 +120,7 @@ export function CustomPlanCard({ seleccionado, onSelect, valor, onChange, client
             </p>
           )}
 
-          {/* Guardarlo o no NO es un detalle: decide si el socio podrá renovar
+          {/* Guardarlo o no NO es un detalle: decide si el cliente podrá renovar
               solo o tendrá que volver al mostrador cada mes. */}
           <div className="grid grid-cols-2 gap-2">
             <Opcion
@@ -140,7 +140,7 @@ export function CustomPlanCard({ seleccionado, onSelect, valor, onChange, client
           {valor.guardar && completo && (
             <p className="rounded-lg border border-amber-500/20 bg-amber-950/20 px-2.5 py-2 text-[11px] leading-normal text-amber-200">
               Se guardará como <strong className="text-zinc-100">{nombreGenerado}</strong>, marcado como
-              privado. Solo aparece en la lista de {clientName.trim().split(/\s+/)[0] || "ese socio"}.
+              privado. Solo aparece en la lista de {clientName.trim().split(/\s+/)[0] || "ese cliente"}.
             </p>
           )}
         </div>

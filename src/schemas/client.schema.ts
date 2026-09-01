@@ -24,14 +24,14 @@ export const updateProfileSchema = z.object({
   emergency_contact: z.string().max(100).optional().or(z.literal('')),
 })
 
-// Alta manual de un socio por parte del admin (el que no trae el celular encima
+// Alta manual de un cliente por parte del admin (el que no trae el celular encima
 // y no puede registrarse solo). El correo es opcional — si falta se genera uno
 // marcador, ver src/lib/placeholder-email.ts.
 //
-// El celular SÍ es obligatorio: es el identificador del socio, la única defensa
+// El celular SÍ es obligatorio: es el identificador del cliente, la única defensa
 // contra registrarlo dos veces, y el canal por el que se le mandará el enlace
 // para vincular su correo. Se guarda solo en dígitos (sin +, espacios ni guiones)
-// para que el mismo número escrito de dos formas no sean dos socios distintos.
+// para que el mismo número escrito de dos formas no sean dos clientes distintos.
 export const adminCreateClientSchema = z.object({
   full_name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(80),
   email: z.string().email('Correo inválido').optional().or(z.literal('')),
@@ -39,7 +39,7 @@ export const adminCreateClientSchema = z.object({
     .string()
     // Solo dígitos, y sin el indicativo de Colombia: "+57 300 123 4567",
     // "573001234567" y "3001234567" son el MISMO número. Si se guardaran tal cual,
-    // serían tres socios distintos y la detección de duplicados no vería nada.
+    // serían tres clientes distintos y la detección de duplicados no vería nada.
     .transform((v) => {
       const digits = v.replace(/\D/g, '')
       return digits.length === 12 && digits.startsWith('57') ? digits.slice(2) : digits

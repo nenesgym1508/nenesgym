@@ -11,7 +11,7 @@ import { hashInvitationToken } from "@/lib/invitations"
 //    tiene policy de cliente (ver migración 026), así que no hay otra vía.
 
 export type ClientAccessStatus =
-  | "activa"        // el socio ya entra a la app
+  | "activa"        // el cliente ya entra a la app
   | "sin_activar"   // cuenta inerte, sin invitación viva
   | "invitada"      // invitación viva y vigente
   | "vencida"       // hubo invitación pero caducó
@@ -36,9 +36,9 @@ const EMPTY: ClientAccessState = {
 }
 
 /**
- * Estado de acceso del socio para la ficha del admin.
+ * Estado de acceso del cliente para la ficha del admin.
  *
- * ⚠️ "Activa" NO se decide solo por la invitación aceptada. Un socio que se
+ * ⚠️ "Activa" NO se decide solo por la invitación aceptada. Un cliente que se
  * registró él mismo (por /register o con Google) tiene ficha propia y **ninguna
  * invitación**: si el estado se dedujera solo de esta tabla, saldría como "sin
  * activar" y la tarjeta le ofrecería al admin invitarlo — y ese enlace, en las
@@ -53,7 +53,7 @@ export async function getClientAccessState(clientId: string): Promise<ClientAcce
 
   // Las dos consultas son INDEPENDIENTES: ninguna usa el resultado de la otra.
   // Encadenadas costaban 402ms; en paralelo, 243ms (medido contra producción).
-  // Como esta función bloquea el render de la ficha del socio, esos 158ms se
+  // Como esta función bloquea el render de la ficha del cliente, esos 158ms se
   // notaban en cada apertura.
   const [
     { data: claimable, error: claimableError },

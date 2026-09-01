@@ -92,10 +92,10 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
 
     // Plan a medida "para él": se crea ANTES de cobrar, para poder cobrar con
     // su id. Si falla, no se cobra nada — mejor eso que un pago suelto sin el
-    // plan que el socio esperaba poder renovar.
+    // plan que el cliente esperaba poder renovar.
     let planIdFinal: string | undefined = esMedida ? undefined : selectedPlan.id
     if (esMedida && medida.guardar) {
-      const nombre = `${medida.days} días · ${clientName.trim().split(/\s+/)[0] || "socio"}`
+      const nombre = `${medida.days} días · ${clientName.trim().split(/\s+/)[0] || "cliente"}`
       let creado: Awaited<ReturnType<typeof createCustomPlanAction>>
       try {
         creado = await createCustomPlanAction({
@@ -125,7 +125,7 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
         // pasamos y la membresía queda sin plan asociado. Es lo que hace
         // "Solo esta vez", y por eso no ensucia el catálogo.
         planId: planIdFinal,
-        // El precio NO se descuenta: el socio paga el plan completo y este pasa a
+        // El precio NO se descuenta: el cliente paga el plan completo y este pasa a
         // cubrir los días que ya entrenó. Descontar días es ajustar lo que le
         // queda, no hacerle una rebaja.
         amountCents: selectedPlan.price_cents,

@@ -8,7 +8,7 @@ export const metadata = {
 }
 
 /**
- * Confirmación tras vincular. El socio encuentra todo su historial porque nunca
+ * Confirmación tras vincular. El cliente encuentra todo su historial porque nunca
  * cambió su `clients.id`: solo se movió el puntero al perfil de su cuenta.
  */
 export default function InvitacionExitoPage() {

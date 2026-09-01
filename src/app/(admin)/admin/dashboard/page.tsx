@@ -79,7 +79,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       <div className="flex flex-col gap-3">
-        {/* Único camino para dar de alta a un socio que llega sin celular y no
+        {/* Único camino para dar de alta a un cliente que llega sin celular y no
             puede registrarse solo. Va primero por eso. */}
         <NewClientModal plans={planOptions} />
         <Link

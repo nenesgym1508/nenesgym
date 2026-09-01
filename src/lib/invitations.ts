@@ -1,7 +1,7 @@
 import { randomBytes, createHash } from "crypto"
 import { env } from "@/lib/env"
 
-// Invitaciones de acceso: el puente entre "socio del gimnasio" y "cuenta de la app".
+// Invitaciones de acceso: el puente entre "cliente del gimnasio" y "cuenta de la app".
 //
 // ⚠️ Módulo SERVER-ONLY (importa node:crypto). A diferencia de placeholder-email.ts
 // —que usa el `crypto` global y por eso sí puede importarse desde el buscador de
@@ -43,13 +43,13 @@ export function buildInvitationUrl(token: string): string {
  *
  * ⚠️ Esto existe por un fallo real: `NEXT_PUBLIC_APP_URL` apuntaba en producción
  * a la URL `*.vercel.app` del proyecto, y esas URLs están detrás de la
- * protección de despliegue de Vercel — redirigen a `vercel.com/login`. El socio
+ * protección de despliegue de Vercel — redirigen a `vercel.com/login`. El cliente
  * recibía el enlace por WhatsApp y aterrizaba en una pantalla de login de
  * Vercel, sin poder activar nada.
  *
  * Lo peor era que fallaba **en silencio**: el admin veía el enlace generado
  * correctamente y lo enviaba tan tranquilo. El problema solo aparecía del lado
- * del socio. Por eso se comprueba antes de emitir: más vale que el admin vea un
+ * del cliente. Por eso se comprueba antes de emitir: más vale que el admin vea un
  * error inmediato a que se entere por una queja tres días después.
  *
  * En desarrollo se permite cualquier cosa (localhost incluido).
@@ -71,7 +71,7 @@ export function invitationBaseUrlProblem(): string | null {
   if (host.endsWith(".vercel.app")) {
     return (
       "La app está configurada con una dirección de Vercel (.vercel.app). " +
-      "Esas direcciones piden iniciar sesión en Vercel, así que el socio no podría abrir el enlace. " +
+      "Esas direcciones piden iniciar sesión en Vercel, así que el cliente no podría abrir el enlace. " +
       "Cámbiala a https://nenesgym.com en Vercel → Settings → Environment Variables → NEXT_PUBLIC_APP_URL."
     )
   }

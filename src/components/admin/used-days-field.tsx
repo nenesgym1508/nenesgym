@@ -10,9 +10,9 @@ interface PlanShape {
 }
 
 /**
- * Días que el socio ya lleva entrenando sin haber comprado plan.
+ * Días que el cliente ya lleva entrenando sin haber comprado plan.
  *
- * Caso real: el socio lleva semanas viniendo y solo ahora se le formaliza el
+ * Caso real: el cliente lleva semanas viniendo y solo ahora se le formaliza el
  * cobro. El plan que se le vende debe cubrir retroactivamente esos días, no
  * empezar de cero.
  *
@@ -28,7 +28,7 @@ interface PlanShape {
  * teclea es exactamente lo que se descuenta.
  *
  * Vive en un solo sitio porque lo usan los DOS caminos de venta —el alta de un
- * socio nuevo y la activación sobre uno existente— y ya pasó una vez que un
+ * cliente nuevo y la activación sobre uno existente— y ya pasó una vez que un
  * ajuste solo llegó a uno de los dos.
  */
 export function useUsedDays(plan: PlanShape | undefined) {
@@ -171,13 +171,13 @@ export function UsedDaysField({
             .
           </p>
           <p className="text-amber-400/70">
-            Paga el precio completo del plan. Úsalo para el socio que ya llevaba días
+            Paga el precio completo del plan. Úsalo para el cliente que ya llevaba días
             entrenando sin haberlo comprado.
           </p>
         </div>
       ) : (
         <p className="text-[11px] leading-normal text-zinc-500">
-          Si el socio ya llevaba días entrenando sin plan, escríbelos aquí y se descontarán
+          Si el cliente ya llevaba días entrenando sin plan, escríbelos aquí y se descontarán
           del plan que le vendes ahora.
         </p>
       )}

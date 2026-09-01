@@ -110,7 +110,7 @@ export async function savePlanAction(input: {
   priceCents: number
   days: number
   durationDays: number
-  /** false = tarifa privada: no aparece en la lista del socio. Ver migración 032. */
+  /** false = tarifa privada: no aparece en la lista del cliente. Ver migración 032. */
   visibleToClients?: boolean
 }) {
   const ctx = await requireAdmin()
@@ -140,11 +140,11 @@ export async function savePlanAction(input: {
 }
 
 /**
- * Crea un plan a medida para UN socio concreto y devuelve su id.
+ * Crea un plan a medida para UN cliente concreto y devuelve su id.
  *
  * Nace **privado** (`visible_to_clients = false`): es una tarifa negociada con
  * una persona, no una oferta del gimnasio. Con la regla de
- * `getPlansVisibleToClient`, el socio al que se le asigne pasa a verlo —y solo
+ * `getPlansVisibleToClient`, el cliente al que se le asigne pasa a verlo —y solo
  * él— así que puede renovarlo por su cuenta sin volver al mostrador.
  *
  * ⚠️ Devuelve el id porque el llamador tiene que cobrar CON ese plan. Por eso
@@ -454,7 +454,7 @@ export async function adminSetProgressGoalAction(clientId: string, goalType: Goa
 }
 
 /**
- * ¿Ese WhatsApp ya es de un socio? Se consulta MIENTRAS el admin lo teclea.
+ * ¿Ese WhatsApp ya es de un cliente? Se consulta MIENTRAS el admin lo teclea.
  *
  * Existe porque el aviso llegaba tardísimo: el admin rellenaba nombre, teléfono,
  * correo, elegía plan y método de pago, pulsaba "Registrar" y solo entonces le
@@ -463,7 +463,7 @@ export async function adminSetProgressGoalAction(clientId: string, goalType: Goa
  * ⚠️ NO sustituye a la comprobación de `createClientAction`, que se queda donde
  * está. Esta es una cortesía de interfaz; aquella es la que de verdad impide el
  * duplicado, porque entre teclear y guardar pueden pasar minutos y otra persona
- * puede haber dado de alta al mismo socio.
+ * puede haber dado de alta al mismo cliente.
  *
  * Solo devuelve el nombre, para que el admin reconozca de quién se trata. Nada
  * más: es un endpoint que responde a un teléfono que el llamante propone, así
@@ -526,7 +526,7 @@ export async function createManualPaymentAction(formData: {
   }
 
   // Estos dos ya no son siempre los del plan: el modal los reduce cuando el
-  // socio arrastraba días entrenados sin plan. Al dejar de ser una copia literal
+  // cliente arrastraba días entrenados sin plan. Al dejar de ser una copia literal
   // del catálogo hay que acotarlos — un 0 o un negativo crearía una membresía
   // que nace vencida, y el check-in la daría por agotada desde el primer día.
   const enteroValido = (n: number) => Number.isInteger(n) && n >= 1 && n <= 400
@@ -557,12 +557,12 @@ export async function createManualPaymentAction(formData: {
   return { success: true }
 }
 
-// Alta manual de un socio desde el panel admin. Resuelve el caso del cliente que
+// Alta manual de un cliente desde el panel admin. Resuelve el caso del cliente que
 // llega al gimnasio sin el celular encima y no puede registrarse solo.
 //
-// Por qué crea un usuario de auth aunque el socio nunca vaya a iniciar sesión:
+// Por qué crea un usuario de auth aunque el cliente nunca vaya a iniciar sesión:
 // clients.profile_id es NOT NULL y admin_search_clients hace JOIN con profiles,
-// así que un socio sin cuenta no existiría para ninguna pantalla del admin.
+// así que un cliente sin cuenta no existiría para ninguna pantalla del admin.
 // Si no hay correo se genera uno marcador (ver @/lib/placeholder-email).
 //
 // Idempotente respecto al trigger de auth.users: ese trigger ya crea las filas de
@@ -572,12 +572,12 @@ export async function createManualPaymentAction(formData: {
 export async function createClientAction(input: {
   full_name: string
   email?: string
-  /** Obligatorio: identificador del socio y canal para vincularle luego su correo. */
+  /** Obligatorio: identificador del cliente y canal para vincularle luego su correo. */
   phone: string
   /**
    * Identificador de idempotencia del alta completa. Sirve para dos cosas:
    *  - siembra el correo marcador, haciéndolo determinista → un reintento
-   *    recupera el mismo usuario en vez de crear un socio duplicado;
+   *    recupera el mismo usuario en vez de crear un cliente duplicado;
    *  - se propaga al pago como `p_client_request_id` → no cobra dos veces.
    * ⚠️ Debe regenerarse al abrir el modal y tras cada éxito.
    */

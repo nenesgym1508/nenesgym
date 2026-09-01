@@ -8,20 +8,20 @@ import { cn } from "@/lib/utils"
  *
  * Lista curada a mano, no una librería. `libphonenumber-js` valida de verdad
  * (longitudes por país, prefijos de móvil) pero son ~145 KB al bundle del
- * navegador para un gimnasio donde el 99% de los socios son colombianos. Si
+ * navegador para un gimnasio donde el 99% de los clientes son colombianos. Si
  * algún día se venden rutinas al extranjero en volumen, esa es la sustitución.
  *
  * Orden: Colombia primero por ser el caso real, luego el resto por cercanía.
  */
 // `nat` = longitudes válidas del número NACIONAL (sin indicativo).
 //
-// ⚠️ Esto no es cosmético: en la base ya había un socio con 11 dígitos
+// ⚠️ Esto no es cosmético: en la base ya había un cliente con 11 dígitos
 // colombianos ("31355587918"). El campo anterior solo exigía "entre 10 y 15 en
 // total", así que lo dio por bueno — y su enlace de WhatsApp apunta a un número
 // que no existe. Nadie se entera hasta que el mensaje no llega.
 //
 // Donde no hay certeza se deja un rango amplio: prefiero aceptar de más a
-// rechazar un número legítimo de un socio extranjero.
+// rechazar un número legítimo de un cliente extranjero.
 export const COUNTRIES = [
   { code: "CO", dial: "57", flag: "🇨🇴", name: "Colombia", nat: [10] },
   { code: "VE", dial: "58", flag: "🇻🇪", name: "Venezuela", nat: [10] },
@@ -64,8 +64,8 @@ const DIALS_BY_LENGTH = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.len
  *
  * ⚠️ Debe coincidir con `adminCreateClientSchema` (src/schemas/client.schema.ts)
  * y con `handle_new_user` (migración 028). Los tres guardan el mismo número de
- * la misma forma; si divergen, el mismo socio dado de alta por el admin y
- * registrado por sí mismo serían dos socios distintos y la detección de
+ * la misma forma; si divergen, el mismo cliente dado de alta por el admin y
+ * registrado por sí mismo serían dos clientes distintos y la detección de
  * duplicados no vería nada.
  *
  * Colombia se guarda SIN el 57 (10 dígitos). Por eso el campo puede mandar

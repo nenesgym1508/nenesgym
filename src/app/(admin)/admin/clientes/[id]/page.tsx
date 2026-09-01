@@ -115,7 +115,7 @@ export default async function AdminClienteDetallePage({
             <p className="text-sm font-semibold text-zinc-100 truncate">
               {clientProfile?.full_name ?? "Sin nombre"}
             </p>
-            {/* El correo marcador (socio dado de alta sin correo) no se muestra nunca. */}
+            {/* El correo marcador (cliente dado de alta sin correo) no se muestra nunca. */}
             {isPlaceholderEmail(clientProfile?.email) ? (
               <span className="inline-flex items-center rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
                 Sin cuenta de acceso

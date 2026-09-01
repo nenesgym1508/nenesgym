@@ -71,7 +71,7 @@ export function InvitationAccept({ token, firstName, currentEmail }: InvitationA
         options: {
           redirectTo: `${window.location.origin}/auth/callback?inv=${encodeURIComponent(token)}`,
           // select_account, no consent: con la sesión del mostrador abierta, Google
-          // autoseleccionaría esa cuenta y vincularía al socio equivocado.
+          // autoseleccionaría esa cuenta y vincularía al cliente equivocado.
           queryParams: { prompt: "select_account" },
           // Navegamos a mano (abajo) en vez de dejar que supabase-js llame a
           // window.location.assign() por su cuenta. Así, si por lo que sea no
@@ -89,7 +89,7 @@ export function InvitationAccept({ token, firstName, currentEmail }: InvitationA
       // Rescate para navegadores incrustados (el de WhatsApp, sobre todo):
       // algunos ignoran en silencio una navegación por script que ya no cuelga
       // directamente del toque del usuario. Si a los 2,5 s seguimos aquí, es que
-      // pasó eso — y un <a> que el socio toca a mano sí funciona siempre.
+      // pasó eso — y un <a> que el cliente toca a mano sí funciona siempre.
       setGoogleUrl(data.url)
       setTimeout(() => setLoading(false), 2500)
 
@@ -100,7 +100,7 @@ export function InvitationAccept({ token, firstName, currentEmail }: InvitationA
     }
   }
 
-  /** Capa 3: ya hay sesión y el socio confirma que es suya. Repara el caso en que
+  /** Capa 3: ya hay sesión y el cliente confirma que es suya. Repara el caso en que
    *  el contexto se perdió durante el OAuth. */
   const linkCurrent = async () => {
     setLoading(true)

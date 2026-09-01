@@ -9,16 +9,16 @@ export const metadata = {
 
 // Mensajes por código de la RPC accept_client_invitation. Deliberadamente
 // vagos en los casos de conflicto: no revelan qué cuenta usó la invitación ni
-// qué socio existe detrás.
+// qué cliente existe detrás.
 const MENSAJES: Record<string, string> = {
   ALREADY_USED: "Esta invitación ya fue utilizada. Si ya activaste tu cuenta, inicia sesión normalmente.",
   EXPIRED: "Esta invitación ha vencido. Solicita al gimnasio una nueva.",
   REVOKED: "Esta invitación ya no está disponible. Comunícate con NENE'S GYM.",
   INVALID: "Esta invitación ya no está disponible. Comunícate con NENE'S GYM.",
-  ACCOUNT_HAS_DATA: "Esta cuenta ya es socio del gimnasio y tiene su propio historial. Comunícate con NENE'S GYM para unir los dos perfiles.",
+  ACCOUNT_HAS_DATA: "Esta cuenta ya es cliente del gimnasio y tiene su propio historial. Comunícate con NENE'S GYM para unir los dos perfiles.",
   HAS_REAL_ACCOUNT: "Esta ficha ya pertenece a una cuenta activa. Si es tuya, inicia sesión normalmente; si no, comunícate con NENE'S GYM.",
   ALREADY_LINKED: "Esta cuenta ya está vinculada a otro perfil del gimnasio. Comunícate con NENE'S GYM.",
-  IS_ADMIN: "La cuenta del gimnasio no puede aceptar invitaciones de socio. Inicia sesión con la cuenta del socio.",
+  IS_ADMIN: "La cuenta del gimnasio no puede aceptar invitaciones de cliente. Inicia sesión con la cuenta del cliente.",
   NO_PROFILE: "Tu cuenta todavía se está preparando. Vuelve a abrir el enlace en unos segundos.",
   UNAUTHENTICATED: "Necesitas iniciar sesión para activar tu acceso. Vuelve a abrir el enlace.",
   NOT_INSTALLED: "El sistema de invitaciones aún no está disponible. Avisa al gimnasio.",

@@ -166,6 +166,8 @@ export function ClientsList({ clients, plans, total, page, pageSize, search, sta
               .join("")
               .toUpperCase()
             const isActive = c.effectiveStatus === "active" || c.effectiveStatus === "grace"
+            // Le quedan días: no hay nada que cobrarle por entrar hoy.
+            const puedePagarDia = !isActive || c.remainingDays <= 0
 
             return (
               <div
@@ -262,7 +264,12 @@ export function ClientsList({ clients, plans, total, page, pageSize, search, sta
                 <div className="border-t border-white/5"></div>
 
                 {/* Fila de Botones Inferior */}
-                <div className="grid grid-cols-2 gap-3 pt-1">
+                {/* "Pago 1 día" solo si NO le quedan días. Con días
+                    disponibles el cobro no tiene sentido —puede entrar y ya— y
+                    encima invita al error: cobrarle a quien no debía pagar.
+                    Ver también la migración 034, que impide que ese cobro
+                    reetiquete su plan mensual como "Día suelto". */}
+                <div className={`grid gap-3 pt-1 ${puedePagarDia ? "grid-cols-2" : "grid-cols-1"}`}>
                   <ActivatePlanModal
                     clientId={c.id}
                     clientName={clientName}
@@ -271,7 +278,7 @@ export function ClientsList({ clients, plans, total, page, pageSize, search, sta
                     isActive={isActive}
                     currentEndDate={c.endDate ?? undefined}
                   />
-                  {singleDayPlan && (
+                  {singleDayPlan && puedePagarDia && (
                     <LoadingButton
                       onClick={() => handleRegisterSingleDay(c.id, clientName)}
                       pending={registeringId === c.id}
