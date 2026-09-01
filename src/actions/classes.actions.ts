@@ -34,43 +34,6 @@ function revalidateClasses(classId?: string) {
 }
 
 
-export async function createClassAction(data: ClassData) {
-  const guard = await requireAdmin()
-  if ("error" in guard) return { error: guard.error }
-  const supabase = await createClient()
-
-  const { data: newClass, error } = await supabase
-    .from("daily_classes")
-    .insert({
-      gym_id: GYM_ID,
-      title: data.title.trim(),
-      class_date: data.class_date,
-      objective: data.objective ?? null,
-      level: data.level ?? null,
-      estimated_duration_minutes: data.estimated_duration_minutes ?? null,
-      notes: data.notes ?? null,
-      status: "draft",
-      created_by: guard.user.id,
-    })
-    .select("id")
-    .single()
-
-  if (error) return { error: error.message }
-
-  // Scaffold de bloques estándar vacíos.
-  await supabase.from("class_blocks").insert(
-    STANDARD_BLOCK_TITLES.map((title, i) => ({
-      daily_class_id: newClass.id,
-      title,
-      position: i,
-    }))
-  )
-
-  revalidateClasses()
-  return { success: true, id: newClass.id }
-}
-
-// Crea los bloques estándar en una clase existente que no tiene bloques.
 export async function scaffoldStandardBlocksAction(classId: string) {
   const guard = await requireAdmin()
   if ("error" in guard) return { error: guard.error }

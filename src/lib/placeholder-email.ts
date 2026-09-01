@@ -17,27 +17,6 @@ export function isPlaceholderEmail(email?: string | null): boolean {
 }
 
 /** Correo del socio si es real; null si es un marcador (para no pintarlo nunca en la UI). */
-export function displayEmail(email?: string | null): string | null {
-  return isPlaceholderEmail(email) ? null : (email ?? null)
-}
-
-/**
- * Correo marcador a partir del nombre: juan-perez.a3f91c@socios.nenesgym.com
- *
- * ⚠️ Con `seed` el resultado es DETERMINISTA, y de eso depende que el alta sea
- * idempotente. Si el admin pulsa "Registrar", la red va lenta y reintenta, un
- * sufijo aleatorio generaría un correo distinto → `createUser` no colisionaría →
- * **dos socios duplicados, cada uno con su membresía cobrada**. El
- * `client_request_id` del pago no lo evita: son dos clientId diferentes.
- *
- * Con el mismo `seed` (el clientRequestId del modal) el reintento produce el
- * mismo correo, `createUser` falla con "already registered" y createClientAction
- * recupera el usuario existente en vez de crear otro socio.
- *
- * No se hashea el seed: ya es un UUID (122 bits de aleatoriedad), así que sus
- * primeros 6 hex sirven igual. Y hashear obligaría a importar node:crypto, que
- * rompería a los componentes cliente que importan `isPlaceholderEmail` de aquí.
- */
 export function buildPlaceholderEmail(fullName: string, seed?: string): string {
   const slug =
     fullName

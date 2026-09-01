@@ -4,6 +4,101 @@
 
 ---
 
+## 📌 Sesión 19 — 2026-09-01 (Descuento de días al vender un plan, campo de WhatsApp con países, auditoría de rendimiento con 400 socios y 100.000 asistencias, y limpieza de código muerto)
+**Dev:** Claude (AI Agent)
+**Branch:** main
+**Migración aplicada a producción:** `029_search_unaccent_and_escape_wildcards.sql`
+
+### 🎯 Qué se hizo
+
+**1. Descontar días ya entrenados al vender un plan.**
+Caso real del gimnasio: socios que llevaban semanas viniendo sin que se les hubiera
+vendido plan. Contador opcional "Días que ya lleva viniendo" en *Registrar cliente*
+(paso 2) y en *Activar plan*, con vista previa antes de cobrar.
+
+Se resta a los DOS números del plan —días y ventana de calendario— porque el plan es
+"N días dentro de M de calendario": restar solo los días le dejaría el plazo completo
+para menos días, que es un plan distinto al que compró.
+
+⚠️ NO se consigue retrocediendo `start_date`/`occurred_at`, que era lo primero que
+parecía natural: el consumo se cuenta por días **hábiles** (`eligible_days_elapsed`),
+así que retroceder 5 días de calendario podría descontar solo 3 si cayó domingo.
+El precio no se toca: descontar días ajusta lo que le queda, no es una rebaja.
+
+Sin migración: `create_and_approve_cash_payment` ya aceptaba `p_total_days` y
+`p_duration_days`. Sí se añadió cota en `createManualPaymentAction`, porque esos dos
+números dejaron de ser copia literal del catálogo y un 0 crearía una membresía que
+nace vencida.
+
+**2. Campo de WhatsApp con selector de país y longitud por país.**
+Antes admitía letras y solo exigía "entre 10 y 15 dígitos en total". En la base ya
+había un socio con **11 dígitos colombianos** (`31355587918`) y su enlace de WhatsApp
+apunta a un número que no existe. Ahora Colombia exige exactamente 10, y cada país
+declara su longitud nacional.
+
+Detección automática de país **solo** si el número trae prefijo (`+57…` o `0057…`).
+Sin él es imposible: un número suelto de 10 dígitos encaja en Colombia, México,
+Argentina y EE.UU. por igual.
+
+**3. El aviso de socio duplicado se adelantó al paso 1.**
+Antes el admin rellenaba todo, elegía plan y método de pago, pulsaba Registrar, y solo
+entonces saltaba "Ya existe un cliente con ese WhatsApp". Ahora se comprueba mientras
+teclea (`checkClientPhoneAction`, con espera de 450 ms). La comprobación del servidor
+en `createClientAction` **se queda**: entre teclear y guardar pueden pasar minutos.
+
+**4. Auditoría de rendimiento contra producción.**
+Se sembraron 400 socios, 342 membresías, 641 pagos y **100.000 asistencias** (un año
+real: 400 socios × 20 visitas/mes × 12 meses), se midió con sesión real de admin y RLS
+activo, y se borró todo. Conclusión: **no hay cuello de botella**. De 4.300 a 100.000
+asistencias (23×) la consulta por socio se quedó en 218 ms, lo que prueba que el índice
+existe. La latencia base es ~180 ms de red.
+
+**5. Cascada eliminada en la ficha del socio (~400 ms).**
+`getClientAccessState` estaba suelto entre dos `Promise.all` y bloqueaba a siete
+consultas sin que ninguna lo necesitara. Y por dentro encadenaba dos consultas
+independientes: 402 ms → 243 ms medidos.
+
+**6. Limpieza: 12 archivos y 5 funciones muertas (−400 líneas).**
+Entre ellos `src/lib/utils/index.ts`, que era **inalcanzable**: TypeScript resuelve
+`utils.ts` antes que `utils/index.ts`, así que quien lo editara no habría visto
+ningún efecto.
+
+**7. Carpeta `migrations/` de la raíz unificada en `supabase/migrations/`.**
+Tenía 3 funciones vivas en producción cuyo fuente estaba fuera de la carpeta
+versionada; un entorno reconstruido desde ella nunca las habría aplicado.
+
+### 📁 Archivos
+
+**Nuevos:** `src/components/ui/phone-field.tsx`, `src/components/admin/used-days-field.tsx`,
+`supabase/migrations/029_search_unaccent_and_escape_wildcards.sql`,
+`030_ai_pagos_comprobantes.sql`, `031_increment_used_days.sql` (movidas de la raíz).
+
+**Modificados:** `new-client-modal.tsx`, `activate-plan-modal.tsx`, `admin.actions.ts`,
+`invitations.service.ts`, `attendance.service.ts`, `payments.service.ts`,
+`memberships.service.ts`, `clientes/[id]/page.tsx`, `invitation-accept.tsx`.
+
+**Borrados:** `check-db.ts`, `src/lib/utils/index.ts`, `src/lib/crop-image.ts`,
+`progress-bar.tsx`, `monthly-goal-card.tsx`, `exercise-image-crop-modal.tsx`,
+`constants/roles.ts`, `schemas/payment.schema.ts`, `schemas/progress.schema.ts`,
+`types/attendance.ts`, `types/auth.ts`, `types/client.ts`,
+`migrations/admin_search_clients.sql` (la sustituye la 029).
+
+### ✅ Verificación
+
+- `tsc --noEmit` 0 · `npm run build` 0 · lint 110 → 108 problemas (ninguno nuevo).
+- **43 pantallas** recorridas con sesión real de admin y de socio: todas OK.
+- Migración 029 verificada contra producción: 9 de 9 casos.
+- Aislamiento entre socios: escritura y lectura ajena bloqueadas por RLS.
+- Producción restaurada: 3 usuarios, 2 socios, 0 restos de siembra.
+
+### ⏭️ Pendiente
+
+- Probar el botón de Google de la invitación desde el WhatsApp real de Android.
+- Revocar el PAT de GitHub pegado en el chat el 2026-08-31 (permisos de admin).
+- 108 problemas de lint preexistentes (`any` sin tipar y comillas sin escapar).
+
+---
+
 ## 📌 Sesión 18 — 2026-08-21 (Alta manual de clientes desde el panel admin: el socio que llega sin celular)
 **Dev:** Claude (AI Agent)
 **Branch:** main

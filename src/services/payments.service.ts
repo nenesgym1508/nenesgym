@@ -1,7 +1,16 @@
 import { createClient } from "@/lib/supabase/server"
 import { unstable_cache } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { env } from "@/lib/env"
+
+/**
+ * Historial de pagos de un socio.
+ *
+ * ⚠️ El tope es explícito a propósito. Sin `.limit()`, PostgREST corta en 1000
+ * filas SIN avisar: no da error, simplemente faltan pagos. Un socio de años
+ * llegaría ahí y el corte pasaría inadvertido. 200 son ~16 años de
+ * renovaciones mensuales, con margen de sobra.
+ */
+const MAX_PAGOS_SOCIO = 200
 
 export async function getClientPayments(clientId: string) {
   const supabase = await createClient()
@@ -10,6 +19,7 @@ export async function getClientPayments(clientId: string) {
     .select("*, plan:plans(name, days)")
     .eq("client_id", clientId)
     .order("created_at", { ascending: false })
+    .limit(MAX_PAGOS_SOCIO)
   return data ?? []
 }
 
@@ -57,13 +67,6 @@ export function getAllPayments() {
     ["admin-all-payments"],
     { revalidate: 3600, tags: ["admin-payments"] }
   )()
-}
-
-export async function getReceiptSignedUrl(path: string) {
-  if (!path) return null
-  if (path.startsWith("http://") || path.startsWith("https://")) return path
-  const publicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "")
-  return publicUrl ? `${publicUrl}/${path}` : path
 }
 
 export const getAvailablePlans = unstable_cache(

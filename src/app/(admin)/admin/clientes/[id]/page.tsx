@@ -50,13 +50,20 @@ export default async function AdminClienteDetallePage({
   ])
   if (!clientData) notFound()
 
-  const accessState = await getClientAccessState(clientData.id)
-
   const now = nowInBogota()
   const year = now.getFullYear()
   const month = now.getMonth() + 1
 
-  const [membership, progressRecords, goal, monthlyAttendance, attendance, payments, routines] = await Promise.all([
+  // getClientAccessState va DENTRO de este lote, no antes.
+  //
+  // Estaba suelto entre los dos Promise.all y bloqueaba a las otras siete
+  // consultas sin que ninguna lo necesitara: solo depende de clientData.id, que
+  // ya está resuelto arriba. Eran ~240ms de espera en cada apertura de ficha,
+  // puro tiempo muerto.
+  const [
+    membership, progressRecords, goal, monthlyAttendance,
+    attendance, payments, routines, accessState,
+  ] = await Promise.all([
     getActiveMembership(clientData.id),
     getClientProgress(clientData.id, 100),
     getActiveGoal(clientData.id),
@@ -64,6 +71,7 @@ export default async function AdminClienteDetallePage({
     getClientAttendance(clientData.id, 90),
     getClientPayments(clientData.id),
     getClientRoutines(clientData.id),
+    getClientAccessState(clientData.id),
   ])
 
   const clientProfile = clientData.profile as { full_name?: string | null; email?: string | null } | null

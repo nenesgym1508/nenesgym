@@ -4,6 +4,90 @@ Este documento almacena la memoria de errores y gotchas resueltos en el proyecto
 
 ---
 
+## 📌 Lecciones Recientes (Sesión 19 - 2026-09-01)
+
+### 1. PostgREST corta en 1.000 filas y NO avisa
+Cualquier consulta sin `.limit()` se trunca en 1.000 filas: sin error, sin cabecera,
+sin nada. Comprobado pidiendo 100.000 asistencias — devolvió exactamente 1.000.
+Al crecer el gimnasio, un listado empezaría a mentir sin que nadie lo notara.
+**Regla:** toda consulta lleva `.limit()` explícito, aunque hoy devuelva 3 filas.
+
+### 2. ILIKE interpreta lo que teclea el usuario
+`'%' || p_search || '%'` con el término sin escapar: buscar `%` devolvía **los 402
+socios**, y `50%` daba 5 resultados en vez de 1. Hay que escapar la barra invertida,
+`%` y `_`, **en ese orden** (la barra primero, o se duplican las que meten los otros
+dos).
+
+### 3. La búsqueda sin `unaccent` es inservible en Colombia
+`Munoz` no encontraba a `Muñóz`. El admin teclea sin tildes casi siempre, así que
+para él el socio "no existe". Hay que aplicar `unaccent()` a los **dos** lados: al
+término y a la columna. Coste aceptado: impide usar índice de texto. Con 402 socios
+da igual; medido en 223 ms de los cuales ~180 son red.
+
+### 4. Con Next en streaming, `redirect()` responde 200, no 307
+En una página `force-dynamic`, las cabeceras salen antes de que se resuelva el
+`redirect()`, así que la redirección viaja **dentro del cuerpo**. Igual con
+`notFound()`. Una prueba que exija 307 o 404 da falsos negativos: hay que comprobar
+que no se filtre contenido, no el código de estado.
+
+### 5. En desarrollo, casi todas las páginas contienen el texto de la 404
+`This page could not be found` aparece en el bundle de páginas que funcionan
+perfectamente — `/login` incluido. Usarlo como detector de error marca todo como
+roto (me pasó: 39 falsos fallos). Lo mismo con `digest`. La señal fiable es el estado
+HTTP más contenido propio de la pantalla.
+
+### 6. React parte los nodos de texto en el payload
+Buscar `"Pagos pendientes"` en el HTML falla aunque la pantalla lo muestre: el
+payload lo trocea en `"Pagos"` y `"pendientes"`. Los marcadores de prueba hay que
+verificarlos uno a uno antes de darlos por buenos.
+
+### 7. Un `index.ts` dentro de una carpeta homónima es inalcanzable
+Existían `src/lib/utils.ts` y `src/lib/utils/index.ts`. TypeScript resuelve el
+**archivo** antes que la carpeta, así que el segundo no lo importaba nadie y editarlo
+no habría tenido ningún efecto. Trampa silenciosa; borrado.
+
+### 8. Medir con `service_role` da números falsos
+Se salta las políticas RLS, que es justo donde se esconde el coste. Para medir de
+verdad hay que abrir sesión real y usar la clave anon. `generateLink` +
+`verifyOtp` da una sesión sin conocer la contraseña — también sirve para construir
+la cookie de `@supabase/ssr` y probar páginas enteras.
+
+### 9. La latencia de red domina: mide el sobrecoste, no el total
+Una consulta trivial de 4 filas tarda ~180 ms. Sin restar esa base, todo "parece
+lento" y se acaba optimizando lo que no toca.
+
+### 10. Avisar del duplicado al final es tirar el trabajo del admin
+La comprobación de WhatsApp repetido vivía solo en el `submit`: el admin rellenaba
+nombre, teléfono, correo, plan y método de pago para que le saltara el error al final.
+Las validaciones que dependen de la base deben correr **en cuanto el dato está
+completo**. La del servidor se queda igualmente: entre teclear y guardar pueden pasar
+minutos y otro puede haber dado de alta al mismo socio.
+
+### 11. Descontar días de un plan: restar a los dos números, no retroceder la fecha
+Retroceder `start_date` parece lo natural, pero el consumo se cuenta por días
+**hábiles** (`eligible_days_elapsed`): retroceder 5 días de calendario puede descontar
+solo 3 si cayó domingo. Restando a `total_days` y a `duration_days`, lo que el admin
+teclea es exactamente lo que se descuenta.
+
+### 12. Cuidado con `+1`: no es solo EE.UU.
+Rep. Dominicana usa 809, 829 **y** 849 dentro del +1. Listarla con un prefijo fijo
+(`1809`) hace que dos tercios de sus números salgan mal. Todo el plan de numeración
+norteamericano va en una sola entrada.
+
+### 13. Un teléfono "válido en total" puede ser inválido en su país
+La regla era "entre 10 y 15 dígitos contando el indicativo". Con ella entró en la base
+un socio con **11 dígitos colombianos**, y su enlace de WhatsApp apunta a un número
+inexistente. Nadie se entera hasta que el mensaje no llega. La longitud hay que
+validarla **por país**.
+
+### 14. `react-hooks/set-state-in-effect` casi siempre señala un bug real
+Llamar a `setState` en el cuerpo de un efecto no solo dispara renders en cascada.
+Al reescribirlo como estado **derivado** —guardando para qué valor es la respuesta—
+desapareció además una condición de carrera: una respuesta lenta podía pintarse sobre
+un número que el admin ya había cambiado.
+
+---
+
 ## 📌 Lecciones Recientes (Sesión 18 - 2026-08-21)
 
 ### Lección: "no tiene invitación aceptada" NO significa "no tiene cuenta"

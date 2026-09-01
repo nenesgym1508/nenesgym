@@ -1,3 +1,8 @@
+-- ⚠️ TRAÍDA DESDE LA CARPETA `migrations/` DE LA RAÍZ (2026-09-01).
+-- Vivía fuera de supabase/migrations/, así que un entorno reconstruido desde la
+-- carpeta versionada no la habría aplicado nunca. El número no refleja su fecha
+-- real (es anterior a la 029); da igual, porque es idempotente.
+--
 -- Migración: Análisis de comprobantes con Gemini AI
 -- Ejecutada en Supabase proyecto nqhkfqoroisszycdxwuy
 

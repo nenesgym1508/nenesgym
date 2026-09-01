@@ -20,15 +20,6 @@ export async function getActiveMembership(clientId: string) {
   return data
 }
 
-export async function getMembershipsForClient(clientId: string) {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from("memberships")
-    .select("*, plan:plans(name)")
-    .eq("client_id", clientId)
-    .order("created_at", { ascending: false })
-  return data ?? []
-}
 
 
 // ─── Búsqueda + filtros + paginación de clientes (admin) ──────────────────────
