@@ -111,7 +111,10 @@ export function ProgressForm({ todayRecord, latestHeightCm, clientId }: Progress
           onClick={handleClose}
         >
           <div
-            className="w-full max-w-md rounded-t-3xl sm:rounded-2xl border border-white/10 bg-zinc-900 p-5 pb-8 sm:pb-5"
+            // max-h + scroll: en un móvil bajo, con el teclado abierto, este
+            // formulario se cortaba por abajo y el botón de guardar quedaba
+            // fuera de alcance.
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-3xl sm:rounded-2xl border border-white/10 bg-zinc-900 p-5 pb-8 sm:pb-5"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

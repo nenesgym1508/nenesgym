@@ -132,16 +132,22 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
           onClick={close}
         >
+          {/* ⚠️ max-h + flex-col es lo que impide que el modal se salga de la
+              pantalla. Este modal NO lo tenía —NewClientModal sí— y con 8
+              planes en la lista se cortaba por abajo sin poder desplazarlo: el
+              botón de activar quedaba fuera y no había forma de llegar a él.
+              La cabecera y el pie se quedan fijos; solo el centro se desplaza,
+              así el botón está SIEMPRE a la vista. */}
           <div
-            className="relative w-full max-w-sm rounded-2xl bg-zinc-900 border border-white/10 p-5"
+            className="relative flex max-h-[90vh] w-full max-w-sm flex-col rounded-2xl bg-zinc-900 border border-white/10"
             onClick={(e) => e.stopPropagation()}
           >
-            <button onClick={close} className="absolute right-4 top-4 text-zinc-500 hover:text-zinc-300">
+            <button onClick={close} className="absolute right-4 top-4 z-10 text-zinc-500 hover:text-zinc-300">
               <X className="size-5" />
             </button>
 
             {status === "done" ? (
-              <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <div className="flex flex-col items-center gap-3 p-5 py-8 text-center">
                 <div className="size-14 rounded-full bg-green-500/15 flex items-center justify-center">
                   <CheckCircle className="size-7 text-green-400" />
                 </div>
@@ -160,11 +166,14 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
               </div>
             ) : (
               <>
-                <div className="mb-4">
+                {/* Cabecera fija */}
+                <div className="shrink-0 px-5 pt-5 pb-3">
                   <h3 className="text-base font-bold text-zinc-100">Activar plan</h3>
                   <p className="text-xs text-zinc-500">{clientName}</p>
                 </div>
 
+                {/* Zona con desplazamiento: es la que crece con el catálogo */}
+                <div className="min-h-0 flex-1 overflow-y-auto px-5">
                 {/* Selección de plan */}
                 <div className="space-y-2 mb-4">
                   <label className="text-xs font-medium text-zinc-400">Plan</label>
@@ -267,7 +276,11 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
                 {status === "error" && (
                   <p className="text-xs text-red-400 mb-3">{errorMsg}</p>
                 )}
+                </div>
 
+                {/* Pie fijo: el botón de cobrar tiene que estar SIEMPRE a la
+                    vista, por larga que sea la lista de planes. */}
+                <div className="shrink-0 border-t border-white/8 px-5 pb-5 pt-4">
                 <LoadingButton
                   onClick={handleActivate}
                   pending={status === "loading"}
@@ -285,6 +298,7 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
                 <p className="text-center text-[10px] text-zinc-600 mt-3">
                   Se registrará un pago aprobado y se activará la membresía de inmediato
                 </p>
+                </div>
               </>
             )}
           </div>

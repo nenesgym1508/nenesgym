@@ -111,7 +111,10 @@ export function AdjustMembershipModal({
           onClick={close}
         >
           <div
-            className="relative w-full max-w-sm rounded-2xl bg-zinc-900 border border-white/10 p-5"
+            // max-h + scroll: sin esto, en una pantalla baja el modal se corta
+            // por abajo y el botón de guardar queda inalcanzable. Le pasó al de
+            // activar plan cuando el catálogo creció a 8 planes.
+            className="relative max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-zinc-900 border border-white/10 p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <button onClick={close} className="absolute right-4 top-4 text-zinc-500 hover:text-zinc-300">
