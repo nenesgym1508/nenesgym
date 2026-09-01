@@ -36,6 +36,8 @@ export function InvitationAccept({ token, firstName, currentEmail }: InvitationA
   // que ya existe y volver a este mismo enlace. Pedirle otro correo crearía una
   // segunda cuenta para la misma persona, justo lo que este flujo evita.
   const [correoYaTieneCuenta, setCorreoYaTieneCuenta] = useState(false)
+  // URL de Google ya resuelta, para el rescate manual de abajo.
+  const [googleUrl, setGoogleUrl] = useState<string | null>(null)
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -45,23 +47,55 @@ export function InvitationAccept({ token, firstName, currentEmail }: InvitationA
   const goGoogle = async () => {
     setLoading(true)
     setError("")
-    // Capa 2 del contexto: cookie de respaldo. La capa principal es el ?inv= del
-    // redirectTo, porque la cookie no sobrevive al salto del WebView de WhatsApp
-    // al navegador del sistema.
-    await stashInvitationTokenAction(token)
 
-    const supabase = createClient()
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?inv=${encodeURIComponent(token)}`,
-        // select_account, no consent: con la sesión del mostrador abierta, Google
-        // autoseleccionaría esa cuenta y vincularía al socio equivocado.
-        queryParams: { prompt: "select_account" },
-      },
-    })
-    if (oauthError) {
-      setError("No se pudo abrir Google. Intenta de nuevo.")
+    try {
+      // Capa 2 del contexto: cookie de respaldo. La capa principal es el ?inv= del
+      // redirectTo, porque la cookie no sobrevive al salto del WebView de WhatsApp
+      // al navegador del sistema.
+      //
+      // ⚠️ NUNCA se espera indefinidamente a esto. Antes era un `await` pelado y
+      // era el punto muerto del flujo: si la server action tardaba o fallaba (red
+      // del móvil, WebView de WhatsApp), la promesa no resolvía, no había
+      // try/catch, y el botón se quedaba girando para siempre sin llegar jamás a
+      // Google. Bloquear el camino principal esperando a la capa de RESPALDO es
+      // justo al revés de como debe ser: si la cookie no se guarda, el ?inv=
+      // sigue funcionando solo.
+      await Promise.race([
+        stashInvitationTokenAction(token).catch(() => null),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ])
+
+      const supabase = createClient()
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?inv=${encodeURIComponent(token)}`,
+          // select_account, no consent: con la sesión del mostrador abierta, Google
+          // autoseleccionaría esa cuenta y vincularía al socio equivocado.
+          queryParams: { prompt: "select_account" },
+          // Navegamos a mano (abajo) en vez de dejar que supabase-js llame a
+          // window.location.assign() por su cuenta. Así, si por lo que sea no
+          // llega URL, lo vemos y lo decimos, en lugar de no pasar nada.
+          skipBrowserRedirect: true,
+        },
+      })
+
+      if (oauthError || !data?.url) {
+        setError("No se pudo abrir Google. Intenta de nuevo o usa «Crear acceso con correo».")
+        setLoading(false)
+        return
+      }
+
+      // Rescate para navegadores incrustados (el de WhatsApp, sobre todo):
+      // algunos ignoran en silencio una navegación por script que ya no cuelga
+      // directamente del toque del usuario. Si a los 2,5 s seguimos aquí, es que
+      // pasó eso — y un <a> que el socio toca a mano sí funciona siempre.
+      setGoogleUrl(data.url)
+      setTimeout(() => setLoading(false), 2500)
+
+      window.location.href = data.url
+    } catch {
+      setError("No se pudo abrir Google. Revisa tu conexión o usa «Crear acceso con correo».")
       setLoading(false)
     }
   }
@@ -234,6 +268,15 @@ export function InvitationAccept({ token, firstName, currentEmail }: InvitationA
           Recomendado
         </span>
       </button>
+
+      {googleUrl && !loading && (
+        <a
+          href={googleUrl}
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-amber-500/30 bg-amber-950/20 text-sm font-medium text-amber-200"
+        >
+          ¿No se abrió Google? Toca aquí
+        </a>
+      )}
 
       {error && <p className="text-xs text-red-400 text-center">{error}</p>}
 
