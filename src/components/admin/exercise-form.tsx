@@ -1,10 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, X, Crop } from "lucide-react"
-import { createExerciseAction, updateExerciseAction, uploadExerciseImageAction } from "@/actions/exercises.actions"
-import { processExerciseImage, validateImageFile } from "@/lib/image-processor"
-import { ImageCropModal } from "@/components/ui/image-crop-modal"
+import { Loader2, X } from "lucide-react"
+import { createExerciseAction, updateExerciseAction } from "@/actions/exercises.actions"
+import { ExerciseImagesField } from "@/components/admin/exercise-images-field"
 import { Input, Textarea } from "@/components/ui/input"
 import { SelectField } from "@/components/ui/select-field"
 import { Button } from "@/components/ui/button"
@@ -30,76 +29,6 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
   const isEdit = !!exercise
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [cropSrc, setCropSrc] = useState<string | null>(null)
-  const [fileInputKey, setFileInputKey] = useState(0)
-  // Los errores de la foto se muestran JUNTO al control de subida, no en el
-  // `error` general del pie del formulario: en un modal con scroll ese pie
-  // queda fuera de pantalla, y el usuario veía el archivo rechazado "sin
-  // motivo" — parecía que el botón no hacía nada.
-  const [imageError, setImageError] = useState<string | null>(null)
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setError(null)
-    setImageError(null)
-
-    const check = validateImageFile(file)
-    if (!check.ok) {
-      setImageError(check.message)
-      setFileInputKey((k) => k + 1)
-      return
-    }
-
-    try {
-      setCropSrc(URL.createObjectURL(file))
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      setImageError(`No se pudo leer la foto: ${msg}`)
-    }
-  }
-
-  const handleCropCancel = () => {
-    setCropSrc(null)
-    setFileInputKey((k) => k + 1)
-  }
-
-  const handleCropExisting = () => {
-    if (!mediaUrl) return
-    setError(null)
-    setImageError(null)
-    setCropSrc(mediaUrl)
-  }
-
-  const handleCropConfirm = async (croppedFile: File) => {
-    setCropSrc(null)
-    setFileInputKey((k) => k + 1)
-    setUploading(true)
-    setError(null)
-
-    try {
-      const { file: processedFile } = await processExerciseImage(croppedFile)
-      const formData = new FormData()
-      formData.append("file", processedFile)
-      if (exercise?.id) {
-        formData.append("exerciseId", exercise.id)
-      }
-
-      const res = await uploadExerciseImageAction(formData)
-      setUploading(false)
-
-      if ("error" in res) {
-        setImageError(res.error)
-      } else {
-        setMediaUrl(res.url)
-      }
-    } catch (err: unknown) {
-      setUploading(false)
-      const msg = err instanceof Error ? err.message : "Error al procesar la imagen."
-      setImageError(msg)
-    }
-  }
 
   const [name, setName] = useState(exercise?.name ?? "")
   const [muscleGroup, setMuscleGroup] = useState<MuscleGroup | "">(exercise?.muscle_group ?? "")
@@ -108,7 +37,11 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
   const [exerciseType, setExerciseType] = useState<ExerciseType | "">(exercise?.exercise_type ?? "")
   const [usageTags, setUsageTags] = useState<UsageTag[]>(exercise?.usage_tags ?? [])
   const [instructions, setInstructions] = useState(exercise?.instructions ?? "")
-  const [mediaUrl, setMediaUrl] = useState(exercise?.media_url ?? "")
+  // La galería. La PRIMERA es la portada: es la que va a exercises.media_url y
+  // la que leen todas las miniaturas del proyecto.
+  const [mediaUrls, setMediaUrls] = useState<string[]>(
+    exercise?.media_urls?.length ? exercise.media_urls : exercise?.media_url ? [exercise.media_url] : []
+  )
 
   const toggleSecondary = (g: MuscleGroup) =>
     setSecondaryGroups((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
@@ -130,7 +63,7 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
       exercise_type: exerciseType || undefined,
       usage_tags: usageTags,
       instructions: instructions || undefined,
-      media_url: mediaUrl.trim() || undefined,
+      media_urls: mediaUrls,
     }
 
     if (isEdit) {
@@ -146,7 +79,7 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
         exercise_type: (exerciseType || null) as ExerciseType | null,
         usage_tags: usageTags,
         instructions: instructions || null,
-        media_url: mediaUrl.trim() || null,
+        media_urls: mediaUrls,
         updated_at: new Date().toISOString(),
       })
     } else {
@@ -193,87 +126,12 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
             onChange={(e) => setName(e.target.value)}
           />
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-zinc-400">
-              Subir imagen (opcional)
-            </label>
-            <div className="flex items-center gap-3">
-              {mediaUrl.trim() ? (
-                <button
-                  type="button"
-                  onClick={handleCropExisting}
-                  disabled={uploading}
-                  className="relative size-12 shrink-0 rounded-md overflow-hidden bg-zinc-800 border border-white/10 group cursor-pointer"
-                  title="Haz clic para recortar/reubicar foto"
-                >
-                  <img
-                    src={mediaUrl.trim()}
-                    alt=""
-                    className="size-full object-cover"
-                    onError={(e) => { e.currentTarget.style.visibility = "hidden" }}
-                  />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white">
-                    <Crop className="size-4 text-red-400" />
-                    <span className="text-[9px] font-bold">Recortar</span>
-                  </div>
-                </button>
-              ) : (
-                <div className="flex size-12 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-500 text-[10px] text-center border border-dashed border-white/10">
-                  Sin imagen
-                </div>
-              )}
-              <div className="flex-1 flex gap-2">
-                <input
-                  key={fileInputKey}
-                  id="ex-file-upload"
-                  type="file"
-                  accept="image/png, image/jpeg, image/webp"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="ex-file-upload"
-                  className="flex-1 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-zinc-300 font-semibold cursor-pointer hover:bg-white/10 hover:text-zinc-100 transition-all text-center"
-                >
-                  {uploading ? (
-                    <><Loader2 className="size-3.5 animate-spin mr-2" /> Subiendo...</>
-                  ) : (
-                    "Seleccionar foto"
-                  )}
-                </label>
-
-                {mediaUrl && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleCropExisting}
-                      disabled={uploading}
-                      className="flex items-center gap-1 rounded-lg border border-red-600/30 bg-red-600/10 px-3 text-xs font-semibold text-red-400 hover:bg-red-600/20 transition-colors cursor-pointer"
-                      title="Recortar o reubicar encuadre"
-                    >
-                      <Crop className="size-3.5" />
-                      Recortar
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setMediaUrl("")}
-                      className="rounded-lg bg-zinc-800 px-3 text-xs font-medium text-zinc-400 hover:bg-zinc-700/50 hover:text-red-400 transition-colors cursor-pointer"
-                    >
-                      Quitar
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {imageError && (
-              <p className="text-xs text-red-400 leading-relaxed" role="alert">
-                {imageError}
-              </p>
-            )}
-
-          </div>
+          <ExerciseImagesField
+            urls={mediaUrls}
+            onChange={setMediaUrls}
+            exerciseId={exercise?.id}
+            disabled={loading}
+          />
 
           <SelectField
             label="Músculo principal"
@@ -366,14 +224,6 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
         </form>
       </div>
 
-      {cropSrc && (
-        <ImageCropModal
-          src={cropSrc}
-          label={name || "Foto del ejercicio"}
-          onConfirm={handleCropConfirm}
-          onCancel={handleCropCancel}
-        />
-      )}
     </div>
   )
 }

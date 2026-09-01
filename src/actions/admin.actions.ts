@@ -110,6 +110,8 @@ export async function savePlanAction(input: {
   priceCents: number
   days: number
   durationDays: number
+  /** false = tarifa privada: no aparece en la lista del socio. Ver migración 032. */
+  visibleToClients?: boolean
 }) {
   const ctx = await requireAdmin()
   if ("error" in ctx) return { error: ctx.error }
@@ -123,6 +125,7 @@ export async function savePlanAction(input: {
     price_cents: input.priceCents,
     days: input.days,
     duration_days: input.durationDays,
+    visible_to_clients: input.visibleToClients ?? true,
   }
 
   const { error } = input.id

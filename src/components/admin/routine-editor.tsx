@@ -247,7 +247,7 @@ export function RoutineEditor({
   const handleAddExercise = (
     blockId: string,
     ex: Exercise,
-    overrides?: { sets: number; reps: number; rest_seconds: number }
+    overrides?: { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null }
   ) => {
     startTransition(async () => {
       const block = activeDay?.blocks.find((b) => b.id === blockId)
@@ -261,7 +261,9 @@ export function RoutineEditor({
           position: pos,
           sets: overrides?.sets ?? 3,
           reps: overrides?.reps ?? 10,
-          duration_seconds: null,
+          // Estaba fijo a null: el tiempo se guardaba en la base pero no
+          // aparecía en pantalla hasta recargar.
+          duration_seconds: overrides?.duration_seconds ?? null,
           rest_seconds: overrides?.rest_seconds ?? null,
           suggested_weight: null,
           notes: null,

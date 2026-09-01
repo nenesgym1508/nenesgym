@@ -4,6 +4,77 @@
 
 ---
 
+## 📌 Sesión 20 — 2026-09-01 (Planes privados, hasta 3 imágenes por ejercicio, tiempo opcional en rutinas)
+**Dev:** Claude (AI Agent)
+**Migraciones aplicadas a producción:** `032_plans_visible_to_clients.sql`, `033_exercises_multiple_images.sql`
+
+### 🎯 Qué se hizo
+
+**1. Planes que el socio no ve.** Caso real: las tarifas de estudiante. Aparecían en
+la lista pública y cualquiera elegía la más barata. Ahora el plan puede marcarse como
+privado (`plans.visible_to_clients`): solo el admin lo asigna.
+
+⚠️ La regla que hace que esto sirva: **quien ya lo tuvo alguna vez vuelve a verlo** y
+puede renovar solo. Sin ella, cada renovación de un estudiante pasaría por el
+mostrador. Implementada en `getPlansVisibleToClient()`, que mira pagos **y**
+membresías —el admin puede activar un plan sin que quede un pago a nombre del socio.
+
+⚠️ `getPlansVisibleToClient` **no** se cachea con `unstable_cache`: el resultado
+depende del socio y una caché compartida le enseñaría a uno los planes privados de
+otro. Se separa de `is_active`, que significa "retirado, no se vende a nadie".
+
+**2. Hasta 3 imágenes por ejercicio.** `exercises.media_urls text[]`, con CHECK de
+máximo 3 en la base (no solo en la interfaz). `media_url` **se conserva** como
+portada porque la leen decenas de miniaturas; la regla `media_url = media_urls[1]` la
+centraliza `normalizarImagenes()` en `exercises.actions.ts`. El backfill dejó 116 de
+119 ejercicios con galería y **0 desincronizados**.
+
+La galería se extrajo a `exercise-images-field.tsx`, compartida por el formulario del
+admin y el del socio: antes eran ~80 líneas casi idénticas duplicadas. Se puede
+reordenar (la portada es la primera), recortar y quitar. Al quitar una foto se suelta
+su archivo de R2 — antes solo se comparaba `media_url`, así que quitar la 2ª o la 3ª
+habría dejado el archivo huérfano.
+
+**3. Tiempo opcional en ejercicios de rutina.** Para bicicleta, caminadora, plancha.
+**Sin migración: `duration_seconds` ya existía** en `client_routine_exercises` y en
+`class_block_exercises`, y el backend ya lo copiaba; faltaba solo la interfaz al
+AÑADIR el ejercicio (al editarlo ya estaba). Se pide en **minutos** y se guarda en
+segundos. No tiene valor por defecto: series y reps sí, porque casi todo ejercicio los
+usa, pero el tiempo es la excepción y poner un número sería mentir.
+
+**4. Aviso de socio duplicado adelantado al paso 1** (ver Sesión 19 para el detalle).
+
+### 🔍 Diagnóstico del fallo de ejercicios en producción
+
+El dueño reportó que subir imágenes y añadir ejercicios a una rutina fallaban con el
+error genérico de Server Components. Descartado que fuera el despliegue de la Sesión
+19: de los 31 archivos tocados, solo 2 eran de ejercicios y ambos estaban muertos.
+
+Reproducido el flujo completo en local con el mismo código desplegado (ruta de
+diagnóstico temporal que llamaba a la acción real): `getExercises` OK, subida a R2
+OK, las 5 variables presentes. Y las 11 rutas de ejercicios y rutinas devuelven 200
+tanto en local como en producción.
+
+**Hipótesis principal, sin confirmar por falta de acceso a los registros de Vercel:**
+desfase de versión. Ambos fallos son *server actions*, y al desplegar cambiaron sus
+identificadores internos. Un cliente con el bundle viejo —y la app está instalada como
+PWA, que lo retiene con ganas— llama a identificadores que ya no existen. Encaja con
+que las páginas carguen bien y solo fallen las interacciones. Se pidió al dueño cerrar
+y reabrir la app.
+
+**Hipótesis secundaria:** faltan las 4 variables secretas de R2 en Vercel producción.
+`requiredEnv()` en `src/lib/r2.ts` **lanza** si falta alguna. Encaja con que el
+catálogo se migrara a R2 con un script local y no desde la app.
+
+### ✅ Verificación
+- `tsc` 0 · `build` 0 · lint 108 → 106 problemas (38 avisos, menos que la base de 40).
+- Las 3 funciones probadas contra producción: 8 comprobaciones, todas OK, incluida la
+  regla completa de los planes privados y que la base **rechaza** una 4ª imagen.
+- 43 pantallas recorridas con sesión real de admin y de socio: todas OK.
+- Datos de prueba restaurados a su estado original.
+
+---
+
 ## 📌 Sesión 19 — 2026-09-01 (Descuento de días al vender un plan, campo de WhatsApp con países, auditoría de rendimiento con 400 socios y 100.000 asistencias, y limpieza de código muerto)
 **Dev:** Claude (AI Agent)
 **Branch:** main

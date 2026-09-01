@@ -14,7 +14,7 @@ export {
 // Lista explícita en vez de "*": evita arrastrar columnas nuevas al payload RSC
 // sin darse cuenta. Estaba copiada en cada consulta de este archivo.
 const EXERCISE_COLUMNS =
-  "id, gym_id, name, muscle_group, secondary_muscle_groups, equipment, exercise_type, usage_tags, instructions, media_url, source, external_id, is_active, created_at, updated_at, visibility, owner_client_id, created_by_role"
+  "id, gym_id, name, muscle_group, secondary_muscle_groups, equipment, exercise_type, usage_tags, instructions, media_url, media_urls, source, external_id, is_active, created_at, updated_at, visibility, owner_client_id, created_by_role"
 
 export async function getExercises(filters?: {
   muscle_group?: MuscleGroup

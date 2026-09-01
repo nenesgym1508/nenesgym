@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { getCurrentClientData } from "@/services/clients.service"
-import { getClientPayments, getAvailablePlans } from "@/services/payments.service"
+import { getClientPayments, getPlansVisibleToClient } from "@/services/payments.service"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { PageHeader } from "@/components/layout/page-header"
 import { PaymentHistory } from "@/components/cliente/payment-history"
@@ -18,7 +18,9 @@ export default async function ClientePagosPage() {
 
   const [payments, plans, clientRow] = await Promise.all([
     client ? getClientPayments(client.id) : Promise.resolve([]),
-    getAvailablePlans(),
+    // Solo los planes que ESTE socio puede ver: los públicos más los que ya
+    // tuvo alguna vez (ver getPlansVisibleToClient).
+    getPlansVisibleToClient(client?.id ?? null),
     client
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ? (admin as any).from("clients").select("comprobante_bloqueado, comprobante_bloqueado_hasta").eq("id", client.id).single()

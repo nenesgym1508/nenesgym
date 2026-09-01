@@ -16,6 +16,13 @@ interface ExerciseDetailModalProps {
 }
 
 export function ExerciseDetailModal({ exercise, onClose }: ExerciseDetailModalProps) {
+  // Se cae de vuelta a media_url para los ejercicios que aún no pasaron por el
+  // formulario nuevo: la migración 033 rellenó el array, pero un ejercicio
+  // creado por otra vía podría no tenerlo.
+  const galeria = (exercise.media_urls?.length ? exercise.media_urls : [exercise.media_url]).filter(
+    (u): u is string => !!u
+  )
+
   const details = [
     exercise.muscle_group ? { label: "Músculo", value: MUSCLE_GROUP_LABELS[exercise.muscle_group] } : null,
     exercise.equipment ? { label: "Equipo", value: EQUIPMENT_LABELS[exercise.equipment] } : null,
@@ -39,16 +46,32 @@ export function ExerciseDetailModal({ exercise, onClose }: ExerciseDetailModalPr
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {exercise.media_url ? (
-            <div className="relative w-full h-56 bg-zinc-800">
-              <Image
-                src={exerciseImageUrl(exercise.media_url, "detail")!}
-                alt={exercise.name}
-                fill
-                sizes="(max-width: 768px) 100vw, 512px"
-                unoptimized
-                className="object-cover"
-              />
+          {galeria.length > 0 ? (
+            // Con una sola foto se ve igual que siempre. Con varias, se deslizan
+            // en horizontal: es lo natural en móvil, que es donde el socio
+            // consulta su rutina, y no necesita flechas ni puntitos.
+            <div
+              className={`flex w-full snap-x snap-mandatory bg-zinc-800 ${
+                galeria.length > 1 ? "overflow-x-auto" : ""
+              }`}
+            >
+              {galeria.map((url, i) => (
+                <div key={`${url}-${i}`} className="relative h-56 w-full shrink-0 snap-center">
+                  <Image
+                    src={exerciseImageUrl(url, "detail")!}
+                    alt={galeria.length > 1 ? `${exercise.name} (${i + 1} de ${galeria.length})` : exercise.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 512px"
+                    unoptimized
+                    className="object-cover"
+                  />
+                  {galeria.length > 1 && (
+                    <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white">
+                      {i + 1}/{galeria.length}
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
           ) : (
             <div className="flex h-40 w-full items-center justify-center bg-zinc-800 text-zinc-600">

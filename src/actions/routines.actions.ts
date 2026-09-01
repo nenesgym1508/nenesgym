@@ -428,7 +428,7 @@ export async function addExerciseToRoutineBlockAction(
   routineId: string,
   exerciseId: string,
   position: number,
-  overrides?: { sets: number; reps: number; rest_seconds: number }
+  overrides?: { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null }
 ) {
   const guard = await requireAdminOrRoutineOwner(routineId)
   if ("error" in guard) return { error: guard.error }
@@ -441,6 +441,9 @@ export async function addExerciseToRoutineBlockAction(
       position,
       sets: overrides?.sets ?? 3,
       reps: overrides?.reps ?? 10,
+      // Opcional y solo para lo que se mide en tiempo: bicicleta, caminadora,
+      // plancha. Null en el resto, que es la inmensa mayoría.
+      duration_seconds: overrides?.duration_seconds ?? null,
       rest_seconds: overrides?.rest_seconds ?? null
     })
     .select("id")

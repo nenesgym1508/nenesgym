@@ -16,11 +16,20 @@ interface Plan {
   days: number
   duration_days: number
   is_active: boolean
+  /** false = tarifa privada: el socio no la ve en su lista de pago. */
+  visible_to_clients?: boolean
 }
 
-type Editing = { id?: string; name: string; price: string; days: string; duration: string } | null
+type Editing = {
+  id?: string
+  name: string
+  price: string
+  days: string
+  duration: string
+  visible: boolean
+} | null
 
-const emptyForm: Editing = { name: "", price: "", days: "", duration: "" }
+const emptyForm: Editing = { name: "", price: "", days: "", duration: "", visible: true }
 
 export function PlansManager({ plans }: { plans: Plan[] }) {
   const router = useRouter()
@@ -43,6 +52,7 @@ export function PlansManager({ plans }: { plans: Plan[] }) {
       price: String(p.price_cents / 100),
       days: String(p.days),
       duration: String(p.duration_days),
+      visible: p.visible_to_clients !== false,
     })
   }
 
@@ -57,6 +67,7 @@ export function PlansManager({ plans }: { plans: Plan[] }) {
       priceCents: Math.round(Number(editing.price) * 100),
       days: Number(editing.days),
       durationDays: Number(editing.duration),
+      visibleToClients: editing.visible,
     })
     setLoading(false)
     if (result?.error) {
@@ -123,6 +134,11 @@ export function PlansManager({ plans }: { plans: Plan[] }) {
                     {!p.is_active && (
                       <span className="rounded bg-zinc-700/60 px-1.5 py-0.5 text-[10px] text-zinc-400">
                         Inactivo
+                      </span>
+                    )}
+                    {p.visible_to_clients === false && (
+                      <span className="rounded bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+                        Privado
                       </span>
                     )}
                   </div>
@@ -240,6 +256,37 @@ export function PlansManager({ plans }: { plans: Plan[] }) {
               <p className="text-xs text-zinc-500 leading-tight">Días calendario hasta que el plan expire.</p>
             </div>
           </div>
+          {/* Tarifa privada. El caso que lo motivó: los planes de estudiante,
+              que no deben salir en la lista pública porque cualquiera elegiría
+              el más barato. */}
+          <button
+            type="button"
+            onClick={() => setEditing({ ...editing, visible: !editing.visible })}
+            className="flex w-full items-start gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-3.5 text-left hover:border-white/15 cursor-pointer"
+          >
+            <span
+              className={`mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+                editing.visible ? "bg-zinc-700" : "bg-amber-500"
+              }`}
+            >
+              <span
+                className={`h-4 w-4 rounded-full bg-white transition-transform ${
+                  editing.visible ? "" : "translate-x-4"
+                }`}
+              />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-zinc-200">
+                No mostrar este plan a los socios
+              </span>
+              <span className="mt-0.5 block text-[11px] leading-normal text-zinc-500">
+                {editing.visible
+                  ? "Ahora mismo cualquier socio lo ve al ir a pagar."
+                  : "Solo tú puedes asignarlo. Al socio que ya se lo hayas asignado una vez sí le aparecerá, para que pueda renovar solo."}
+              </span>
+            </span>
+          </button>
+
           {error && (
             <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-400">
               {error}

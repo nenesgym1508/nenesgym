@@ -69,6 +69,12 @@ export function getAllPayments() {
   )()
 }
 
+/**
+ * TODOS los planes vendibles. Es la lista del ADMIN.
+ *
+ * ⚠️ Incluye los que el socio no debe ver (tarifas de estudiante y similares).
+ * Para una pantalla del socio usa `getPlansVisibleToClient`, nunca esta.
+ */
 export const getAvailablePlans = unstable_cache(
   async () => {
     const supabase = createAdminClient()
@@ -82,4 +88,48 @@ export const getAvailablePlans = unstable_cache(
   ["available-plans"],
   { revalidate: 300, tags: ["plans"] }
 )
+
+/**
+ * Planes que puede ver y elegir UN socio concreto.
+ *
+ * Dos formas de que un plan entre en la lista:
+ *   1. Es público (`visible_to_clients`), o
+ *   2. ese socio ya lo tuvo alguna vez.
+ *
+ * La segunda es la que hace que esto sirva de algo. Sin ella, un estudiante al
+ * que el dueño le asignó su tarifa a mano tendría que volver al mostrador en
+ * cada renovación, porque su propio plan no le aparecería.
+ *
+ * ⚠️ NO se cachea con `unstable_cache`: el resultado depende del socio. Una
+ * caché compartida le enseñaría a uno los planes privados de otro.
+ */
+export async function getPlansVisibleToClient(clientId: string | null) {
+  const supabase = createAdminClient()
+
+  const { data: todos } = await supabase
+    .from("plans")
+    .select("*")
+    .eq("is_active", true)
+    .order("price_cents", { ascending: true })
+
+  const planes = todos ?? []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const publicos = planes.filter((p: any) => p.visible_to_clients !== false)
+  if (!clientId) return publicos
+
+  // Los que ya usó: mira pagos y membresías, porque el admin pudo activarle el
+  // plan sin que quedara un pago a su nombre.
+  const [{ data: pagos }, { data: mems }] = await Promise.all([
+    supabase.from("payments").select("plan_id").eq("client_id", clientId).not("plan_id", "is", null).limit(200),
+    supabase.from("memberships").select("plan_id").eq("client_id", clientId).not("plan_id", "is", null).limit(200),
+  ])
+
+  const suyos = new Set<string>([
+    ...(pagos ?? []).map((p) => p.plan_id as string),
+    ...(mems ?? []).map((m) => m.plan_id as string),
+  ])
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return planes.filter((p: any) => p.visible_to_clients !== false || suyos.has(p.id))
+}
 

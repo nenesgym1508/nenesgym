@@ -800,6 +800,7 @@ export type Database = {
           instructions: string | null
           is_active: boolean
           media_url: string | null
+          media_urls: string[]
           muscle_group: string | null
           name: string
           owner_client_id: string | null
@@ -820,6 +821,7 @@ export type Database = {
           instructions?: string | null
           is_active?: boolean
           media_url?: string | null
+          media_urls?: string[]
           muscle_group?: string | null
           name: string
           owner_client_id?: string | null
@@ -840,6 +842,7 @@ export type Database = {
           instructions?: string | null
           is_active?: boolean
           media_url?: string | null
+          media_urls?: string[]
           muscle_group?: string | null
           name?: string
           owner_client_id?: string | null
@@ -1140,6 +1143,7 @@ export type Database = {
           name: string
           price_cents: number
           updated_at: string
+          visible_to_clients: boolean
         }
         Insert: {
           created_at?: string
@@ -1152,6 +1156,7 @@ export type Database = {
           name: string
           price_cents: number
           updated_at?: string
+          visible_to_clients?: boolean
         }
         Update: {
           created_at?: string
@@ -1164,6 +1169,7 @@ export type Database = {
           name?: string
           price_cents?: number
           updated_at?: string
+          visible_to_clients?: boolean
         }
         Relationships: [
           {
@@ -1729,6 +1735,7 @@ export type Database = {
         Args: { p_note?: string; p_payment_id: string }
         Returns: Json
       }
+      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       membership_status:

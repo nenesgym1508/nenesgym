@@ -18,6 +18,24 @@ interface ExerciseData {
   usage_tags?: UsageTag[]
   instructions?: string
   media_url?: string
+  /** Galería, hasta 3. media_urls[0] es la principal y debe igualar a media_url. */
+  media_urls?: string[]
+}
+
+/**
+ * Deja la galería y la imagen principal coherentes entre sí.
+ *
+ * ⚠️ La base guarda la portada DOS veces: en `media_url` (que leen todas las
+ * miniaturas del proyecto) y en `media_urls[0]`. Si se escribieran por
+ * separado acabarían divergiendo y la miniatura enseñaría una foto distinta a
+ * la de la galería. Todo escritor pasa por aquí.
+ */
+function normalizarImagenes(data: { media_url?: string; media_urls?: string[] }) {
+  const lista = (data.media_urls ?? (data.media_url ? [data.media_url] : []))
+    .map((u) => (u ?? "").trim())
+    .filter(Boolean)
+    .slice(0, 3)
+  return { media_url: lista[0] ?? null, media_urls: lista }
 }
 
 // Borra el archivo de R2 asociado a una media_url, pero solo si (a) vive en
@@ -65,7 +83,7 @@ export async function createExerciseAction(
       exercise_type: data.exercise_type ?? null,
       usage_tags: data.usage_tags ?? [],
       instructions: data.instructions ?? null,
-      media_url: data.media_url ?? null,
+      ...normalizarImagenes(data),
       source: "manual",
       is_active: true,
     })
@@ -84,7 +102,7 @@ export async function updateExerciseAction(id: string, data: ExerciseData) {
 
   const { data: before } = await supabase
     .from("exercises")
-    .select("media_url")
+    .select("media_url, media_urls")
     .eq("id", id)
     .eq("gym_id", GYM_ID)
     .single()
@@ -99,7 +117,7 @@ export async function updateExerciseAction(id: string, data: ExerciseData) {
       exercise_type: data.exercise_type ?? null,
       usage_tags: data.usage_tags ?? [],
       instructions: data.instructions ?? null,
-      media_url: data.media_url ?? null,
+      ...normalizarImagenes(data),
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -109,8 +127,17 @@ export async function updateExerciseAction(id: string, data: ExerciseData) {
 
   // La imagen anterior solo deja de usarse aquí: si se borrase al subir la nueva,
   // cancelar el formulario dejaría la fila apuntando a un archivo inexistente.
-  if (before?.media_url && before.media_url !== (data.media_url ?? null)) {
-    await deleteR2ImageIfUnused(supabase, before.media_url)
+  // Se comparan las GALERÍAS enteras, no solo la portada: quitar la 2ª o la 3ª
+  // foto también tiene que soltar su archivo, o queda huérfano en R2 para
+  // siempre. Antes solo se miraba media_url.
+  const antes: string[] = before?.media_urls?.length
+    ? before.media_urls
+    : before?.media_url
+      ? [before.media_url]
+      : []
+  const siguen = new Set(normalizarImagenes(data).media_urls)
+  for (const url of antes) {
+    if (!siguen.has(url)) await deleteR2ImageIfUnused(supabase, url)
   }
 
   revalidatePath(ROUTES.ADMIN_CLASES_EJERCICIOS)
@@ -145,7 +172,7 @@ export async function deleteExerciseAction(id: string) {
 
   const { data: existing } = await supabase
     .from("exercises")
-    .select("media_url")
+    .select("media_url, media_urls")
     .eq("id", id)
     .eq("gym_id", GYM_ID)
     .single()
@@ -163,7 +190,9 @@ export async function deleteExerciseAction(id: string) {
     return { error: error.message }
   }
 
-  await deleteR2ImageIfUnused(supabase, existing?.media_url)
+  for (const url of (existing?.media_urls ?? [existing?.media_url]).filter(Boolean)) {
+    await deleteR2ImageIfUnused(supabase, url as string)
+  }
 
   revalidatePath(ROUTES.ADMIN_CLASES_EJERCICIOS)
   return { success: true }
@@ -274,6 +303,8 @@ interface MyExerciseData {
   usage_tags?: UsageTag[]
   description?: string
   media_url?: string
+  /** Galería, hasta 3. media_urls[0] es la principal y debe igualar a media_url. */
+  media_urls?: string[]
 }
 
 export async function createMyExerciseAction(
@@ -309,7 +340,7 @@ export async function createMyExerciseAction(
       equipment: data.equipment ?? null,
       usage_tags: data.usage_tags ?? [],
       instructions: data.description ?? null,
-      media_url: data.media_url ?? null,
+      ...normalizarImagenes(data),
       source: "client",
       visibility: "client",
       owner_client_id: ctx.clientId,
@@ -333,7 +364,7 @@ export async function updateMyExerciseAction(id: string, data: MyExerciseData) {
 
   const { data: before } = await supabase
     .from("exercises")
-    .select("media_url")
+    .select("media_url, media_urls")
     .eq("id", id)
     .eq("owner_client_id", ctx.clientId)
     .single()
@@ -346,7 +377,7 @@ export async function updateMyExerciseAction(id: string, data: MyExerciseData) {
       equipment: data.equipment ?? null,
       usage_tags: data.usage_tags ?? [],
       instructions: data.description ?? null,
-      media_url: data.media_url ?? null,
+      ...normalizarImagenes(data),
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -354,8 +385,17 @@ export async function updateMyExerciseAction(id: string, data: MyExerciseData) {
 
   if (error) return { error: error.message }
 
-  if (before?.media_url && before.media_url !== (data.media_url ?? null)) {
-    await deleteR2ImageIfUnused(supabase, before.media_url)
+  // Se comparan las GALERÍAS enteras, no solo la portada: quitar la 2ª o la 3ª
+  // foto también tiene que soltar su archivo, o queda huérfano en R2 para
+  // siempre. Antes solo se miraba media_url.
+  const antes: string[] = before?.media_urls?.length
+    ? before.media_urls
+    : before?.media_url
+      ? [before.media_url]
+      : []
+  const siguen = new Set(normalizarImagenes(data).media_urls)
+  for (const url of antes) {
+    if (!siguen.has(url)) await deleteR2ImageIfUnused(supabase, url)
   }
 
   revalidatePath(ROUTES.CLIENTE_RUTINAS_EJERCICIOS)

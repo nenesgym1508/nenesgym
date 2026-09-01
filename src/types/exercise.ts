@@ -23,7 +23,13 @@ export interface Exercise {
   exercise_type: ExerciseType | null
   usage_tags: UsageTag[]
   instructions: string | null
+  /**
+   * Portada. Sigue siendo la que leen TODAS las miniaturas del proyecto, así que
+   * no se puede quitar: es `media_urls[0]` duplicada a propósito.
+   */
   media_url: string | null
+  /** Galería, hasta 3. La base garantiza el tope (migración 033). */
+  media_urls?: string[] | null
   source: string | null
   external_id: string | null
   is_active: boolean

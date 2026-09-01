@@ -195,7 +195,7 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
 
   // ── Ejercicios ────────────────────────────────────────────────────────────
 
-  const handleAddExercise = (blockId: string, exercise: Exercise, overrides?: { sets: number; reps: number; rest_seconds: number }) => {
+  const handleAddExercise = (blockId: string, exercise: Exercise, overrides?: { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null }) => {
     const block = cls.blocks.find((b) => b.id === blockId)
     if (!block) return
     const position = block.exercises.length
@@ -720,15 +720,21 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, 
   const muscleLabel = ex.exercise.muscle_group
     ? MUSCLE_GROUP_LABELS[ex.exercise.muscle_group as keyof typeof MUSCLE_GROUP_LABELS] ?? ex.exercise.muscle_group
     : null
+  const formatDuracion = (segundos: number) =>
+    segundos >= 60 && segundos % 60 === 0 ? `${segundos / 60} min` : `${segundos}s`
+
   const equipmentLabel = ex.exercise.equipment
     ? EQUIPMENT_LABELS[ex.exercise.equipment as keyof typeof EQUIPMENT_LABELS] ?? ex.exercise.equipment
     : null
 
+  // "10 min" se lee de un vistazo; "600s" hay que dividirlo mentalmente. Los
+  // segundos sueltos solo aparecen cuando no son minutos redondos (una plancha
+  // de 45s, por ejemplo).
   const summaryParts: string[] = []
   if (ex.sets != null && ex.reps != null) summaryParts.push(`${ex.sets} x ${ex.reps}`)
   else if (ex.sets != null) summaryParts.push(`${ex.sets} series`)
   else if (ex.reps != null) summaryParts.push(`${ex.reps} reps`)
-  if (ex.duration_seconds != null) summaryParts.push(`${ex.duration_seconds}s`)
+  if (ex.duration_seconds != null) summaryParts.push(formatDuracion(ex.duration_seconds))
   if (ex.rest_seconds != null) summaryParts.push(`Descanso ${ex.rest_seconds}s`)
   if (ex.suggested_weight) summaryParts.push(ex.suggested_weight)
 
@@ -866,11 +872,11 @@ export function TextField({
 export interface ExercisePickerProps {
   exercises: Exercise[]
   existingIds: string[]
-  onSelect?: (exercise: Exercise, overrides?: { sets: number; reps: number; rest_seconds: number }) => void
-  onSelectMultiple?: (selections: { exercise: Exercise; overrides?: { sets: number; reps: number; rest_seconds: number } }[]) => void
+  onSelect?: (exercise: Exercise, overrides?: { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null }) => void
+  onSelectMultiple?: (selections: { exercise: Exercise; overrides?: { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null } }[]) => void
   onClose: () => void
   onCreateNew?: () => void
-  quickConfigDefaults?: { sets: number; reps: number; rest_seconds: number }
+  quickConfigDefaults?: { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null }
   myExerciseIds?: string[]
   simplifiedUsage?: boolean
 }
@@ -901,7 +907,7 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMulti
   // Selección múltiple
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([])
   const [showMultiConfig, setShowMultiConfig] = useState(false)
-  const [multiConfigs, setMultiConfigs] = useState<Record<string, { sets: number | null, reps: number | null, rest_seconds: number | null }>>({})
+  const [multiConfigs, setMultiConfigs] = useState<Record<string, { sets: number | null, reps: number | null, rest_seconds: number | null, duration_seconds: number | null }>>({})
 
 
   const scopedExercises = useMemo(
@@ -945,7 +951,14 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMulti
       if (quickConfigDefaults) {
         setMultiConfigs(configs => ({
           ...configs,
-          [ex.id]: { sets: quickConfigDefaults.sets, reps: quickConfigDefaults.reps, rest_seconds: quickConfigDefaults.rest_seconds }
+          [ex.id]: {
+            sets: quickConfigDefaults.sets,
+            reps: quickConfigDefaults.reps,
+            rest_seconds: quickConfigDefaults.rest_seconds,
+            // Vacío a propósito: el tiempo es la excepción (bicicleta,
+            // caminadora, plancha), no la norma.
+            duration_seconds: null,
+          }
         }))
       }
       return [...prev, ex]
@@ -975,6 +988,10 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMulti
           sets: cfg?.sets ?? quickConfigDefaults.sets,
           reps: cfg?.reps ?? quickConfigDefaults.reps,
           rest_seconds: cfg?.rest_seconds ?? quickConfigDefaults.rest_seconds,
+          // El tiempo NO cae a un valor por defecto: si el admin no lo puso, va
+          // null. Series y reps sí tienen defecto porque casi todo ejercicio
+          // los usa; el tiempo es la excepción.
+          duration_seconds: cfg?.duration_seconds ?? null,
         },
       }
     })
@@ -1021,10 +1038,23 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMulti
                       <Trash2 className="size-4" />
                     </button>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <NumField label="Series" value={multiConfigs[ex.id]?.sets} onChange={(v) => handleUpdateConfig(ex.id, "sets", v)} />
                     <NumField label="Reps" value={multiConfigs[ex.id]?.reps} onChange={(v) => handleUpdateConfig(ex.id, "reps", v)} />
                     <NumField label="Descanso (s)" value={multiConfigs[ex.id]?.rest_seconds} onChange={(v) => handleUpdateConfig(ex.id, "rest_seconds", v)} />
+                    {/* Opcional, y en MINUTOS aunque la base guarde segundos:
+                        "10" se entiende sin pensar, "600" hay que dividirlo.
+                        Para lo que se mide en tiempo y no en repeticiones:
+                        bicicleta, caminadora, plancha. */}
+                    <NumField
+                      label="Tiempo (min)"
+                      value={
+                        multiConfigs[ex.id]?.duration_seconds != null
+                          ? Math.round(multiConfigs[ex.id]!.duration_seconds! / 60)
+                          : null
+                      }
+                      onChange={(v) => handleUpdateConfig(ex.id, "duration_seconds", v == null ? null : v * 60)}
+                    />
                   </div>
                 </div>
               ))}
