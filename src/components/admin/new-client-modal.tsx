@@ -1,14 +1,16 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { UserPlus, X, CheckCircle, ArrowLeft, ArrowRight, AlertTriangle } from "lucide-react"
-import { createClientAction } from "@/actions/admin.actions"
+import { createClientAction, checkClientPhoneAction } from "@/actions/admin.actions"
 import { createInvitationAction } from "@/actions/invitations.actions"
 import { Input } from "@/components/ui/input"
+import { PhoneField, usePhoneField } from "@/components/ui/phone-field"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { InvitationActions } from "@/components/admin/invitation-actions"
+import { UsedDaysField, useUsedDays } from "@/components/admin/used-days-field"
 import { formatCOP, computePlanDiscount } from "@/lib/utils"
 import { formatDate, todayInBogota, addDays, daysPerWeekForPlan } from "@/lib/dates"
 import { PAYMENT_METHOD_LABELS } from "@/constants/plans"
@@ -37,8 +39,10 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
   const [step, setStep] = useState<1 | 2>(1)
 
   const [fullName, setFullName] = useState("")
-  const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("")
+  // Teléfono con indicativo de país. `phone.value` ya sale en la forma canónica
+  // que espera el servidor (ver canonicalPhone en phone-field.tsx).
+  const phone = usePhoneField()
 
   const [planId, setPlanId] = useState("")
   const [method, setMethod] = useState<PaymentMethod>("cash")
@@ -64,16 +68,67 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
 
   const selectedPlan = plans.find((p) => p.id === planId)
   const nameOk = fullName.trim().length >= 2
-  // El celular es obligatorio: se valida igual que en el servidor (solo dígitos).
-  const phoneOk = phone.replace(/\D/g, "").length >= 10
-  const canContinue = nameOk && phoneOk
+
+  // ── Aviso de socio duplicado, EN EL PASO 1 ────────────────────────────────
+  // Antes esta comprobación solo ocurría al guardar: el admin rellenaba todo,
+  // elegía plan y método de pago, y solo al final le decíamos que ese WhatsApp
+  // ya era de otro socio. Ahora salta en cuanto el número está completo.
+  //
+  // El resultado guarda PARA QUÉ número es (`para`). Con eso, el estado que se
+  // pinta se DERIVA en cada render en vez de escribirse desde el efecto:
+  //   · evita el setState síncrono dentro del efecto, que dispara renders en
+  //     cascada (la regla react-hooks/set-state-in-effect lo prohíbe), y
+  //   · garantiza que una respuesta que llega tarde, para un número que el
+  //     admin ya cambió, no se muestre nunca.
+  const [respuesta, setRespuesta] = useState<
+    { para: string; ocupado: boolean; nombre?: string; error?: boolean } | null
+  >(null)
+
+  useEffect(() => {
+    if (!phone.isValid) return
+    const numero = phone.value
+    let vigente = true
+    // Espera antes de preguntar: sin esto se consultaría en cada tecla.
+    const t = setTimeout(async () => {
+      try {
+        const r = await checkClientPhoneAction(numero)
+        if (vigente) setRespuesta({ para: numero, ocupado: r.taken, nombre: r.name })
+      } catch {
+        // Un fallo de red no puede bloquear el alta: `createClientAction` vuelve
+        // a comprobarlo al guardar, y esa es la defensa de verdad.
+        if (vigente) setRespuesta({ para: numero, ocupado: false, error: true })
+      }
+    }, 450)
+    return () => {
+      vigente = false
+      clearTimeout(t)
+    }
+  }, [phone.isValid, phone.value])
+
+  const dup: { estado: "no" | "buscando" | "libre" | "ocupado"; nombre?: string } = !phone.isValid
+    ? { estado: "no" }
+    : respuesta?.para !== phone.value
+      ? { estado: "buscando" }
+      : respuesta.error
+        ? { estado: "no" }
+        : respuesta.ocupado
+          ? { estado: "ocupado", nombre: respuesta.nombre }
+          : { estado: "libre" }
+
+  // El WhatsApp es obligatorio. `phone.isValid` aplica exactamente la misma
+  // regla que el servidor, sobre el número ya canonizado.
+  const canContinue = nameOk && phone.isValid && dup.estado !== "ocupado"
+
+  // Descuento por días ya entrenados sin plan (ver used-days-field.tsx).
+  const used = useUsedDays(selectedPlan)
+  const { totalDays, durationDays } = used
 
   // Vista previa del plan. ⚠️ El vencimiento lleva `- 1` porque
   // apply_membership_purchase calcula `start_date + duration_days - 1` al crear
   // una membresía NUEVA, que es siempre el caso de un cliente recién dado de
   // alta. No copiar la fórmula de ActivatePlanModal: esa es la de acumulación.
   const startDate = todayInBogota()
-  const endDate = selectedPlan ? addDays(startDate, selectedPlan.duration_days - 1) : null
+  const endDate = selectedPlan ? addDays(startDate, durationDays - 1) : null
 
   const openModal = () => {
     requestIdRef.current = crypto.randomUUID()
@@ -83,10 +138,11 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
   const reset = () => {
     setStep(1)
     setFullName("")
-    setPhone("")
+    phone.reset()
     setEmail("")
     setPlanId("")
     setMethod("cash")
+    used.reset()
     setStatus("idle")
     setErrorMsg("")
     setPlanWarning("")
@@ -113,16 +169,18 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
       result = await createClientAction({
       full_name: fullName.trim(),
       email: email.trim() || undefined,
-      phone: phone.trim(),
+      phone: phone.value,
       clientRequestId: requestIdRef.current,
       plan:
         withPlan && selectedPlan
           ? {
               planId: selectedPlan.id,
+              // El precio no se descuenta: el socio paga el plan completo y este
+              // pasa a cubrir los días que ya entrenó. No es una rebaja.
               amountCents: selectedPlan.price_cents,
               method,
-              totalDays: selectedPlan.days,
-              durationDays: selectedPlan.duration_days,
+              totalDays,
+              durationDays,
             }
           : undefined,
       })
@@ -193,7 +251,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                 <div>
                   <p className="text-sm font-semibold text-green-400">Cliente registrado</p>
                   <p className="text-base font-bold text-zinc-100 mt-1">{fullName.trim()}</p>
-                  <p className="text-xs text-zinc-500">{phone.trim()}</p>
+                  <p className="text-xs text-zinc-500">+{phone.dial} {phone.national}</p>
                 </div>
 
                 {selectedPlan && !planWarning && (
@@ -202,12 +260,12 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                       Plan actual
                     </p>
                     <p className="mt-1 text-sm font-semibold text-zinc-100">
-                      {selectedPlan.name} · {daysPerWeekForPlan(selectedPlan.days)} días/semana
+                      {selectedPlan.name} · {daysPerWeekForPlan(totalDays)} días/semana
                     </p>
                     <dl className="mt-2 space-y-1 text-[11px]">
                       <div className="flex justify-between"><dt className="text-zinc-500">Inicio</dt><dd className="text-zinc-300">{formatDate(startDate)}</dd></div>
                       {endDate && <div className="flex justify-between"><dt className="text-zinc-500">Vence</dt><dd className="text-zinc-300">{formatDate(endDate)}</dd></div>}
-                      <div className="flex justify-between"><dt className="text-zinc-500">Días</dt><dd className="text-zinc-300">{selectedPlan.days}</dd></div>
+                      <div className="flex justify-between"><dt className="text-zinc-500">Días</dt><dd className="text-zinc-300">{totalDays}</dd></div>
                       <div className="flex justify-between"><dt className="text-zinc-500">Pago</dt><dd className="text-zinc-300">{formatCOP(selectedPlan.price_cents)} · {PAYMENT_METHOD_LABELS[method]}</dd></div>
                     </dl>
                   </div>
@@ -282,16 +340,40 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                   />
                   {/* Obligatorio: identifica al socio, evita duplicados y es el canal
                       por el que se le hará llegar el enlace para vincular su correo. */}
-                  <Input
+                  <PhoneField
                     id="nc_phone"
-                    type="tel"
-                    inputMode="numeric"
-                    label="WhatsApp"
-                    placeholder="3001234567"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    error={phone.length > 0 && !phoneOk ? "Al menos 10 dígitos" : undefined}
+                    dial={phone.dial}
+                    onDialChange={phone.setDial}
+                    national={phone.national}
+                    onInput={phone.handleInput}
+                    error={
+                      phone.national.length > 0 && !phone.isValid
+                        ? `Ese país usa ${phone.largoEsperado} dígitos (llevas ${phone.national.length})`
+                        : dup.estado === "ocupado"
+                          ? `Ese WhatsApp ya es de ${dup.nombre ?? "otro socio"}`
+                          : undefined
+                    }
+                    hint={
+                      dup.estado === "buscando"
+                        ? "Comprobando si ya está registrado..."
+                        : dup.estado === "libre"
+                          ? "✓ Ese WhatsApp está libre"
+                          : "Puedes pegar el número con +indicativo y el país se elige solo."
+                    }
                   />
+
+                  {dup.estado === "ocupado" && (
+                    <div className="rounded-xl border border-amber-500/25 bg-amber-950/20 p-3 text-[11px] leading-normal text-amber-200">
+                      <p>
+                        <strong className="text-zinc-100">{dup.nombre ?? "Un socio"}</strong> ya
+                        está registrado con ese número. Si quieres venderle un plan, búscalo en
+                        Clientes y usa <strong className="text-zinc-100">Activar plan</strong>.
+                      </p>
+                      <p className="mt-1 text-amber-400/70">
+                        Si de verdad es otra persona, usa su WhatsApp propio.
+                      </p>
+                    </div>
+                  )}
                   <Input
                     id="nc_email"
                     type="email"
@@ -357,7 +439,12 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                         return (
                           <button
                             key={p.id}
-                            onClick={() => setPlanId(p.id)}
+                            onClick={() => {
+                              setPlanId(p.id)
+                              // Cambiar a un plan más corto puede dejar el
+                              // descuento por encima de su tope.
+                              used.clampToPlan(Math.max(0, p.days - 1))
+                            }}
                             className={`w-full flex items-center justify-between rounded-xl border p-3.5 text-left transition-[border-color,background-color,color,box-shadow] cursor-pointer ${
                               planId === p.id
                                 ? "border-red-500 bg-red-950/20 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.15)]"
@@ -384,6 +471,20 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                     })()}
                   </div>
                 </div>
+
+                {/* Días ya entrenados sin plan. Solo con plan elegido: sin plan
+                    no hay tope contra el que validar. */}
+                {selectedPlan && (
+                  <UsedDaysField
+                    planDays={selectedPlan.days}
+                    raw={used.raw}
+                    onRawChange={used.setRaw}
+                    maxUsedDays={used.maxUsedDays}
+                    appliedUsed={used.appliedUsed}
+                    totalDays={totalDays}
+                    endDate={endDate}
+                  />
+                )}
 
                 <div className="space-y-2 mb-4">
                   <label className="text-xs font-medium text-zinc-400">Método de pago</label>
@@ -412,10 +513,10 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                       Plan seleccionado
                     </p>
                     <p className="mt-1 text-sm font-semibold text-zinc-100">
-                      {selectedPlan.name} · {daysPerWeekForPlan(selectedPlan.days)} días/semana
+                      {selectedPlan.name} · {daysPerWeekForPlan(totalDays)} días/semana
                     </p>
                     <p className="text-[11px] text-zinc-500">
-                      {selectedPlan.days} días disponibles · {selectedPlan.duration_days} días de vigencia
+                      {totalDays} días disponibles · {durationDays} días de vigencia
                     </p>
                     <dl className="mt-2.5 space-y-1 border-t border-white/5 pt-2.5 text-[11px]">
                       <div className="flex justify-between"><dt className="text-zinc-500">Inicio</dt><dd className="text-zinc-300">{formatDate(startDate)}</dd></div>

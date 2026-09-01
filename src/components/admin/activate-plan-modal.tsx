@@ -2,9 +2,10 @@
 
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { UserCheck, X, CheckCircle, Minus, Plus } from "lucide-react"
+import { UserCheck, X, CheckCircle } from "lucide-react"
 import { createManualPaymentAction } from "@/actions/admin.actions"
 import { LoadingButton } from "@/components/ui/loading-button"
+import { UsedDaysField, useUsedDays } from "@/components/admin/used-days-field"
 import { formatCOP, computePlanDiscount } from "@/lib/utils"
 import { PAYMENT_METHOD_LABELS } from "@/constants/plans"
 import type { PaymentMethod } from "@/types/payment"
@@ -36,9 +37,6 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
   const [method, setMethod] = useState<PaymentMethod>("cash")
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle")
   const [errorMsg, setErrorMsg] = useState("")
-  // Días que el socio ya lleva entrenando sin plan. Se descuentan del plan que
-  // se le vende ahora: el plan pasa a cubrir, retroactivamente, esos días.
-  const [usedDays, setUsedDays] = useState(0)
 
   // Idempotencia del cobro: un doble clic reutiliza este id y la RPC devuelve
   // ALREADY_APPLIED en vez de cobrar dos veces.
@@ -56,31 +54,16 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
 
   const selectedPlan = plans.find((p) => p.id === planId)
 
-  // Tope: siempre debe quedarle al menos 1 día. Descontar el plan entero sería
-  // cobrar por nada, y `apply_membership_purchase` crearía una membresía que
-  // nace vencida.
-  const maxUsedDays = selectedPlan ? Math.max(0, selectedPlan.days - 1) : 0
-  const appliedUsed = Math.min(usedDays, maxUsedDays)
-
-  // El descuento se hace restando a los DOS números, no solo a los días:
-  // el plan es "N días dentro de una ventana de M días de calendario". Si solo
-  // se restaran los días, la ventana seguiría siendo la completa y el socio
-  // acabaría con el mismo plazo para menos días — un plan distinto al vendido.
-  //
-  // ⚠️ No se toca `start_date` ni `occurred_at` para conseguir esto. Retroceder
-  // la fecha de inicio parece más natural, pero el consumo se cuenta por días
-  // HÁBILES (`eligible_days_elapsed`): retroceder 5 días de calendario podría
-  // descontar solo 3. Restando a los números, lo que el admin teclea es
-  // exactamente lo que se descuenta.
-  const totalDays = selectedPlan ? selectedPlan.days - appliedUsed : 0
-  const durationDays = selectedPlan ? Math.max(1, selectedPlan.duration_days - appliedUsed) : 0
+  // Descuento por días ya entrenados sin plan (ver used-days-field.tsx).
+  const used = useUsedDays(selectedPlan)
+  const { totalDays, durationDays } = used
 
   const reset = () => {
     setPlanId("")
     setMethod("cash")
     setStatus("idle")
     setErrorMsg("")
-    setUsedDays(0)
+    used.reset()
   }
 
   const handleActivate = async () => {
@@ -196,7 +179,10 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
                         return (
                           <button
                             key={p.id}
-                            onClick={() => setPlanId(p.id)}
+                            onClick={() => {
+                              setPlanId(p.id)
+                              used.clampToPlan(Math.max(0, p.days - 1))
+                            }}
                             className={`w-full flex items-center justify-between rounded-xl border p-3.5 text-left transition-[border-color,background-color,color,box-shadow] ${
                               planId === p.id
                                 ? "border-red-500 bg-red-950/20 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.15)]"
@@ -228,71 +214,20 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
                 </div>
 
                 {/* Días ya entrenados sin plan. Solo aparece con plan elegido:
-                    sin plan no hay tope contra el que validar. */}
+                    sin plan no hay tope contra el que validar.
+                    El vencimiento solo se menciona si NO hay plan vigente: con
+                    uno activo la fecha sale de acumular sobre el actual, y eso
+                    ya lo explica la caja azul de abajo. */}
                 {selectedPlan && (
-                  <div className="space-y-2 mb-4">
-                    <label className="text-xs font-medium text-zinc-400">
-                      Días que ya lleva viniendo{" "}
-                      <span className="text-zinc-600">(opcional)</span>
-                    </label>
-                    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-2.5">
-                      <button
-                        type="button"
-                        onClick={() => setUsedDays((d) => Math.max(0, d - 1))}
-                        disabled={appliedUsed === 0}
-                        aria-label="Quitar un día"
-                        className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-300 hover:border-white/25 disabled:opacity-30 cursor-pointer"
-                      >
-                        <Minus className="size-4" />
-                      </button>
-
-                      <div className="flex-1 text-center">
-                        <p className="text-xl font-bold tabular-nums text-zinc-100">{appliedUsed}</p>
-                        <p className="text-[10px] uppercase tracking-wider text-zinc-500">
-                          {appliedUsed === 1 ? "día usado" : "días usados"}
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setUsedDays((d) => Math.min(maxUsedDays, d + 1))}
-                        disabled={appliedUsed >= maxUsedDays}
-                        aria-label="Sumar un día"
-                        className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-300 hover:border-white/25 disabled:opacity-30 cursor-pointer"
-                      >
-                        <Plus className="size-4" />
-                      </button>
-                    </div>
-
-                    {appliedUsed > 0 ? (
-                      <div className="rounded-xl border border-amber-500/20 bg-amber-950/20 p-3 text-[11px] leading-normal text-amber-200 space-y-1">
-                        <p>
-                          Se le descuentan <strong className="text-zinc-100">{appliedUsed}</strong>{" "}
-                          {appliedUsed === 1 ? "día" : "días"} de los{" "}
-                          <strong className="text-zinc-100">{selectedPlan.days}</strong> del plan:
-                          le quedan <strong className="text-zinc-100">{totalDays}</strong> días
-                          {!isActive && (
-                            <>
-                              {" "}y vencerá el{" "}
-                              <strong className="text-zinc-100">
-                                {formatDate(addDays(todayInBogota(), durationDays - 1))}
-                              </strong>
-                            </>
-                          )}
-                          .
-                        </p>
-                        <p className="text-amber-400/70">
-                          Paga el precio completo del plan. Úsalo para el socio que ya llevaba
-                          días entrenando sin haberlo comprado.
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-[11px] leading-normal text-zinc-500">
-                        Si el socio ya llevaba días entrenando sin plan, súmalos aquí y se
-                        descontarán del plan que le vendes ahora.
-                      </p>
-                    )}
-                  </div>
+                  <UsedDaysField
+                    planDays={selectedPlan.days}
+                    raw={used.raw}
+                    onRawChange={used.setRaw}
+                    maxUsedDays={used.maxUsedDays}
+                    appliedUsed={used.appliedUsed}
+                    totalDays={totalDays}
+                    endDate={isActive ? null : addDays(todayInBogota(), durationDays - 1)}
+                  />
                 )}
 
                 {/* Método de pago */}

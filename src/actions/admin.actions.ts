@@ -401,6 +401,45 @@ export async function adminSetProgressGoalAction(clientId: string, goalType: Goa
   return { success: true }
 }
 
+/**
+ * ¿Ese WhatsApp ya es de un socio? Se consulta MIENTRAS el admin lo teclea.
+ *
+ * Existe porque el aviso llegaba tardísimo: el admin rellenaba nombre, teléfono,
+ * correo, elegía plan y método de pago, pulsaba "Registrar" y solo entonces le
+ * saltaba "Ya existe un cliente con ese WhatsApp". Todo el trabajo para nada.
+ *
+ * ⚠️ NO sustituye a la comprobación de `createClientAction`, que se queda donde
+ * está. Esta es una cortesía de interfaz; aquella es la que de verdad impide el
+ * duplicado, porque entre teclear y guardar pueden pasar minutos y otra persona
+ * puede haber dado de alta al mismo socio.
+ *
+ * Solo devuelve el nombre, para que el admin reconozca de quién se trata. Nada
+ * más: es un endpoint que responde a un teléfono que el llamante propone, así
+ * que cuanto menos cuente, mejor.
+ */
+export async function checkClientPhoneAction(
+  phone: string
+): Promise<{ taken: boolean; name?: string }> {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { taken: false }
+
+  const digits = (phone ?? "").replace(/\D/g, "")
+  // Misma canonicalización que el alta (ver adminCreateClientSchema): si no,
+  // se compararía contra una forma que no es la que hay guardada.
+  const canonico = digits.length === 12 && digits.startsWith("57") ? digits.slice(2) : digits
+  if (canonico.length < 10) return { taken: false }
+
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from("profiles")
+    .select("full_name")
+    .eq("phone", canonico)
+    .limit(1)
+    .maybeSingle()
+
+  return data ? { taken: true, name: data.full_name ?? undefined } : { taken: false }
+}
+
 export async function createManualPaymentAction(formData: {
   clientId: string
   planId: string
