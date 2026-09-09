@@ -19,7 +19,7 @@ interface ProgressHistoryProps {
 
 type ChartFilter = "30d" | "3m" | "all"
 
-const METRIC_ORDER: BodyMetricKey[] = ["weight", "waist", "chest", "arm", "leg"]
+const METRIC_ORDER: BodyMetricKey[] = ["weight", "waist", "abdomen", "hip", "chest", "arm", "leg"]
 
 export function ProgressHistory({ records }: ProgressHistoryProps) {
   const [filter, setFilter] = useState<ChartFilter>("3m")
@@ -150,6 +150,8 @@ export function ProgressHistory({ records }: ProgressHistoryProps) {
               if (r.chest_cm != null) summaryParts.push(`Pecho ${r.chest_cm} cm`)
               if (r.arm_cm != null) summaryParts.push(`Brazo ${r.arm_cm} cm`)
               if (r.leg_cm != null) summaryParts.push(`Pierna ${r.leg_cm} cm`)
+              if (r.abdomen_cm != null) summaryParts.push(`Abdomen ${r.abdomen_cm} cm`)
+              if (r.hip_cm != null) summaryParts.push(`Cadera ${r.hip_cm} cm`)
               const summaryText = summaryParts.join("  |  ")
 
               return (

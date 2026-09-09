@@ -14,6 +14,8 @@ export async function addProgressRecord(data: {
   chest_cm?: number
   arm_cm?: number
   leg_cm?: number
+  abdomen_cm?: number
+  hip_cm?: number
   note?: string
 }) {
   const supabase = await createClient()
@@ -39,6 +41,8 @@ export async function addProgressRecord(data: {
     chest_cm: data.chest_cm ?? null,
     arm_cm: data.arm_cm ?? null,
     leg_cm: data.leg_cm ?? null,
+    abdomen_cm: data.abdomen_cm ?? null,
+    hip_cm: data.hip_cm ?? null,
     note: data.note ?? null,
     measured_date: today,
     created_by: "client",

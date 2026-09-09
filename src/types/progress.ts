@@ -10,6 +10,8 @@ export interface ProgressRecord {
   chest_cm: number | null
   arm_cm: number | null
   leg_cm: number | null
+  abdomen_cm: number | null
+  hip_cm: number | null
   bmi: number | null
   measurements: unknown
   note: string | null
@@ -63,6 +65,8 @@ export type ProgressMetricKey =
   | 'chest'
   | 'arm'
   | 'leg'
+  | 'abdomen'
+  | 'hip'
   | 'consistency'
   | 'streak'
   | 'last7'
@@ -70,7 +74,7 @@ export type ProgressMetricKey =
 
 export const GOAL_HIGHLIGHT_METRICS: Record<GoalType, ProgressMetricKey[]> = {
   gain_muscle: ['weight', 'chest', 'arm', 'leg', 'consistency'],
-  lose_fat: ['weight', 'waist', 'consistency'],
+  lose_fat: ['weight', 'waist', 'abdomen', 'hip', 'consistency'],
   maintain: ['weight', 'waist', 'consistency'],
 }
 
@@ -78,7 +82,7 @@ export const GOAL_HIGHLIGHT_METRICS: Record<GoalType, ProgressMetricKey[]> = {
 export const DEFAULT_HIGHLIGHT_METRICS: ProgressMetricKey[] = ['weight', 'consistency']
 
 // Medidas corporales graficables (columna en progress_records).
-export type BodyMetricKey = 'weight' | 'waist' | 'chest' | 'arm' | 'leg'
+export type BodyMetricKey = 'weight' | 'waist' | 'chest' | 'arm' | 'leg' | 'abdomen' | 'hip'
 
 export const BODY_METRIC_LABELS: Record<BodyMetricKey, string> = {
   weight: 'Peso',
@@ -86,14 +90,18 @@ export const BODY_METRIC_LABELS: Record<BodyMetricKey, string> = {
   chest: 'Pecho',
   arm: 'Brazo',
   leg: 'Pierna',
+  abdomen: 'Abdomen',
+  hip: 'Cadera',
 }
 
-export const BODY_METRIC_COLUMN: Record<BodyMetricKey, keyof Pick<ProgressRecord, 'weight_kg' | 'waist_cm' | 'chest_cm' | 'arm_cm' | 'leg_cm'>> = {
+export const BODY_METRIC_COLUMN: Record<BodyMetricKey, keyof Pick<ProgressRecord, 'weight_kg' | 'waist_cm' | 'chest_cm' | 'arm_cm' | 'leg_cm' | 'abdomen_cm' | 'hip_cm'>> = {
   weight: 'weight_kg',
   waist: 'waist_cm',
   chest: 'chest_cm',
   arm: 'arm_cm',
   leg: 'leg_cm',
+  abdomen: 'abdomen_cm',
+  hip: 'hip_cm',
 }
 
 export const BODY_METRIC_UNIT: Record<BodyMetricKey, string> = {
@@ -102,4 +110,6 @@ export const BODY_METRIC_UNIT: Record<BodyMetricKey, string> = {
   chest: 'cm',
   arm: 'cm',
   leg: 'cm',
+  abdomen: 'cm',
+  hip: 'cm',
 }

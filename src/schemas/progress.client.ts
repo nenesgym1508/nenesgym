@@ -19,6 +19,8 @@ export interface ProgressInput {
   chest_cm?: number
   arm_cm?: number
   leg_cm?: number
+  abdomen_cm?: number
+  hip_cm?: number
   note?: string
 }
 
@@ -29,6 +31,8 @@ const RANGES: Record<string, { min: number; max: number; label: string; unit: st
   chest_cm: { min: 30, max: 200, label: "Pecho", unit: "cm" },
   arm_cm: { min: 10, max: 100, label: "Brazo", unit: "cm" },
   leg_cm: { min: 20, max: 150, label: "Pierna", unit: "cm" },
+  abdomen_cm: { min: 30, max: 200, label: "Abdomen", unit: "cm" },
+  hip_cm: { min: 30, max: 200, label: "Cadera", unit: "cm" },
 }
 
 const MAX_NOTE = 300

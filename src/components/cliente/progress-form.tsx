@@ -23,7 +23,7 @@ export function ProgressForm({ todayRecord, latestHeightCm, clientId }: Progress
   const [serverError, setServerError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [optionalOpen, setOptionalOpen] = useState(
-    !!(todayRecord && (todayRecord.waist_cm != null || todayRecord.chest_cm != null || todayRecord.arm_cm != null || todayRecord.leg_cm != null || todayRecord.note))
+    !!(todayRecord && (todayRecord.waist_cm != null || todayRecord.chest_cm != null || todayRecord.arm_cm != null || todayRecord.leg_cm != null || todayRecord.abdomen_cm != null || todayRecord.hip_cm != null || todayRecord.note))
   )
 
   const isEdit = !!todayRecord
@@ -37,6 +37,8 @@ export function ProgressForm({ todayRecord, latestHeightCm, clientId }: Progress
           chest_cm: todayRecord.chest_cm ?? undefined,
           arm_cm: todayRecord.arm_cm ?? undefined,
           leg_cm: todayRecord.leg_cm ?? undefined,
+          abdomen_cm: todayRecord.abdomen_cm ?? undefined,
+          hip_cm: todayRecord.hip_cm ?? undefined,
           note: todayRecord.note ?? undefined,
         }
       : latestHeightCm != null
@@ -69,6 +71,8 @@ export function ProgressForm({ todayRecord, latestHeightCm, clientId }: Progress
       chest_cm: data.chest_cm,
       arm_cm: data.arm_cm,
       leg_cm: data.leg_cm,
+      abdomen_cm: data.abdomen_cm,
+      hip_cm: data.hip_cm,
       note: data.note,
     }
     const result = clientId
@@ -218,6 +222,24 @@ export function ProgressForm({ todayRecord, latestHeightCm, clientId }: Progress
                           placeholder="55"
                           error={errors.leg_cm?.message}
                           {...register("leg_cm", { setValueAs: (v: string) => v === "" ? undefined : parseFloat(v) })}
+                        />
+                        <Input
+                          id="abdomen"
+                          type="number"
+                          step="0.1"
+                          label="Abdomen (cm)"
+                          placeholder="85"
+                          error={errors.abdomen_cm?.message}
+                          {...register("abdomen_cm", { setValueAs: (v: string) => v === "" ? undefined : parseFloat(v) })}
+                        />
+                        <Input
+                          id="hip"
+                          type="number"
+                          step="0.1"
+                          label="Cadera (cm)"
+                          placeholder="95"
+                          error={errors.hip_cm?.message}
+                          {...register("hip_cm", { setValueAs: (v: string) => v === "" ? undefined : parseFloat(v) })}
                         />
                       </div>
                       <Textarea

@@ -118,6 +118,8 @@ export function ProgressView({ records, goal, monthlyAttendanceDates, today, cli
   const piernaData = getMetricData("leg_cm", "cm")
   const pechoData = getMetricData("chest_cm", "cm")
   const alturaData = getMetricData("height_cm", "cm")
+  const abdomenData = getMetricData("abdomen_cm", "cm")
+  const caderaData = getMetricData("hip_cm", "cm")
 
   const metricsList = [
     { key: "weight", label: "Peso", data: pesoData, Icon: WeightIcon },
@@ -125,6 +127,10 @@ export function ProgressView({ records, goal, monthlyAttendanceDates, today, cli
     { key: "waist", label: "Cintura", data: cinturaData, Icon: WaistIcon },
     { key: "leg", label: "Pierna", data: piernaData, Icon: LegIcon },
     { key: "chest", label: "Pecho", data: pechoData, Icon: ChestIcon },
+    // Reutilizan el icono de cintura: son perímetros del mismo tramo del cuerpo
+    // y no había pictograma propio. Se distinguen por la etiqueta.
+    { key: "abdomen", label: "Abdomen", data: abdomenData, Icon: WaistIcon },
+    { key: "hip", label: "Cadera", data: caderaData, Icon: WaistIcon },
     { key: "height", label: "Altura", data: alturaData, Icon: HeightIcon },
   ].filter((m) => m.data.val !== null)
 
