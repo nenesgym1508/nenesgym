@@ -77,6 +77,25 @@ Si PostgREST dice "Could not find the function in the schema cache" pero **otra*
 función reciente sí resuelve, la caché está al día y el problema es que la función no
 existe.
 
+### 7. Un campo obligatorio nuevo sin valor por defecto apaga el botón principal
+Al añadir "¿Ya pagó?" al alta se dejó el estado inicial vacío y el botón verde
+`disabled` hasta elegir. Resultado en producción: el dueño reportó que "lo verde tiene
+dificultad" y registró clientes sin plan para salir del paso. Reglas:
+
+- Si el 99% de las veces la respuesta es la misma, esa es el **valor por defecto**.
+  La excepción (fiar) es lo que se elige a propósito.
+- Un botón deshabilitado sin explicación visible **es un bug** para quien lo usa
+  desde un celular; el motivo puede estar fuera de la pantalla.
+- Cuando un usuario reporta dos síntomas, buscar primero si el segundo es la
+  consecuencia del primero (aquí: "no le sale registrar la clase" = cliente sin
+  membresía porque el botón de cobrar no funcionaba).
+
+### 8. Un booleano no distingue "cargando" de "bloqueado"
+`balanceReady=false` significaba a la vez "aún consultando el saldo" y "tiene deuda",
+y en ambos casos el formulario se ocultaba con `hidden`. Con red lenta el modal se
+abría vacío. Si un estado gobierna qué se muestra, que tenga tantos valores como
+situaciones distintas haya que pintar (`consultando | libre | con_deuda`).
+
 ---
 
 ## 📌 Lecciones Recientes (Sesión 19 - 2026-09-01)

@@ -136,6 +136,47 @@ rechazo de monto negativo y días absurdos.
 
 `tsc` 0 · `build` 0 · lint 106 problemas, sin cambios respecto a la base.
 
+### 🚨 Reporte del dueño: "lo verde tiene dificultad"
+
+Mensaje textual del dueño por WhatsApp, ya con el cobro a crédito en producción:
+*"lo verde donde dice registrar cliente y activar plan tiene dificultad. Y donde dice
+activar cliente sin plan activé una pero a ella no le sale para registrar la clase"*.
+
+Diagnóstico:
+
+- **"Lo verde"** es el botón *Registrar cliente y activar plan* del alta. La versión
+  recibida arrancaba con el estado de pago **vacío** (`""`) y el botón quedaba
+  `disabled` hasta elegir "Ya pagó" / "Pago pendiente", un bloque nuevo escondido
+  entre la lista de planes y el método de pago. En el celular no se ve sin
+  desplazarse, y el botón gris no explica por qué. El dueño llegó a pensar que la
+  app estaba rota.
+- **"Activé una sin plan pero no le sale registrar la clase"** es la consecuencia:
+  ante el botón muerto usó *Registrar sin plan por ahora*, y una clienta sin
+  membresía no puede hacer check-in (`NO_MEMBERSHIP`). El sistema hizo lo correcto;
+  el camino que la llevó ahí, no.
+- De paso: en *Activar plan* la lista de planes estaba `hidden` mientras se
+  consultaba el saldo (booleano `balanceReady`), así que con red lenta el modal se
+  abría vacío unos segundos. Y ese modal **no tenía** selector de pago: solo se
+  podía vender fiado al registrar, no al renovar.
+
+Corrección (`259f704` → este commit):
+
+- Nuevo `src/components/admin/payment-status-toggle.tsx`, compartido por los dos
+  modales: "¿Ya pagó?" con **"Ya pagó" marcado por defecto**. Cobrar al contado es
+  lo normal; el fiado se elige a propósito. El botón verde vuelve a depender solo
+  de tener un plan elegido.
+- `activate-plan-modal.tsx`: se añade el selector y se pasa `paymentStatus` a
+  `createManualPaymentAction` (que ya lo soportaba). El texto del botón cambia a
+  "Fiar y activar · $X" cuando es pendiente. `balanceReady` pasa a tri-estado
+  (`consultando | libre | con_deuda`): la lista solo se oculta con deuda confirmada.
+  El callback a `ClientDebtNotice` va en `useCallback` porque está en las
+  dependencias de su efecto.
+- `new-client-modal.tsx`: usa el mismo componente; se quitan las guardas de
+  `!paymentStatus` en `submit` y en el botón.
+
+Para el dueño: la clienta que registró sin plan solo necesita *Activar plan* desde
+su tarjeta; ahí ya puede elegir "Pago pendiente" si aún no ha pagado.
+
 ---
 
 ## 📌 Sesión 20 — 2026-09-01 (Planes privados, hasta 3 imágenes por ejercicio, tiempo opcional en rutinas)

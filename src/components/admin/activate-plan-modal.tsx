@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useCallback } from "react"
 import { ClientDebtNotice } from "@/components/admin/client-debt-notice"
+import { PaymentStatusToggle, type PaymentStatusChoice } from "@/components/admin/payment-status-toggle"
 import { useRouter } from "next/navigation"
 import { UserCheck, X, CheckCircle } from "lucide-react"
 import { createManualPaymentAction, createCustomPlanAction } from "@/actions/admin.actions"
@@ -40,7 +41,18 @@ const METHODS: PaymentMethod[] = ["cash", "transfer", "nequi", "daviplata", "oth
 export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant, isActive, currentEndDate }: ActivatePlanModalProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [balanceReady, setBalanceReady] = useState(false)
+  // Tres estados, no dos. Con un booleano, "todavía consultando" y "tiene
+  // deuda" se veían igual: la lista de planes desaparecía mientras cargaba el
+  // saldo y en una conexión lenta el modal parecía vacío y roto. Ahora solo se
+  // oculta con deuda CONFIRMADA; mientras consulta se ve, deshabilitada.
+  const [saldo, setSaldo] = useState<"consultando" | "libre" | "con_deuda">("consultando")
+  const balanceReady = saldo === "libre"
+  // Estable a propósito: ClientDebtNotice lo lleva en las dependencias de su
+  // efecto, y una arrow inline lo relanzaría en cada render (bucle de consultas).
+  const onSaldo = useCallback((ok: boolean) => setSaldo(ok ? "libre" : "con_deuda"), [])
+
+  // "Ya pagó" por defecto: cobrar al contado es lo normal, el fiado se elige.
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatusChoice>("paid")
   const [planId, setPlanId] = useState("")
   const [method, setMethod] = useState<PaymentMethod>("cash")
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle")
@@ -56,7 +68,7 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
   const requestIdRef = useRef<string>("")
 
   const openModal = () => {
-    setBalanceReady(false)
+    setSaldo("consultando")
     requestIdRef.current = crypto.randomUUID()
     setOpen(true)
   }
@@ -77,6 +89,7 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
   const reset = () => {
     setPlanId("")
     setMedida(PLAN_MEDIDA_INICIAL)
+    setPaymentStatus("paid")
     setMethod("cash")
     setStatus("idle")
     setErrorMsg("")
@@ -135,6 +148,8 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
         method,
         totalDays,
         durationDays,
+        // "pending" crea la deuda en vez del pago; la membresía se activa igual.
+        paymentStatus,
         clientRequestId: requestIdRef.current,
       })
     } catch {
@@ -231,8 +246,8 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
 
                 {/* Zona con desplazamiento: es la que crece con el catálogo */}
                 <div className="min-h-0 flex-1 overflow-y-auto px-5">
-                <ClientDebtNotice clientId={clientId} onReady={setBalanceReady} />
-                <fieldset disabled={!balanceReady || status === "loading"} className={!balanceReady ? "hidden" : "min-w-0"}>
+                <ClientDebtNotice clientId={clientId} onReady={onSaldo} />
+                <fieldset disabled={!balanceReady || status === "loading"} className={saldo === "con_deuda" ? "hidden" : "min-w-0"}>
                 {/* Selección de plan */}
                 <div className="space-y-2 mb-4">
                   <label className="text-xs font-medium text-zinc-400">Plan</label>
@@ -309,6 +324,15 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
                   />
                 )}
 
+                {selectedPlan && (
+                  <PaymentStatusToggle
+                    value={paymentStatus}
+                    onChange={setPaymentStatus}
+                    priceCents={selectedPlan.price_cents}
+                    disabled={status === "loading"}
+                  />
+                )}
+
                 {/* Método de pago */}
                 <div className="space-y-2 mb-4">
                   <label className="text-xs font-medium text-zinc-400">Método de pago</label>
@@ -365,13 +389,13 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
                 >
                   <UserCheck className="size-4" />
                   {selectedPlan
-                    ? isActive
-                      ? `Registrar pago y expandir · ${formatCOP(selectedPlan.price_cents)}`
-                      : `Registrar pago y activar · ${formatCOP(selectedPlan.price_cents)}`
+                    ? `${paymentStatus === "pending" ? "Fiar" : "Registrar pago"} y ${isActive ? "expandir" : "activar"} · ${formatCOP(selectedPlan.price_cents)}`
                     : "Selecciona un plan"}
                 </LoadingButton>
                 <p className="text-center text-[10px] text-zinc-600 mt-3">
-                  Se registrará un pago aprobado y se activará la membresía de inmediato
+                  {paymentStatus === "pending"
+                    ? "Quedará debiendo el plan y la membresía se activará de inmediato"
+                    : "Se registrará un pago aprobado y se activará la membresía de inmediato"}
                 </p>
                 </div>
               </>
