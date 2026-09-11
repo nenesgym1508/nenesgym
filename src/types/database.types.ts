@@ -345,6 +345,71 @@ export type Database = {
           },
         ]
       }
+      client_plan_debts: {
+        Row: {
+          amount_cents: number
+          client_id: string
+          created_at: string
+          id: string
+          membership_id: string | null
+          paid_at: string | null
+          payment_id: string | null
+          plan_id: string | null
+          request_id: string
+        }
+        Insert: {
+          amount_cents: number
+          client_id: string
+          created_at?: string
+          id?: string
+          membership_id?: string | null
+          paid_at?: string | null
+          payment_id?: string | null
+          plan_id?: string | null
+          request_id: string
+        }
+        Update: {
+          amount_cents?: number
+          client_id?: string
+          created_at?: string
+          id?: string
+          membership_id?: string | null
+          paid_at?: string | null
+          payment_id?: string | null
+          plan_id?: string | null
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_plan_debts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_plan_debts_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_plan_debts_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_plan_debts_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_routine_blocks: {
         Row: {
           id: string
@@ -1654,11 +1719,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      admin_client_debts: { Args: { p_client_ids: string[] }; Returns: { id: string; client_id: string; amount_cents: number }[] }
-      create_unpaid_plan: { Args: { p_client_id: string; p_amount_cents: number; p_total_days: number; p_duration_days: number; p_request_id: string; p_plan_id?: string }; Returns: Json }
-      settle_client_debt: { Args: { p_debt_id: string; p_method: string }; Returns: Json }
-      add_client_debt: { Args: { p_client_id: string; p_amount_cents: number; p_request_id: string }; Returns: Json }
       accept_client_invitation: { Args: { p_token: string }; Returns: Json }
+      add_client_debt: {
+        Args: {
+          p_amount_cents: number
+          p_client_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      admin_client_debts: {
+        Args: { p_client_ids: string[] }
+        Returns: {
+          amount_cents: number
+          client_id: string
+          id: string
+        }[]
+      }
       admin_search_clients: {
         Args: {
           p_limit?: number
@@ -1725,6 +1802,17 @@ export type Database = {
         }
         Returns: Json
       }
+      create_unpaid_plan: {
+        Args: {
+          p_amount_cents: number
+          p_client_id: string
+          p_duration_days: number
+          p_plan_id?: string
+          p_request_id: string
+          p_total_days: number
+        }
+        Returns: Json
+      }
       current_gym_id: { Args: never; Returns: string }
       current_user_has_password: { Args: never; Returns: boolean }
       eligible_days_elapsed: {
@@ -1743,6 +1831,10 @@ export type Database = {
       process_client_check_in: { Args: never; Returns: Json }
       reject_payment: {
         Args: { p_note?: string; p_payment_id: string }
+        Returns: Json
+      }
+      settle_client_debt: {
+        Args: { p_debt_id: string; p_method: string }
         Returns: Json
       }
       unaccent: { Args: { "": string }; Returns: string }

@@ -76,6 +76,56 @@ retomarla instalando la dependencia.
 - **Bloquear la venta hasta saldar** es decisión de la implementación, no algo que
   se pidiera explícitamente. Si algún día estorba, se quita relajando `balanceReady`.
 
+### ➕ Marcar como no pagado a un cliente que YA tiene plan (migración 039)
+
+Segunda parte de la sesión. La deuda solo podía nacer al **vender**, así que los
+clientes dados de alta antes del cobro a crédito —o marcados "Pagado" por error— no
+tenían forma de corregirse.
+
+Nueva tarjeta de estado de pago en la ficha del cliente, justo debajo de su plan. Si
+está al día, un enlace discreto *"¿No pagó? Marcar saldo pendiente"* pide el monto
+(prerellenado con el precio de su membresía). Si debe, muestra el saldo y el botón
+para registrar el pago.
+
+⚠️ `add_client_debt` **no llama a `apply_membership_purchase`**, a diferencia de
+`create_unpaid_plan`. Esa es toda la diferencia y por eso es una función nueva: el
+cliente ya tiene sus días, aquí solo se anota que el dinero no entró. Reutilizar la
+de vender le habría regalado un plan entero de días en cada corrección de estado.
+Verificado: 16 días antes, 16 después, mismo vencimiento, misma membresía.
+
+La deuda se engancha a la membresía de vencimiento más lejano (criterio del
+check-in) y a su plan. Se admiten varios saldos a la vez para el mismo cliente.
+
+18 comprobaciones más contra producción, todas OK, incluida la de que un anónimo no
+puede invocarla (`REVOKE … FROM PUBLIC, anon`, según la lección de la 038).
+
+### 🔍 Pruebas finales de lógica (tras la 039)
+
+Se revisó el sistema de deudas de punta a punta buscando incoherencias, no solo
+errores. Tres casos límite probados contra producción, todos OK: la lista de clientes
+vacía (búsqueda sin resultados) no revienta la RPC; borrar un cliente con una deuda
+saldada y otra viva no deja huérfanos (cascada desde `clients`, `payment_id` y
+`membership_id` a null antes); y las 43 pantallas siguen respondiendo.
+
+Tres incoherencias encontradas y corregidas:
+
+1. **La tarjeta decía "Pagado" a quien no tenía plan.** Un cliente recién registrado
+   sin membresía ni deuda salía como "Pagado" — no ha comprado nada. Ahora la
+   etiqueta solo aparece con plan vigente o con deuda.
+2. **El cobro rápido "Pago 1 día" se saltaba el aviso de deuda.** Ese botón no pasa
+   por el modal, así que el dueño podía cobrarle un día a alguien que ya le debía sin
+   enterarse. La tarjeta ya conoce el saldo: el `confirm()` lo incluye ahora, sin
+   consulta extra.
+3. **`ClientPaymentStateCard` duplicaba la consulta** (efecto inicial y `cargar` con
+   la misma lógica). Unificado en `aplicar()`; el efecto sigue como cadena de promesas
+   con guard `vivo` porque `react-hooks/set-state-in-effect` marca `void cargar()`
+   como setState síncrono.
+
+Decisiones que se dejan como están, anotadas: un cliente con deuda **sí puede hacer
+check-in** mientras su plan esté vigente (es la definición de "fiado"; el bloqueo
+llega con el vencimiento, como siempre); y el contador de "Pagos pendientes" del
+Inicio sigue contando comprobantes, no deudas.
+
 ### ✅ Verificación
 
 20 comprobaciones contra producción sobre un cliente desechable, todas OK:

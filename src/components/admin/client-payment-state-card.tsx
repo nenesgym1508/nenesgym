@@ -48,32 +48,37 @@ export function ClientPaymentStateCard({
   const [monto, setMonto] = useState("")
   const [recarga, setRecarga] = useState(0)
 
-  const cargar = useCallback(async () => {
-    try {
-      const r = await getClientDebtsAction([clientId])
-      if (!r.debts) {
-        setError(r.error || "No se pudo consultar el saldo")
-        return
-      }
-      setError("")
-      setDeudas(r.debts)
-    } catch {
-      setError("No se pudo conectar para consultar el saldo.")
+  // Una sola función decide qué hacer con la respuesta; la usan tanto la carga
+  // inicial como las recargas tras cobrar o marcar.
+  const aplicar = useCallback((r: Awaited<ReturnType<typeof getClientDebtsAction>>) => {
+    if (!r.debts) {
+      setError(r.error || "No se pudo consultar el saldo")
+      return
     }
-  }, [clientId])
+    setError("")
+    setDeudas(r.debts)
+  }, [])
 
+  const cargar = useCallback(
+    () =>
+      getClientDebtsAction([clientId])
+        .then(aplicar)
+        .catch(() => setError("No se pudo conectar para consultar el saldo.")),
+    [clientId, aplicar]
+  )
+
+  // ⚠️ Se escribe como cadena de promesas y NO como `void cargar()`: la regla
+  // react-hooks/set-state-in-effect ve a `cargar` como "setState síncrono en
+  // el efecto" aunque el setState vaya tras un await. Con los setState dentro
+  // de .then/.catch la regla no salta, y el guard `vivo` evita pintar una
+  // respuesta que llega cuando el componente ya se desmontó.
   useEffect(() => {
     let vivo = true
     getClientDebtsAction([clientId])
-      .then((r) => {
-        if (!vivo) return
-        if (!r.debts) { setError(r.error || "No se pudo consultar el saldo"); return }
-        setError("")
-        setDeudas(r.debts)
-      })
+      .then((r) => { if (vivo) aplicar(r) })
       .catch(() => { if (vivo) setError("No se pudo conectar para consultar el saldo.") })
     return () => { vivo = false }
-  }, [clientId, recarga])
+  }, [clientId, recarga, aplicar])
 
   const total = deudas?.reduce((s, d) => s + d.amount_cents, 0) ?? 0
   const debe = (deudas?.length ?? 0) > 0

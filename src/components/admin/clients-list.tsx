@@ -89,10 +89,15 @@ export function ClientsList({ clients, plans, total, page, pageSize, search, sta
     (p) => p.days === 1 || p.name.toLowerCase().includes("suelto") || p.name.toLowerCase().includes("dia")
   )
 
-  const handleRegisterSingleDay = async (clientId: string, clientName: string) => {
+  const handleRegisterSingleDay = async (clientId: string, clientName: string, pendingCents: number | null) => {
     if (!singleDayPlan) return
     const priceFormatted = (singleDayPlan.price_cents / 100).toLocaleString("es-CO")
-    if (!confirm(`¿Confirmas registrar pago de 1 día suelto en efectivo ($${priceFormatted}) para ${clientName}?`)) {
+    // El cobro rápido de un día se salta el modal —y con él el aviso de deuda—.
+    // La tarjeta ya sabe cuánto debe, así que se avisa aquí sin consultar nada.
+    const aviso = pendingCents && pendingCents > 0
+      ? `\n\n⚠ ${clientName} ya debe ${formatCOP(pendingCents)} de un plan anterior. Este cobro NO salda esa deuda.`
+      : ""
+    if (!confirm(`¿Confirmas registrar pago de 1 día suelto en efectivo ($${priceFormatted}) para ${clientName}?${aviso}`)) {
       return
     }
 
@@ -210,10 +215,15 @@ export function ClientsList({ clients, plans, total, page, pageSize, search, sta
                   </Link>
                 </div>
 
-                <div className={"flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-xs " + (c.pendingCents === null ? "border-white/10 bg-white/5 text-zinc-400" : c.pendingCents > 0 ? "border-amber-500/25 bg-amber-500/10 text-amber-300" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400")}>
-                  <span className="flex items-center gap-2 font-semibold"><Banknote className="size-4" />{c.pendingCents === null ? "Saldo no disponible" : c.pendingCents > 0 ? "Pago pendiente" : "Pagado"}</span>
-                  {c.pendingCents !== null && c.pendingCents > 0 && <span className="font-bold tabular-nums">{formatCOP(c.pendingCents)}</span>}
-                </div>
+                {/* Etiqueta de pago. "Pagado" solo cuando hay un plan vigente
+                    que pagar: a alguien sin plan y sin deuda no se le dice
+                    "Pagado" —no ha comprado nada— y la etiqueta se omite. */}
+                {(c.pendingCents === null || c.pendingCents > 0 || isActive) && (
+                  <div className={"flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-xs " + (c.pendingCents === null ? "border-white/10 bg-white/5 text-zinc-400" : c.pendingCents > 0 ? "border-amber-500/25 bg-amber-500/10 text-amber-300" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400")}>
+                    <span className="flex items-center gap-2 font-semibold"><Banknote className="size-4" />{c.pendingCents === null ? "Saldo no disponible" : c.pendingCents > 0 ? "Pago pendiente" : "Pagado"}</span>
+                    {c.pendingCents !== null && c.pendingCents > 0 && <span className="font-bold tabular-nums">{formatCOP(c.pendingCents)}</span>}
+                  </div>
+                )}
                 {/* Separador */}
                 <div className="border-t border-white/5"></div>
 
@@ -286,7 +296,7 @@ export function ClientsList({ clients, plans, total, page, pageSize, search, sta
                   />
                   {singleDayPlan && puedePagarDia && (
                     <LoadingButton
-                      onClick={() => handleRegisterSingleDay(c.id, clientName)}
+                      onClick={() => handleRegisterSingleDay(c.id, clientName, c.pendingCents)}
                       pending={registeringId === c.id}
                       pendingText="Registrando..."
                       className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-zinc-950 hover:bg-zinc-900 transition-colors px-3 py-3 text-xs text-zinc-300 hover:text-white cursor-pointer disabled:opacity-50 text-left"
