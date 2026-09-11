@@ -1657,6 +1657,7 @@ export type Database = {
       admin_client_debts: { Args: { p_client_ids: string[] }; Returns: { id: string; client_id: string; amount_cents: number }[] }
       create_unpaid_plan: { Args: { p_client_id: string; p_amount_cents: number; p_total_days: number; p_duration_days: number; p_request_id: string; p_plan_id?: string }; Returns: Json }
       settle_client_debt: { Args: { p_debt_id: string; p_method: string }; Returns: Json }
+      add_client_debt: { Args: { p_client_id: string; p_amount_cents: number; p_request_id: string }; Returns: Json }
       accept_client_invitation: { Args: { p_token: string }; Returns: Json }
       admin_search_clients: {
         Args: {

@@ -21,6 +21,7 @@ import { AutoAprobacionToggle } from "@/components/admin/auto-aprobacion-toggle"
 import { DesbloquearToggle } from "@/components/admin/desbloquear-toggle"
 import { AdjustMembershipModal } from "@/components/admin/adjust-membership-modal"
 import { ClientAccessCard } from "@/components/admin/client-access-card"
+import { ClientPaymentStateCard } from "@/components/admin/client-payment-state-card"
 import { DeleteClientCard } from "@/components/admin/delete-client-card"
 import { getClientAccessState } from "@/services/invitations.service"
 import { ROUTES } from "@/constants/routes"
@@ -158,6 +159,16 @@ export default async function AdminClienteDetallePage({
                 <p className="text-sm text-zinc-500 text-center py-2">Sin membresía activa</p>
               </Card>
             )}
+
+            {/* Estado de pago, justo debajo del plan: es de lo que habla.
+                Permite registrar un saldo pendiente o marcar como no pagado a
+                quien figura como pagado —el caso de los clientes que ya
+                estaban antes de que existiera el cobro a crédito. */}
+            <ClientPaymentStateCard
+              clientId={clientData.id}
+              clientName={clientProfile?.full_name ?? "Este cliente"}
+              membershipPriceCents={membership?.price_cents ?? null}
+            />
 
             <div className="flex flex-wrap items-center gap-2">
               <ActivatePlanModal

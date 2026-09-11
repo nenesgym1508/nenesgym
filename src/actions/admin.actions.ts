@@ -595,6 +595,49 @@ export async function getClientDebtsAction(clientIds: string[]) {
   return { debts: data ?? [] }
 }
 
+/**
+ * Marca como NO PAGADO a un cliente que ya tiene su plan activo.
+ *
+ * Para los que quedaron mal: dados de alta antes de que existiera el cobro a
+ * crédito, o marcados "Pagado" por equivocación. Sin esto no había forma de
+ * corregir ese estado.
+ *
+ * ⚠️ Usa `add_client_debt`, NO `create_unpaid_plan`. La diferencia es grande:
+ * `create_unpaid_plan` aplica además la compra de la membresía, así que usarla
+ * aquí le regalaría un plan entero de días cada vez que el dueño corrige un
+ * estado. El cliente ya tiene sus días; aquí solo se anota que el dinero no
+ * entró.
+ */
+export async function markClientUnpaidAction(clientId: string, amountCents: number) {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error ?? "Sin permisos" }
+
+  if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+    return { error: "El monto debe ser mayor que cero" }
+  }
+
+  const { error } = await ctx.supabase.rpc("add_client_debt", {
+    p_client_id: clientId,
+    p_amount_cents: amountCents,
+    // Un id por intención: el servidor no puede reutilizar uno del navegador
+    // porque no lo tiene, y repetir el clic crea una deuda nueva a propósito
+    // (el dueño puede querer anotar dos saldos distintos del mismo cliente).
+    p_request_id: crypto.randomUUID(),
+  })
+  if (error) {
+    if (/does not exist|could not find/i.test(error.message)) {
+      return { error: "Falta aplicar la migración 039 en la base de datos." }
+    }
+    return { error: error.message }
+  }
+
+  updateTag("admin-payments")
+  revalidatePath(ROUTES.ADMIN_CLIENTES, "layout")
+  revalidatePath(adminClienteDetalle(clientId))
+  revalidatePath(ROUTES.ADMIN_DASHBOARD)
+  return { success: true }
+}
+
 export async function settleClientDebtAction(debtId: string, method: string) {
   const ctx = await requireAdmin()
   if ("error" in ctx) return { error: ctx.error }
