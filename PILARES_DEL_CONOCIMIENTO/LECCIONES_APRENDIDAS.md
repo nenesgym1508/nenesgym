@@ -82,8 +82,8 @@ Al añadir "¿Ya pagó?" al alta se dejó el estado inicial vacío y el botón v
 `disabled` hasta elegir. Resultado en producción: el dueño reportó que "lo verde tiene
 dificultad" y registró clientes sin plan para salir del paso. Reglas:
 
-- Si el 99% de las veces la respuesta es la misma, esa es el **valor por defecto**.
-  La excepción (fiar) es lo que se elige a propósito.
+- Si el campo debe elegirse a conciencia (el dueño no quiso valor por defecto),
+  el botón sigue **activo** y al pulsarlo se avisa y se lleva la vista al campo.
 - Un botón deshabilitado sin explicación visible **es un bug** para quien lo usa
   desde un celular; el motivo puede estar fuera de la pantalla.
 - Cuando un usuario reporta dos síntomas, buscar primero si el segundo es la

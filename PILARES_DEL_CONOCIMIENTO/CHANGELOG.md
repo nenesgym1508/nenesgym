@@ -162,9 +162,11 @@ Diagnóstico:
 Corrección (`259f704` → este commit):
 
 - Nuevo `src/components/admin/payment-status-toggle.tsx`, compartido por los dos
-  modales: "¿Ya pagó?" con **"Ya pagó" marcado por defecto**. Cobrar al contado es
-  lo normal; el fiado se elige a propósito. El botón verde vuelve a depender solo
-  de tener un plan elegido.
+  modales. Primero se puso "Ya pagó" por defecto; **el dueño prefirió sin valor
+  por defecto**: el botón verde queda siempre activo y, si se pulsa sin elegir,
+  aparece la advertencia en rojo, el selector se resalta y la pantalla se desplaza
+  hasta él (`showError` + `scrollIntoView`). Lo que no vuelve es el botón
+  deshabilitado en silencio.
 - `activate-plan-modal.tsx`: se añade el selector y se pasa `paymentStatus` a
   `createManualPaymentAction` (que ya lo soportaba). El texto del botón cambia a
   "Fiar y activar · $X" cuando es pendiente. `balanceReady` pasa a tri-estado

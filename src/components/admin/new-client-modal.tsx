@@ -17,7 +17,7 @@ import { PhoneField, usePhoneField } from "@/components/ui/phone-field"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { InvitationActions } from "@/components/admin/invitation-actions"
 import { UsedDaysField, useUsedDays } from "@/components/admin/used-days-field"
-import { PaymentStatusToggle, type PaymentStatusChoice } from "@/components/admin/payment-status-toggle"
+import { PaymentStatusToggle, PAGO_SIN_ELEGIR, type PaymentStatusChoice } from "@/components/admin/payment-status-toggle"
 import { formatCOP, computePlanDiscount } from "@/lib/utils"
 import { formatDate, todayInBogota, addDays, daysPerWeekForPlan } from "@/lib/dates"
 import { PAYMENT_METHOD_LABELS } from "@/constants/plans"
@@ -52,9 +52,10 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
   const phone = usePhoneField()
 
   const [planId, setPlanId] = useState("")
-  // "Ya pagó" por defecto. Sin valor inicial, el botón verde quedaba gris hasta
-  // tocar una opción que no era obvia — ver PaymentStatusToggle.
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatusChoice>("paid")
+  // Sin valor por defecto (decisión del dueño). Si se pulsa el botón verde sin
+  // elegir, se avisa y se desplaza al selector — nunca se deshabilita en silencio.
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatusChoice | null>(null)
+  const [faltaPago, setFaltaPago] = useState(false)
   const [method, setMethod] = useState<PaymentMethod>("cash")
 
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle")
@@ -159,7 +160,8 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
     setEmail("")
     setPlanId("")
     setMedida(PLAN_MEDIDA_INICIAL)
-    setPaymentStatus("paid")
+    setPaymentStatus(null)
+    setFaltaPago(false)
     setMethod("cash")
     used.reset()
     setStatus("idle")
@@ -179,6 +181,13 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
   const submit = async (withPlan: boolean) => {
     if (!canContinue) return
     if (withPlan && !selectedPlan) return
+    if (withPlan && !paymentStatus) {
+      setFaltaPago(true)
+      setErrorMsg(PAGO_SIN_ELEGIR)
+      setStatus("error")
+      return
+    }
+    setFaltaPago(false)
     if (withPlan && esMedida && (medida.days < 1 || medida.durationDays < 1)) {
       setErrorMsg("El plan a medida necesita días y vigencia")
       setStatus("error")
@@ -227,7 +236,8 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
           ? {
               // Sin plan = cobro suelto ("solo esta vez"): la membresía queda
               // sin plan asociado y el catálogo no se ensucia.
-              paymentStatus,
+              // La guarda de arriba garantiza que con plan ya se eligió.
+              paymentStatus: paymentStatus ?? "paid",
               planId: planIdFinal,
               // El precio no se descuenta: el cliente paga el plan completo y este
               // pasa a cubrir los días que ya entrenó. No es una rebaja.
@@ -553,7 +563,8 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                 {selectedPlan && (
                   <PaymentStatusToggle
                     value={paymentStatus}
-                    onChange={setPaymentStatus}
+                    onChange={(v) => { setPaymentStatus(v); setFaltaPago(false) }}
+                    showError={faltaPago}
                     priceCents={selectedPlan.price_cents}
                     disabled={status === "loading"}
                   />

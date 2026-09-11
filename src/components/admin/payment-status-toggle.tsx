@@ -1,31 +1,48 @@
 "use client"
 
-import { Check } from "lucide-react"
+import { useEffect, useRef } from "react"
+import { Check, AlertTriangle } from "lucide-react"
 import { formatCOP } from "@/lib/utils"
 
 export type PaymentStatusChoice = "paid" | "pending"
 
+/** Texto que enseña el padre cuando se intenta cobrar sin haber elegido. */
+export const PAGO_SIN_ELEGIR = "Antes de continuar, indica si el cliente ya pagó o queda pendiente."
+
 interface PaymentStatusToggleProps {
-  value: PaymentStatusChoice
+  /** `null` = todavía no ha elegido. */
+  value: PaymentStatusChoice | null
   onChange: (v: PaymentStatusChoice) => void
   /** Precio del plan, para decir cuánto quedará debiendo. */
   priceCents: number
+  /** Se pulsó el botón de cobrar sin elegir: se resalta y se desplaza hasta aquí. */
+  showError?: boolean
   disabled?: boolean
 }
 
 /**
  * ¿Ya pagó o queda debiendo? Compartido por Registrar cliente y Activar plan.
  *
- * ⚠️ Viene con "Ya pagó" marcado por defecto, y no es un detalle. La primera
- * versión arrancaba sin nada elegido y el botón verde de cobrar se quedaba
- * gris hasta tocar una opción, sin decir por qué. El dueño lo describió tal
- * cual: "lo verde donde dice registrar cliente y activar plan tiene
- * dificultad". Cobrar al contado es el 99% de los casos; el fiado es la
- * excepción y por eso es lo que hay que elegir a propósito.
+ * No trae valor por defecto a propósito (decisión del dueño): el botón verde
+ * queda siempre activo, y si se pulsa sin haber elegido, el padre pone
+ * `showError` y este bloque se resalta y se desplaza a la vista. Lo que NO se
+ * hace nunca es deshabilitar el botón en silencio — la primera versión lo
+ * hacía y el dueño lo reportó como avería ("lo verde tiene dificultad").
  */
-export function PaymentStatusToggle({ value, onChange, priceCents, disabled }: PaymentStatusToggleProps) {
+export function PaymentStatusToggle({ value, onChange, priceCents, showError, disabled }: PaymentStatusToggleProps) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (showError) ref.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+  }, [showError])
+
+  const falta = showError && !value
+
   return (
-    <div className="space-y-2 mb-4">
+    <div
+      ref={ref}
+      className={`space-y-2 mb-4 rounded-xl transition-colors ${falta ? "ring-1 ring-red-500/60 bg-red-950/20 p-2.5 -mx-2.5" : ""}`}
+    >
       <label className="text-xs font-medium text-zinc-400">¿Ya pagó?</label>
 
       <div className="grid grid-cols-2 gap-2">
@@ -46,6 +63,13 @@ export function PaymentStatusToggle({ value, onChange, priceCents, disabled }: P
           detalle="Entrena igual y queda debiendo."
         />
       </div>
+
+      {falta && (
+        <p className="flex items-start gap-1.5 text-[11px] leading-normal text-red-300">
+          <AlertTriangle className="size-3.5 shrink-0 mt-px" />
+          {PAGO_SIN_ELEGIR}
+        </p>
+      )}
 
       {value === "pending" && (
         <p className="rounded-lg border border-amber-500/20 bg-amber-950/20 px-2.5 py-2 text-[11px] leading-normal text-amber-200">

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react"
 import { ClientDebtNotice } from "@/components/admin/client-debt-notice"
-import { PaymentStatusToggle, type PaymentStatusChoice } from "@/components/admin/payment-status-toggle"
+import { PaymentStatusToggle, PAGO_SIN_ELEGIR, type PaymentStatusChoice } from "@/components/admin/payment-status-toggle"
 import { useRouter } from "next/navigation"
 import { UserCheck, X, CheckCircle } from "lucide-react"
 import { createManualPaymentAction, createCustomPlanAction } from "@/actions/admin.actions"
@@ -51,8 +51,10 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
   // efecto, y una arrow inline lo relanzaría en cada render (bucle de consultas).
   const onSaldo = useCallback((ok: boolean) => setSaldo(ok ? "libre" : "con_deuda"), [])
 
-  // "Ya pagó" por defecto: cobrar al contado es lo normal, el fiado se elige.
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatusChoice>("paid")
+  // Sin valor por defecto (decisión del dueño). Si se pulsa cobrar sin elegir,
+  // se avisa y se desplaza al selector — nunca se deshabilita en silencio.
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatusChoice | null>(null)
+  const [faltaPago, setFaltaPago] = useState(false)
   const [planId, setPlanId] = useState("")
   const [method, setMethod] = useState<PaymentMethod>("cash")
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle")
@@ -89,7 +91,8 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
   const reset = () => {
     setPlanId("")
     setMedida(PLAN_MEDIDA_INICIAL)
-    setPaymentStatus("paid")
+    setPaymentStatus(null)
+    setFaltaPago(false)
     setMethod("cash")
     setStatus("idle")
     setErrorMsg("")
@@ -98,6 +101,13 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
 
   const handleActivate = async () => {
     if (!selectedPlan || !balanceReady || status === "loading") return
+    if (!paymentStatus) {
+      setFaltaPago(true)
+      setErrorMsg(PAGO_SIN_ELEGIR)
+      setStatus("error")
+      return
+    }
+    setFaltaPago(false)
     if (esMedida && (medida.days < 1 || medida.durationDays < 1)) {
       setErrorMsg("El plan a medida necesita días y vigencia")
       setStatus("error")
@@ -327,7 +337,8 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
                 {selectedPlan && (
                   <PaymentStatusToggle
                     value={paymentStatus}
-                    onChange={setPaymentStatus}
+                    onChange={(v) => { setPaymentStatus(v); setFaltaPago(false) }}
+                    showError={faltaPago}
                     priceCents={selectedPlan.price_cents}
                     disabled={status === "loading"}
                   />
