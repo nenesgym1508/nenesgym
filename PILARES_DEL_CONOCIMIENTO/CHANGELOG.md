@@ -4,6 +4,90 @@
 
 ---
 
+## 📌 Sesión 21 — 2026-09-11 (Cobro a crédito: vender un plan sin cobrar, con aviso y saldo pendiente)
+
+**Dev:** Claude (AI Agent) · implementación inicial por ChatGPT, revisada y corregida aquí
+**Migraciones aplicadas a producción:** `037_client_plan_debts.sql`, `038_debts_revoke_anon.sql`
+
+### 🎯 Qué se hizo
+
+El dueño necesitaba vender un plan **sin cobrarlo en el momento** (el cliente entrena
+y paga después), ver de un vistazo quién debe, y que al ir a venderle otro plan
+saltara un aviso con el saldo y un botón para registrar el pago.
+
+**Modelo elegido: tabla aparte `client_plan_debts`**, no un estado nuevo en `payments`.
+
+⚠️ La razón importa: `payments.status = 'pending'` **ya significa otra cosa** — "el
+cliente subió un comprobante y falta que el admin lo revise". Lo crean
+`payments.actions.ts` y `api/analizar-comprobante`, y alimentan la pestaña
+**Por aprobar**. Meter ahí las deudas habría mezclado comprobantes por revisar con
+gente que debe plata, y "Rechazar" habría significado "perdonar la deuda".
+
+Cómo funciona:
+- **Vender fiado** → `create_unpaid_plan` crea la deuda y llama a
+  `apply_membership_purchase`. La membresía queda activa con todos sus días;
+  **no se crea fila en `payments`**, porque el dinero no entró.
+- **Saldar** → `settle_client_debt` crea el pago aprobado, lo enlaza a la deuda y
+  la marca pagada. Los días no se tocan: ya estaban dados.
+- Idempotencia por `request_id UNIQUE`: un doble clic no duplica deuda ni días.
+
+En la interfaz: selector **Pagado / Pago pendiente** (obligatorio) al registrar
+cliente y al activar plan; etiqueta ámbar **"Pago pendiente · $X"** o verde
+**"Pagado"** en cada tarjeta; y aviso con el saldo y botón de cobro al abrir
+*Activar / Expandir plan*.
+
+### 🐛 Lo que se corrigió de la implementación recibida
+
+**1. La migración 037 nunca se aplicó.** Solo existía el archivo. Verificado contra
+producción: ni la tabla ni las tres funciones existían, y la caché de PostgREST
+estaba al día (una función de control sí resolvía).
+
+**2. CRÍTICO — el cobro quedaba bloqueado para todos.** `ClientDebtNotice` no
+llamaba a `onReady` en el camino de error: `balanceReady` se quedaba en `false`, el
+`<fieldset>` de planes quedaba `hidden` y el botón deshabilitado. **Nadie podía
+cobrarle a nadie.** Comprobado en pantalla: las 10 tarjetas mostraban "Saldo no
+disponible".
+
+Y no dependía de la migración: **cualquier corte de red** al leer el saldo producía
+lo mismo. Consultar el saldo es informativo; no puede impedir la operación
+principal del gimnasio. Arreglado: si no se puede leer, se deja cobrar y se avisa.
+
+**3. `anon` conservaba EXECUTE sobre las tres funciones** (migración 038). Fuga real
+no había —las tres comprueban `is_admin()` por dentro— pero la puerta estaba
+abierta. Ver la lección sobre `REVOKE ... FROM PUBLIC`.
+
+**4. Retirado `scripts/test-plan-debts.cjs`**: requiere `@electric-sql/pglite`, que
+no está instalado. Un test que nadie puede ejecutar es ruido en el repo. La idea
+—correr la migración contra un Postgres en memoria— es buena y vale la pena
+retomarla instalando la dependencia.
+
+### ⚠️ Lo que queda anotado, no corregido
+
+- **La venta a crédito no deja rastro en `payments`** hasta que se salda. En la
+  pestaña Pagos no se ve "le vendí un plan y no pagó"; solo aparece en la tarjeta
+  del cliente. Es defendible (el dinero no entró) pero es un cambio de
+  comportamiento respecto a cómo se veía antes una venta.
+- **Consulta en cascada** en `/admin/clientes`: `getClientDebtsAction` corre después
+  del `Promise.all` porque depende de los clientes ya cargados. Suma un viaje
+  completo a una pantalla que estaba paralelizada. La salida limpia sería devolver
+  el saldo desde `admin_search_clients`.
+- **`client_plan_debts` no guarda `gym_id`** y `settle_client_debt` no comprueba el
+  gimnasio de la deuda. Con un solo gimnasio no explota; con dos, sí.
+- **Bloquear la venta hasta saldar** es decisión de la implementación, no algo que
+  se pidiera explícitamente. Si algún día estorba, se quita relajando `balanceReady`.
+
+### ✅ Verificación
+
+20 comprobaciones contra producción sobre un cliente desechable, todas OK:
+vender fiado (membresía activa, sin pago creado, deuda visible), idempotencia del
+doble clic, saldar (pago aprobado, deuda fuera, días sin duplicar), saldar dos veces
+sin cobrar dos veces, anónimo bloqueado en las tres funciones y en la tabla, y
+rechazo de monto negativo y días absurdos.
+
+`tsc` 0 · `build` 0 · lint 106 problemas, sin cambios respecto a la base.
+
+---
+
 ## 📌 Sesión 20 — 2026-09-01 (Planes privados, hasta 3 imágenes por ejercicio, tiempo opcional en rutinas)
 **Dev:** Claude (AI Agent)
 **Migraciones aplicadas a producción:** `032_plans_visible_to_clients.sql`, `033_exercises_multiple_images.sql`

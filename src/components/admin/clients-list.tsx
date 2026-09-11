@@ -8,6 +8,7 @@ import dynamicImport from "next/dynamic"
 const ActivatePlanModal = dynamicImport(() => import("@/components/admin/activate-plan-modal").then(m => m.ActivatePlanModal))
 import { Card } from "@/components/ui/card"
 import { LoadingButton } from "@/components/ui/loading-button"
+import { formatCOP } from "@/lib/utils"
 import { formatDate } from "@/lib/dates"
 import { adminClienteDetalle } from "@/constants/routes"
 import type { MembershipStatus } from "@/types/membership"
@@ -21,6 +22,7 @@ interface Plan {
 }
 
 type ClientRow = {
+  pendingCents: number | null
   id: string
   auto_aprobacion: boolean
   comprobante_bloqueado?: boolean
@@ -208,6 +210,10 @@ export function ClientsList({ clients, plans, total, page, pageSize, search, sta
                   </Link>
                 </div>
 
+                <div className={"flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-xs " + (c.pendingCents === null ? "border-white/10 bg-white/5 text-zinc-400" : c.pendingCents > 0 ? "border-amber-500/25 bg-amber-500/10 text-amber-300" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400")}>
+                  <span className="flex items-center gap-2 font-semibold"><Banknote className="size-4" />{c.pendingCents === null ? "Saldo no disponible" : c.pendingCents > 0 ? "Pago pendiente" : "Pagado"}</span>
+                  {c.pendingCents !== null && c.pendingCents > 0 && <span className="font-bold tabular-nums">{formatCOP(c.pendingCents)}</span>}
+                </div>
                 {/* Separador */}
                 <div className="border-t border-white/5"></div>
 

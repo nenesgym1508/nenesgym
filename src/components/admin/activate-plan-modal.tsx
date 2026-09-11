@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
+import { ClientDebtNotice } from "@/components/admin/client-debt-notice"
 import { useRouter } from "next/navigation"
 import { UserCheck, X, CheckCircle } from "lucide-react"
 import { createManualPaymentAction, createCustomPlanAction } from "@/actions/admin.actions"
@@ -39,6 +40,7 @@ const METHODS: PaymentMethod[] = ["cash", "transfer", "nequi", "daviplata", "oth
 export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant, isActive, currentEndDate }: ActivatePlanModalProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [balanceReady, setBalanceReady] = useState(false)
   const [planId, setPlanId] = useState("")
   const [method, setMethod] = useState<PaymentMethod>("cash")
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle")
@@ -54,6 +56,7 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
   const requestIdRef = useRef<string>("")
 
   const openModal = () => {
+    setBalanceReady(false)
     requestIdRef.current = crypto.randomUUID()
     setOpen(true)
   }
@@ -81,7 +84,7 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
   }
 
   const handleActivate = async () => {
-    if (!selectedPlan) return
+    if (!selectedPlan || !balanceReady || status === "loading") return
     if (esMedida && (medida.days < 1 || medida.durationDays < 1)) {
       setErrorMsg("El plan a medida necesita días y vigencia")
       setStatus("error")
@@ -153,6 +156,7 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
   }
 
   const close = () => {
+    if (status === "loading") return
     setOpen(false)
     setTimeout(reset, 200)
   }
@@ -189,7 +193,10 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
               La cabecera y el pie se quedan fijos; solo el centro se desplaza,
               así el botón está SIEMPRE a la vista. */}
           <div
-            className="relative flex max-h-[90vh] w-full max-w-sm flex-col rounded-2xl bg-zinc-900 border border-white/10"
+            role="dialog"
+            aria-modal="true"
+            aria-label={isActive ? "Expandir plan" : "Activar plan"}
+            className="relative flex max-h-[90vh] w-full max-w-md flex-col rounded-3xl bg-gradient-to-b from-zinc-800 to-zinc-950 border border-zinc-700 shadow-[0_24px_90px_rgba(0,0,0,0.8)]"
             onClick={(e) => e.stopPropagation()}
           >
             <button onClick={close} className="absolute right-4 top-4 z-10 text-zinc-500 hover:text-zinc-300">
@@ -218,12 +225,14 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
               <>
                 {/* Cabecera fija */}
                 <div className="shrink-0 px-5 pt-5 pb-3">
-                  <h3 className="text-base font-bold text-zinc-100">Activar plan</h3>
+                  <h3 className="font-bebas text-2xl font-bold tracking-wide text-zinc-100">{isActive ? "Expandir plan" : "Activar plan"}</h3>
                   <p className="text-xs text-zinc-500">{clientName}</p>
                 </div>
 
                 {/* Zona con desplazamiento: es la que crece con el catálogo */}
                 <div className="min-h-0 flex-1 overflow-y-auto px-5">
+                <ClientDebtNotice clientId={clientId} onReady={setBalanceReady} />
+                <fieldset disabled={!balanceReady || status === "loading"} className={!balanceReady ? "hidden" : "min-w-0"}>
                 {/* Selección de plan */}
                 <div className="space-y-2 mb-4">
                   <label className="text-xs font-medium text-zinc-400">Plan</label>
@@ -337,23 +346,28 @@ export function ActivatePlanModal({ clientId, clientName, plans, triggerVariant,
                 {status === "error" && (
                   <p className="text-xs text-red-400 mb-3">{errorMsg}</p>
                 )}
+                </fieldset>
                 </div>
 
                 {/* Pie fijo: el botón de cobrar tiene que estar SIEMPRE a la
                     vista, por larga que sea la lista de planes. */}
                 <div className="shrink-0 border-t border-white/8 px-5 pb-5 pt-4">
+                {selectedPlan && balanceReady && <div className="mb-3 flex items-center justify-between rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-xs">
+                  <span className="text-zinc-400">Valor del nuevo plan por cobrar</span>
+                  <strong className="text-white">{formatCOP(selectedPlan.price_cents)}</strong>
+                </div>}
                 <LoadingButton
                   onClick={handleActivate}
                   pending={status === "loading"}
                   pendingText={isActive ? "Expandiendo..." : "Activando..."}
-                  disabled={!selectedPlan}
+                  disabled={!selectedPlan || !balanceReady}
                   className="w-full flex items-center justify-center gap-2 rounded-xl btn-glossy-green py-2.5 text-sm font-semibold text-white disabled:opacity-50 cursor-pointer"
                 >
                   <UserCheck className="size-4" />
                   {selectedPlan
                     ? isActive
-                      ? `Expandir ${totalDays} días`
-                      : `Activar ${totalDays} días`
+                      ? `Registrar pago y expandir · ${formatCOP(selectedPlan.price_cents)}`
+                      : `Registrar pago y activar · ${formatCOP(selectedPlan.price_cents)}`
                     : "Selecciona un plan"}
                 </LoadingButton>
                 <p className="text-center text-[10px] text-zinc-600 mt-3">

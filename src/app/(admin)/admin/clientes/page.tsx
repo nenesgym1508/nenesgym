@@ -1,3 +1,4 @@
+import { getClientDebtsAction } from "@/actions/admin.actions"
 import { requireAdminSession } from "@/lib/auth/session"
 import { getGymSettings } from "@/services/gym.service"
 import { searchAdminClients, type ClientStatusFilter } from "@/services/memberships.service"
@@ -30,6 +31,7 @@ export default async function AdminClientesPage({
     getGymSettings(),
   ])
 
+  const balances = await getClientDebtsAction(result.rows.map(c => c.id))
   const planOptions = plans.map((p) => ({
     id: p.id,
     name: p.name,
@@ -52,7 +54,7 @@ export default async function AdminClientesPage({
 
       <div className="px-6 pb-24 md:px-10">
         <ClientsList
-          clients={result.rows}
+          clients={result.rows.map(c => ({ ...c, pendingCents: balances.debts ? balances.debts.filter(d => d.client_id === c.id).reduce((sum, d) => sum + d.amount_cents, 0) : null }))}
           plans={planOptions}
           total={result.total}
           page={result.page}

@@ -587,7 +587,27 @@ export async function deleteClientCompletelyAction(
   return { success: true, nombre }
 }
 
+export async function getClientDebtsAction(clientIds: string[]) {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error }
+  const { data, error } = await ctx.supabase.rpc("admin_client_debts", { p_client_ids: clientIds })
+  if (error) return { error: "No se pudo consultar el saldo pendiente. Intenta de nuevo." }
+  return { debts: data ?? [] }
+}
+
+export async function settleClientDebtAction(debtId: string, method: string) {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error }
+  const { error } = await ctx.supabase.rpc("settle_client_debt", { p_debt_id: debtId, p_method: method })
+  if (error) return { error: error.message }
+  updateTag("admin-payments")
+  revalidatePath(ROUTES.ADMIN_CLIENTES, "layout")
+  revalidatePath(ROUTES.ADMIN_DASHBOARD)
+  return { success: true }
+}
+
 export async function createManualPaymentAction(formData: {
+  paymentStatus?: "paid" | "pending"
   clientId: string
   /**
    * Opcional. Sin plan, la RPC cobra con los días sueltos que se le pasen y la
@@ -632,6 +652,19 @@ export async function createManualPaymentAction(formData: {
   // Operación atómica: crea el pago y aprueba la membresía en una sola
   // transacción en BD. Elimina el riesgo de pagos huérfanos o membresías
   // duplicadas que existía con el flujo anterior de 2 pasos.
+  if (!Number.isSafeInteger(formData.amountCents) || formData.amountCents < 0) return { error: "Monto inválido" }
+  if (formData.paymentStatus && !["paid", "pending"].includes(formData.paymentStatus)) return { error: "Estado inválido" }
+  if (formData.paymentStatus === "pending") {
+    const { error } = await supabase.rpc("create_unpaid_plan", {
+      p_client_id: formData.clientId, p_amount_cents: formData.amountCents,
+      p_total_days: formData.totalDays, p_duration_days: formData.durationDays,
+      p_request_id: formData.clientRequestId || crypto.randomUUID(), p_plan_id: formData.planId,
+    })
+    if (error) return { error: error.message }
+    revalidatePath(ROUTES.ADMIN_CLIENTES, "layout")
+    revalidatePath(ROUTES.ADMIN_DASHBOARD)
+    return { success: true }
+  }
   const { data, error } = await supabase.rpc("create_and_approve_cash_payment", {
     p_client_id:        formData.clientId,
     p_amount_cents:     formData.amountCents,
@@ -678,6 +711,7 @@ export async function createClientAction(input: {
    */
   clientRequestId?: string
   plan?: {
+    paymentStatus: "paid" | "pending"
     /** Opcional: sin plan es un cobro suelto ("Plan a medida · solo esta vez"). */
     planId?: string
     amountCents: number
@@ -690,6 +724,10 @@ export async function createClientAction(input: {
   // El `?? ` no es defensa vacía: TS normaliza el union que devuelve requireAdmin
   // y tipa `ctx.error` como `string | undefined`. En runtime siempre trae mensaje.
   if ("error" in ctx) return { error: ctx.error ?? "Sin permisos" }
+
+  if (input.plan && !["paid", "pending"].includes(input.plan.paymentStatus)) {
+    return { error: "Selecciona si el cliente ya pagó o tiene el pago pendiente" }
+  }
 
   // Validación en el servidor: el zod del formulario es solo para UX.
   const parsed = adminCreateClientSchema.safeParse({
@@ -824,6 +862,7 @@ export async function createClientAction(input: {
   if (input.plan) {
     const planResult = await createManualPaymentAction({
       clientId,
+      paymentStatus: input.plan.paymentStatus,
       planId: input.plan.planId,
       amountCents: input.plan.amountCents,
       method: input.plan.method,

@@ -4,6 +4,81 @@ Este documento almacena la memoria de errores y gotchas resueltos en el proyecto
 
 ---
 
+## 📌 Lecciones Recientes (Sesión 21 - 2026-09-11)
+
+### 1. `REVOKE ALL ... FROM PUBLIC` **no le quita el permiso a `anon`** en Supabase
+El proyecto tiene privilegios por defecto que conceden EXECUTE a `anon`,
+`authenticated` y `service_role` sobre **cada función nueva** del esquema `public`.
+Esa concesión es EXPLÍCITA para el rol `anon`; `PUBLIC` es el pseudo-rol de "todos",
+no la lista de roles, así que revocar de PUBLIC no la toca.
+
+Comprobado tras la migración 037, que solo revocaba de PUBLIC:
+
+    proacl = postgres=X | anon=X | authenticated=X | service_role=X
+
+y un cliente anónimo podía invocar la función sin error.
+
+**Regla:** toda función nueva lleva `REVOKE ALL ... FROM PUBLIC, anon` — nombrando
+`anon`. Las migraciones 026 y 027 ya lo hacían bien; conviene copiarlas.
+
+Para verificarlo, no basta con leer el SQL:
+
+    select proname, array_to_string(proacl,' | ') from pg_proc
+    where proname = '<funcion>';
+
+### 2. Una consulta informativa nunca debe bloquear la operación principal
+`ClientDebtNotice` no llamaba a `onReady` en el camino de error. Resultado:
+`balanceReady` se quedaba en `false`, el bloque de planes quedaba `hidden` y el botón
+deshabilitado → **no se le podía cobrar a nadie**. Bastaba un corte de red de un
+segundo para dejar el gimnasio sin poder facturar.
+
+**Regla:** si un dato es para *avisar*, su fallo degrada a "no pude consultarlo" y se
+deja seguir. Solo bloquea lo que de verdad invalida la operación. Y hay que recorrer
+**todos** los caminos de salida de un efecto —éxito, error de aplicación, excepción—
+comprobando que el estado que habilita la interfaz se resuelve en todos.
+
+### 3. Un estado existente puede ya significar otra cosa
+La tentación era marcar las deudas como `payments.status = 'pending'`. Pero ese
+estado ya significa "comprobante subido, falta revisarlo", y alimenta la pestaña
+**Por aprobar** con botones Aprobar/Rechazar. Reutilizarlo habría mezclado
+comprobantes con deudas, y "Rechazar" habría querido decir "perdonar la deuda".
+
+**Regla:** antes de reutilizar un enum o un estado, buscar quién lo escribe y quién
+lo lee. Si las dos cosas no se comportan igual en TODAS esas pantallas, es un
+concepto distinto y necesita su propio sitio.
+
+### 4. Un 404 en TODAS las rutas suele ser la caché de Turbopack, no el código
+Tras varios `npm run build` seguidos de `next dev`, el servidor empezó a devolver 404
+en todo, incluido `/login`. El código estaba bien (`build` pasaba en verde). Se
+arregla con `rm -rf .next` y reiniciar.
+
+⚠️ Y `TaskStop` mata el envoltorio de `npm`, **no el proceso hijo de node**: el puerto
+sigue ocupado y el siguiente arranque falla con `EADDRINUSE`. Hay que matarlo por
+puerto:
+
+    Get-NetTCPConnection -LocalPort 3005 -State Listen | %{ Stop-Process -Id $_.OwningProcess -Force }
+
+### 5. Un test que no se puede ejecutar es ruido
+`scripts/test-plan-debts.cjs` corría la migración contra un Postgres en memoria con
+`@electric-sql/pglite` — buena idea— pero la dependencia no estaba instalada. Un test
+que nadie puede correr da falsa sensación de cobertura. O se instala la dependencia y
+se añade al `package.json`, o el test sale del repo.
+
+### 6. Verificar contra producción antes de dar por buena una migración
+El archivo `037_...sql` existía en el repo y parecía aplicado. No lo estaba. La
+comprobación barata:
+
+    select (select count(*) from information_schema.tables
+            where table_schema='public' and table_name='<tabla>') as tabla,
+           (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+            where n.nspname='public' and p.proname in (...)) as funciones;
+
+Si PostgREST dice "Could not find the function in the schema cache" pero **otra**
+función reciente sí resuelve, la caché está al día y el problema es que la función no
+existe.
+
+---
+
 ## 📌 Lecciones Recientes (Sesión 19 - 2026-09-01)
 
 ### 1. PostgREST corta en 1.000 filas y NO avisa

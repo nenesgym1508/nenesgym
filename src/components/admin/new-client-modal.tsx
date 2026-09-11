@@ -51,6 +51,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
   const phone = usePhoneField()
 
   const [planId, setPlanId] = useState("")
+  const [paymentStatus, setPaymentStatus] = useState<"paid" | "pending" | "">("")
   const [method, setMethod] = useState<PaymentMethod>("cash")
 
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle")
@@ -155,6 +156,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
     setEmail("")
     setPlanId("")
     setMedida(PLAN_MEDIDA_INICIAL)
+    setPaymentStatus("")
     setMethod("cash")
     used.reset()
     setStatus("idle")
@@ -173,7 +175,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
 
   const submit = async (withPlan: boolean) => {
     if (!canContinue) return
-    if (withPlan && !selectedPlan) return
+    if (withPlan && (!selectedPlan || !paymentStatus)) return
     if (withPlan && esMedida && (medida.days < 1 || medida.durationDays < 1)) {
       setErrorMsg("El plan a medida necesita días y vigencia")
       setStatus("error")
@@ -222,6 +224,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
           ? {
               // Sin plan = cobro suelto ("solo esta vez"): la membresía queda
               // sin plan asociado y el catálogo no se ensucia.
+              paymentStatus: paymentStatus as "paid" | "pending",
               planId: planIdFinal,
               // El precio no se descuenta: el cliente paga el plan completo y este
               // pasa a cubrir los días que ya entrenó. No es una rebaja.
@@ -314,7 +317,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                       <div className="flex justify-between"><dt className="text-zinc-500">Inicio</dt><dd className="text-zinc-300">{formatDate(startDate)}</dd></div>
                       {endDate && <div className="flex justify-between"><dt className="text-zinc-500">Vence</dt><dd className="text-zinc-300">{formatDate(endDate)}</dd></div>}
                       <div className="flex justify-between"><dt className="text-zinc-500">Días</dt><dd className="text-zinc-300">{totalDays}</dd></div>
-                      <div className="flex justify-between"><dt className="text-zinc-500">Pago</dt><dd className="text-zinc-300">{formatCOP(selectedPlan.price_cents)} · {PAYMENT_METHOD_LABELS[method]}</dd></div>
+                      <div className="flex justify-between"><dt className="text-zinc-500">Pago</dt><dd className="text-zinc-300">{formatCOP(selectedPlan.price_cents)} · {paymentStatus === "pending" ? "Pago pendiente" : PAYMENT_METHOD_LABELS[method]}</dd></div>
                     </dl>
                   </div>
                 )}
@@ -544,6 +547,14 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                   />
                 )}
 
+                {selectedPlan && <div className="mb-4 rounded-2xl border border-white/10 bg-black/25 p-4">
+                  <p className="mb-3 text-xs font-semibold text-zinc-300">Estado del pago · obligatorio</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["paid", "pending"] as const).map(value => <button key={value} type="button" aria-pressed={paymentStatus === value} onClick={() => setPaymentStatus(value)} className={"rounded-xl border px-3 py-3 text-xs font-semibold transition-colors " + (paymentStatus === value ? value === "paid" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-amber-500/40 bg-amber-500/10 text-amber-300" : "border-white/10 text-zinc-400 hover:bg-white/5")}>{value === "paid" ? "Ya pagó" : "Pago pendiente"}</button>)}
+                  </div>
+                  {paymentStatus === "pending" && <p className="mt-3 text-xs text-amber-300">Quedará debiendo {formatCOP(selectedPlan.price_cents)}. Su plan estará activo.</p>}
+                </div>}
+
                 <div className="space-y-2 mb-4">
                   <label className="text-xs font-medium text-zinc-400">Método de pago</label>
                   <div className="flex flex-wrap gap-1.5">
@@ -579,7 +590,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                     <dl className="mt-2.5 space-y-1 border-t border-white/5 pt-2.5 text-[11px]">
                       <div className="flex justify-between"><dt className="text-zinc-500">Inicio</dt><dd className="text-zinc-300">{formatDate(startDate)}</dd></div>
                       <div className="flex justify-between"><dt className="text-zinc-500">Vence</dt><dd className="text-zinc-300">{formatDate(endDate)}</dd></div>
-                      <div className="flex justify-between"><dt className="text-zinc-500">Método de pago</dt><dd className="text-zinc-300">{PAYMENT_METHOD_LABELS[method]}</dd></div>
+                      <div className="flex justify-between"><dt className="text-zinc-500">Método de pago</dt><dd className="text-zinc-300">{paymentStatus === "pending" ? "Pago pendiente" : PAYMENT_METHOD_LABELS[method]}</dd></div>
                       <div className="flex justify-between pt-1"><dt className="font-semibold text-zinc-400">Total</dt><dd className="font-bold text-zinc-100">{formatCOP(selectedPlan.price_cents)}</dd></div>
                     </dl>
                   </div>
@@ -591,7 +602,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                   onClick={() => submit(true)}
                   pending={status === "loading"}
                   pendingText="Registrando..."
-                  disabled={!selectedPlan}
+                  disabled={!selectedPlan || !paymentStatus}
                   className="w-full flex items-center justify-center gap-2 rounded-xl btn-glossy-green py-2.5 text-sm font-semibold text-white disabled:opacity-50 cursor-pointer"
                 >
                   <UserPlus className="size-4" />
@@ -607,7 +618,7 @@ export function NewClientModal({ plans, variant = "primary" }: NewClientModalPro
                 </button>
 
                 <p className="text-center text-[10px] text-zinc-600 mt-3">
-                  Con plan se registra un pago aprobado y la membresía queda activa de inmediato
+                  El plan queda activo. Solo los pagos recibidos se registran como ingresos.
                 </p>
               </>
             )}
