@@ -4,6 +4,61 @@
 
 ---
 
+## 📌 Sesión 22 — 2026-09-21 (Producción: subir o editar imágenes de ejercicios fallaba — `sharp` estaba en devDependencies)
+
+### 🐛 El fallo
+
+El dueño lo reportó con captura: al crear un ejercicio, sobre el campo de imágenes
+salía en rojo *"An error occurred in the Server Components render. The specific
+message is omitted in production builds…"*. Lo mismo al editar las imágenes de uno
+existente. Venía arrastrándose desde la Sesión 20 sin diagnóstico.
+
+### 🔍 Causa raíz
+
+`sharp` (binario nativo, genera las miniaturas) estaba declarado en
+**`devDependencies`**. Vercel **no las instala en el runtime de producción**, así que
+allí el módulo no existe. Y como `image-variants.server.ts` lo traía con un `import`
+**estático**, el fallo ocurría al **cargar el módulo**: antes de ejecutar una sola
+línea de `uploadExerciseImageAction`. Por eso no lo atrapaba ningún `try/catch` —ni
+el `.catch()` que ya envolvía la llamada— y el navegador solo podía enseñar el
+mensaje genérico de Next.
+
+Que sea código de aplicación y no de scripts es lo que lo convierte en error: la
+server action lo importa en cadena (`exercises.actions.ts` →
+`image-variants.server.ts` → `sharp`). En local nunca se vio porque `npm install` sí
+instala las devDependencies.
+
+### 🔧 La corrección
+
+1. **`sharp` movido a `dependencies`** en `package.json`. Es la corrección de fondo:
+   sin esto, en producción no hay miniaturas.
+2. **Carga perezosa** en `src/lib/image-variants.server.ts`: `import type` +
+   `import("sharp")` dentro de `getSharp()`, cacheado en una promesa. Así un fallo
+   del binario pasa a ser una **promesa rechazada** que el `.catch()` existente sí
+   captura: se guarda la imagen original y solo se pierden las miniaturas, que son
+   una optimización. Defensa en profundidad por si el binario falla algún día por
+   otra razón (arquitectura, versión de Node).
+
+### ✅ Verificación
+
+- `tsc` 0 · `eslint` 0 en el archivo tocado · `build` OK.
+- Generación real de variantes por import dinámico: `-thumb` 96×96 y `-detail`
+  correctas.
+- Subida real a R2 con las credenciales de `.env.local`: `PUT` OK.
+- Esquema verificado contra la base real: `media_urls` existe (migración 033
+  aplicada), así que la base no era el problema.
+- **Simulación del caso de producción** (módulo nativo inexistente): la función
+  devuelve 2 variantes fallidas y **no revienta**; la action continúa y entrega la
+  URL de la imagen original.
+
+### ⚠️ Anotado, no tocado
+
+El conector de Vercel de esta sesión apunta a la cuenta *TODOAQUI* y el de Supabase a
+otro proyecto, así que no se pudieron leer ni los logs ni las variables de entorno del
+gimnasio. El diagnóstico se hizo contra el código y la base de datos real.
+
+---
+
 ## 📌 Sesión 21 — 2026-09-11 (Cobro a crédito: vender un plan sin cobrar, con aviso y saldo pendiente)
 
 **Dev:** Claude (AI Agent) · implementación inicial por ChatGPT, revisada y corregida aquí

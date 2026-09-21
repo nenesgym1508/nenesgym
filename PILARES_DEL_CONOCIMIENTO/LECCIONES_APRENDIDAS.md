@@ -4,6 +4,56 @@ Este documento almacena la memoria de errores y gotchas resueltos en el proyecto
 
 ---
 
+## 📌 Lecciones Recientes (Sesión 22 - 2026-09-21)
+
+### 1. Lo que importa el código de la app va en `dependencies`, nunca en `devDependencies`
+`sharp` estaba en `devDependencies` pero lo importaba una server action. En local
+funcionaba (`npm install` instala todo); en Vercel **no**, porque el runtime de
+producción solo instala `dependencies`. Resultado: subir imágenes llevaba semanas
+roto en producción y perfecto en local.
+
+La comprobación barata, antes de dar por buena cualquier dependencia:
+
+    grep -rn "from ['\"]<paquete>['\"]" src/    # ¿lo importa src/ o solo scripts/?
+
+Si aparece en `src/`, va en `dependencies`. `devDependencies` es solo para lo que
+corre en tu máquina o en el build: linters, tipos, scripts sueltos.
+
+### 2. Un `import` estático convierte un fallo recuperable en una caída total
+El `.catch()` que envolvía `generateAndUploadVariants` estaba bien escrito y aun así
+no sirvió de nada: el módulo fallaba al **importarse**, antes de que existiera el
+try/catch. El síntoma en el navegador es el mensaje genérico *"An error occurred in
+the Server Components render"*, que no dice nada.
+
+Regla: si una dependencia es **opcional para la operación** (aquí las miniaturas son
+una optimización; la imagen se guarda igual), impórtala **de forma perezosa** dentro
+de la función, cacheando la promesa:
+
+    let p = null
+    function getSharp() { p ??= import("sharp").then(m => m.default); return p }
+
+Así el fallo se vuelve una promesa rechazada que el `.catch()` sí captura, y la
+operación principal sobrevive.
+
+### 3. "Server Components render error" en una acción = mira los imports, no la lógica
+Ese mensaje genérico aparece cuando la action **rechaza**, no cuando devuelve
+`{error}`. Si la action está escrita para devolver errores en vez de lanzarlos (como
+todas las de este proyecto) y aun así sale ese texto, el fallo está **fuera** de su
+cuerpo: en la carga de un módulo, una variable de entorno que lanza al inicializar, o
+un binario nativo que no está.
+
+### 4. Reproducir el entorno, no solo el código
+El código era correcto y todo pasaba en local: sharp funcionaba, R2 aceptaba el
+`PUT`, la base tenía `media_urls`. La diferencia estaba en **qué se instala** en
+producción. Cuando algo falla solo en producción y el código es idéntico, la
+pregunta no es "¿qué hace mal el código?" sino "¿qué hay distinto en ese entorno?":
+dependencias instaladas, variables de entorno, versión de Node, arquitectura.
+
+Verificación sin desplegar: simular la condición (un `import()` a un módulo
+inexistente) y comprobar que la función degrada en vez de reventar.
+
+---
+
 ## 📌 Lecciones Recientes (Sesión 21 - 2026-09-11)
 
 ### 1. `REVOKE ALL ... FROM PUBLIC` **no le quita el permiso a `anon`** en Supabase

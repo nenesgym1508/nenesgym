@@ -1,9 +1,28 @@
-// Solo servidor: importa sharp, que es binario nativo y no puede ir al cliente.
+// Solo servidor: usa sharp, que es binario nativo y no puede ir al cliente.
 // El sufijo .server.ts lo deja explícito (no hay paquete `server-only` en este
 // proyecto). Los consumidores son server actions y scripts.
-import sharp from "sharp"
+import type SharpNS from "sharp"
 import { IMAGE_VARIANTS, withVariantSuffix, type VariantSpec } from "@/lib/images"
 import { uploadToR2 } from "@/lib/r2"
+
+// ⚠️ Carga PEREZOSA, y no es un capricho de estilo.
+//
+// Con `import sharp from "sharp"` estático, si el binario nativo no se puede
+// cargar el fallo ocurre al IMPORTAR EL MÓDULO, antes de que corra una sola
+// línea de la server action. Ningún try/catch de dentro llega a existir: la
+// action revienta entera y el navegador solo enseña "An error occurred in the
+// Server Components render…". Fue exactamente el bug de producción de subir
+// imágenes de ejercicios (sharp estaba en devDependencies, que Vercel no
+// instala en runtime).
+//
+// Cargándolo aquí dentro, el fallo se convierte en una promesa rechazada que
+// `generateAndUploadVariants` ya sabe capturar: la imagen original se guarda
+// igual y solo se pierden las miniaturas, que son una optimización.
+let sharpPromise: Promise<typeof SharpNS> | null = null
+function getSharp(): Promise<typeof SharpNS> {
+  sharpPromise ??= import("sharp").then((m) => m.default)
+  return sharpPromise
+}
 
 /**
  * Genera y sube a R2 las variantes de una imagen ya subida.
@@ -34,7 +53,8 @@ export async function generateAndUploadVariants(
   return { uploaded, failed }
 }
 
-export function resizeToVariant(original: Buffer, spec: VariantSpec): Promise<Buffer> {
+export async function resizeToVariant(original: Buffer, spec: VariantSpec): Promise<Buffer> {
+  const sharp = await getSharp()
   return sharp(original)
     .resize(spec.width, spec.height, {
       // `cover` recorta al encuadre exacto; `scaleDown` (inside + sin agrandar)
