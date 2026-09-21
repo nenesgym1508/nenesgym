@@ -54,6 +54,35 @@ inexistente) y comprobar que la función degrada en vez de reventar.
 
 ---
 
+### 5. `group-hover` para ESCONDER botones deja la función inaccesible en móvil
+Los botones de recortar/quitar/portada de cada miniatura estaban en una capa
+`opacity-0 group-hover:opacity-100`. En una pantalla táctil no hay hover: el navegador
+simula uno al tocar y lo retira en el mismo gesto, así que la capa parpadea y el clic
+nunca llega. Para el dueño, la foto "desaparecía" y el recorte no abría jamás.
+
+Esta app se usa **desde el celular**. Reglas:
+
+- `group-hover` vale para *realzar* (un borde, una sombra), nunca como **único** modo
+  de llegar a una acción.
+- Si una acción solo aparece al pasar el ratón, hace falta un camino táctil: un toque
+  que la abra, o dejarla visible siempre.
+- La capa invisible que captura ese toque debe **desaparecer** cuando las acciones
+  están abiertas (`activa !== i`), o se traga los clics de los propios botones.
+- Un texto de ayuda que diga *"pasa el ratón"* es la señal de que la función se
+  diseñó solo para escritorio. Aquí lo decía, y nadie lo leyó como el aviso que era.
+
+### 6. Antes de culpar a la red, comprobar si el clic siquiera llega
+El primer sospechoso fue el proxy de imágenes (CORS, canvas, R2). Era inocente:
+levantando el build de producción en local, `/api/proxy-image` devolvía `200`,
+`image/webp`, 37 KB y `Access-Control-Allow-Origin: *`. El fallo estaba una capa más
+arriba, en CSS. Cuando el síntoma es "no se abre", verificar primero que el gesto
+llega al manejador; solo después mirar lo que el manejador hace.
+
+(De paso quedó comprobado que **R2 no envía cabeceras CORS**, así que el proxy sigue
+siendo necesario: no es código heredado que se pueda quitar.)
+
+---
+
 ## 📌 Lecciones Recientes (Sesión 21 - 2026-09-11)
 
 ### 1. `REVOKE ALL ... FROM PUBLIC` **no le quita el permiso a `anon`** en Supabase

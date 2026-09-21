@@ -51,6 +51,40 @@ instala las devDependencies.
   devuelve 2 variantes fallidas y **no revienta**; la action continúa y entrega la
   URL de la imagen original.
 
+### 📱 Recortar una foto ya subida era imposible desde el móvil
+
+El dueño: *"cuando le doy editar a un ejercicio y le doy click a la foto para
+editarla desaparece visualmente, no se abre la ventana emergente para yo recortarla"*.
+
+**Causa.** Los tres botones de cada miniatura (recortar, quitar, hacer portada) vivían
+en una capa `opacity-0 group-hover:opacity-100`. En una pantalla táctil **no hay
+hover**: el navegador simula uno al tocar y lo retira en el mismo gesto, así que la
+capa se asomaba y se iba sin llegar a registrar el clic. Eso es el *"desaparece
+visualmente"*. El texto de ayuda lo confirmaba: decía *"pasa el ratón por una foto"*,
+en una app que el gimnasio usa desde el celular.
+
+No era el proxy ni el modal. Verificado en un servidor de producción local:
+`/api/proxy-image` devuelve la imagen de R2 con `200`, `image/webp`, 37 KB y
+`Access-Control-Allow-Origin: *`, que es justo lo que el canvas del recorte necesita.
+R2 **no** manda CORS por su cuenta (comprobado), así que el proxy sigue siendo
+necesario tal cual está.
+
+**La corrección** (`exercise-images-field.tsx`):
+
+- Estado `activa`: qué miniatura tiene las acciones abiertas.
+- Capa de toque a pantalla completa sobre la foto, **solo en móvil** (`sm:hidden`) y
+  solo mientras las acciones están cerradas — si se quedara puesta se tragaría los
+  clics de los propios botones.
+- La capa de acciones pasa a `opacity-100` cuando `activa === i`, y en móvil lleva
+  `pointer-events-none` mientras está oculta. Con ratón el `group-hover` sigue igual.
+- Cada acción hace `setActiva(null)` al ejecutarse, para no dejar la tarjeta abierta.
+- El texto de ayuda ya no dice "pasa el ratón" sino **"toca una foto"**.
+
+Se buscó el mismo patrón en el resto del proyecto (`opacity-0 group-hover:opacity-100`
+envolviendo botones): **no aparece en ningún otro sitio**.
+
+---
+
 ### ⚠️ Anotado, no tocado
 
 El conector de Vercel de esta sesión apunta a la cuenta *TODOAQUI* y el de Supabase a

@@ -35,6 +35,16 @@ export function ExerciseImagesField({ urls, onChange, exerciseId, disabled }: Ex
   const [cropSrc, setCropSrc] = useState<string | null>(null)
   const [cropIndex, setCropIndex] = useState<number | null>(null)
 
+  // Foto cuyas acciones (recortar / quitar / portada) están abiertas.
+  //
+  // ⚠️ Sin esto, en móvil NO se podía recortar una foto ya subida. Los botones
+  // vivían en una capa `opacity-0 group-hover:opacity-100`: en una pantalla
+  // táctil no hay ratón, así que el navegador simula un hover que se desvanece
+  // con el propio toque. El dueño lo describió como que la foto "desaparece
+  // visualmente" y el recorte no se abría nunca. Ahora el primer toque abre las
+  // acciones y el segundo pulsa la que quiera; con ratón sigue bastando el hover.
+  const [activa, setActiva] = useState<number | null>(null)
+
   const lleno = urls.length >= MAX_IMAGENES
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,6 +120,16 @@ export function ExerciseImagesField({ urls, onChange, exerciseId, disabled }: Ex
             key={`${url}-${i}`}
             className="group relative size-20 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-800"
           >
+            {/* Capa de toque: solo existe mientras las acciones están cerradas,
+                así no se traga los clics de los botones cuando están abiertas. */}
+            {activa !== i && !disabled && !uploading && (
+              <button
+                type="button"
+                onClick={() => setActiva(i)}
+                aria-label={`Opciones de la imagen ${i + 1}`}
+                className="absolute inset-0 z-10 sm:hidden cursor-pointer"
+              />
+            )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={url}
@@ -124,11 +144,15 @@ export function ExerciseImagesField({ urls, onChange, exerciseId, disabled }: Ex
               </span>
             )}
 
-            <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/70 opacity-0 transition-opacity group-hover:opacity-100">
+            <div
+              className={`absolute inset-0 z-20 flex items-center justify-center gap-1 bg-black/70 transition-opacity group-hover:opacity-100 ${
+                activa === i ? "opacity-100" : "opacity-0 pointer-events-none sm:pointer-events-auto"
+              }`}
+            >
               {i !== 0 && (
                 <button
                   type="button"
-                  onClick={() => hacerPortada(i)}
+                  onClick={() => { setActiva(null); hacerPortada(i) }}
                   disabled={disabled || uploading}
                   title="Usar como portada"
                   className="rounded bg-white/10 p-1.5 text-amber-300 hover:bg-white/20 cursor-pointer"
@@ -138,7 +162,7 @@ export function ExerciseImagesField({ urls, onChange, exerciseId, disabled }: Ex
               )}
               <button
                 type="button"
-                onClick={() => { setCropIndex(i); setCropSrc(url) }}
+                onClick={() => { setActiva(null); setCropIndex(i); setCropSrc(url) }}
                 disabled={disabled || uploading}
                 title="Recortar"
                 className="rounded bg-white/10 p-1.5 text-red-400 hover:bg-white/20 cursor-pointer"
@@ -147,7 +171,7 @@ export function ExerciseImagesField({ urls, onChange, exerciseId, disabled }: Ex
               </button>
               <button
                 type="button"
-                onClick={() => quitar(i)}
+                onClick={() => { setActiva(null); quitar(i) }}
                 disabled={disabled || uploading}
                 title="Quitar"
                 className="rounded bg-white/10 p-1.5 text-zinc-300 hover:bg-white/20 hover:text-red-400 cursor-pointer"
@@ -192,7 +216,7 @@ export function ExerciseImagesField({ urls, onChange, exerciseId, disabled }: Ex
         <p className="text-[11px] leading-normal text-zinc-500">
           {urls.length === 0
             ? "Puedes subir hasta 3: posición inicial, final y algún detalle."
-            : "La portada es la que se ve en los listados. Pasa el ratón por una foto para recortarla, quitarla o hacerla portada."}
+            : "La portada es la que se ve en los listados. Toca una foto para recortarla, quitarla o hacerla portada."}
         </p>
       )}
 
