@@ -85,6 +85,45 @@ envolviendo botones): **no aparece en ningún otro sitio**.
 
 ---
 
+### 🖼️ La foto grande del ejercicio salía en negro (secuela del fallo de `sharp`)
+
+El dueño: *"al darle click a un ejercicio dentro de una rutina y otras secciones no se
+ve la imagen, sale arriba a la izquierda un icono y la imagen en negro"*.
+
+**Causa.** Es la **secuela** del bug de `sharp`. Mientras el binario no estuvo
+instalado en producción, cada foto subida desde el panel guardaba el original pero
+**no sus variantes** (`-thumb` y `-detail`). Auditoría contra R2: **26 de 140**
+ejercicios se habían quedado sin `-detail`.
+
+Por qué solo se veía en la foto grande: `ExerciseImageThumbnail` ya tenía respaldo
+(si la variante falla, reintenta con el original), pero los **dos** sitios que
+muestran la imagen grande la pedían a pelo con `exerciseImageUrl(url, "detail")!`.
+Sin variante, el `<Image>` apuntaba a un 404 → rectángulo negro con el icono de
+imagen rota en la esquina. Exactamente lo descrito.
+
+**La corrección, en dos frentes:**
+
+1. **Los datos.** `node scripts/generate-image-variants.mjs --apply` (ya existía,
+   idempotente): **66 variantes generadas, 0,8 MB**. Auditoría posterior sobre los
+   140 ejercicios con imagen: **0 sin `-detail`**.
+2. **El código**, para que no vuelva a verse roto aunque falte una variante: nuevo
+   `src/components/ui/exercise-image-detail.tsx` con el mismo respaldo que la
+   miniatura (variante → original → nada). Lo usan ahora
+   `cliente/exercise-detail-modal.tsx` y `admin/class-editor.tsx`, que dejan de
+   construir la URL a mano. Verificado simulando una variante inexistente: `404` en
+   la variante, `200` en el original, se ve la foto.
+
+**Regla que queda:** una variante pre-generada es una **optimización**. Pedirla sin
+respaldo convierte un ahorro de kilobytes en una imagen rota. Todo sitio que pinte
+una foto de ejercicio debe usar `ExerciseImageThumbnail` o `ExerciseImageDetail`,
+nunca `exerciseImageUrl(...)!` suelto dentro de un `<Image>`.
+
+Los dos avisos de lint de `class-editor.tsx` (un `any` y una dependencia de
+`useMemo`) son **preexistentes**, verificado con `git stash`: solo se desplazaron una
+línea al quitar el import de `next/image` que quedó sin uso. No se tocan.
+
+---
+
 ### ⚠️ Anotado, no tocado
 
 El conector de Vercel de esta sesión apunta a la cuenta *TODOAQUI* y el de Supabase a

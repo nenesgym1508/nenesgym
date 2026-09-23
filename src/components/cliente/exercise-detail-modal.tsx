@@ -1,8 +1,7 @@
 "use client"
 
-import Image from "next/image"
 import { Dumbbell, X } from "lucide-react"
-import { exerciseImageUrl } from "@/lib/images"
+import { ExerciseImageDetail } from "@/components/ui/exercise-image-detail"
 import {
   MUSCLE_GROUP_LABELS,
   EQUIPMENT_LABELS,
@@ -57,13 +56,10 @@ export function ExerciseDetailModal({ exercise, onClose }: ExerciseDetailModalPr
             >
               {galeria.map((url, i) => (
                 <div key={`${url}-${i}`} className="relative h-56 w-full shrink-0 snap-center">
-                  <Image
-                    src={exerciseImageUrl(url, "detail")!}
+                  <ExerciseImageDetail
+                    src={url}
                     alt={galeria.length > 1 ? `${exercise.name} (${i + 1} de ${galeria.length})` : exercise.name}
-                    fill
                     sizes="(max-width: 768px) 100vw, 512px"
-                    unoptimized
-                    className="object-cover"
                   />
                   {galeria.length > 1 && (
                     <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white">

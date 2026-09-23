@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useTransition, useMemo } from "react"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
 import {
   ChevronLeft, ChevronUp, ChevronDown, Plus, Trash2, BookmarkPlus,
@@ -29,7 +28,7 @@ import { ActionMenu } from "@/components/ui/action-menu"
 import { ExerciseImageThumbnail } from "@/components/ui/exercise-image-thumbnail"
 import { ROUTES } from "@/constants/routes"
 import { addDays } from "@/lib/dates"
-import { exerciseImageUrl } from "@/lib/images"
+import { ExerciseImageDetail } from "@/components/ui/exercise-image-detail"
 import {
   CLASS_OBJECTIVE_LABELS,
   type DailyClassWithBlocks,
@@ -1276,13 +1275,10 @@ function ExerciseDetailSheet({
         <div className="flex-1 overflow-y-auto">
           {exercise.media_url ? (
             <div className="relative w-full h-56 bg-zinc-800">
-              <Image
-                src={exerciseImageUrl(exercise.media_url, "detail")!}
+              <ExerciseImageDetail
+                src={exercise.media_url}
                 alt=""
-                fill
                 sizes="(max-width: 768px) 100vw, 512px"
-                unoptimized
-                className="object-cover"
               />
             </div>
           ) : (

@@ -83,6 +83,34 @@ siendo necesario: no es código heredado que se pueda quitar.)
 
 ---
 
+### 7. Una optimización pedida sin respaldo deja de ser optimización y pasa a ser un fallo
+Las variantes `-thumb` / `-detail` de R2 ahorran kilobytes, pero **pueden no existir**
+(una subida en la que falló la generación, un preset nuevo sin regenerar el
+histórico). `ExerciseImageThumbnail` lo contemplaba y reintentaba con el original;
+los dos sitios de la foto grande no, y pedían `exerciseImageUrl(url, "detail")!` a
+pelo. Resultado: 404 → rectángulo negro con el icono roto.
+
+Regla: **si una URL derivada puede no existir, quien la pinte necesita respaldo.** Y
+ese respaldo va en un componente compartido, no copiado en cada pantalla: aquí el
+patrón correcto ya existía en las miniaturas y aun así los dos sitios nuevos no lo
+heredaron, porque nada les obligaba.
+
+### 8. Un bug de backend deja secuelas en los datos: arreglar el código no las repara
+`sharp` en `devDependencies` no solo rompía la subida — cada foto que **sí** se
+guardó durante ese periodo quedó **sin variantes**. Corregir la dependencia arregla
+las subidas futuras y **no toca** las 26 ya dañadas.
+
+Cierre correcto de un bug así, en dos pasos:
+1. **Código**, para que no se repita.
+2. **Datos**, para reparar lo ya dañado — y una **auditoría** que diga cuántos
+   registros quedaron mal, antes y después.
+
+Aquí: `node scripts/generate-image-variants.mjs --apply` (66 variantes, 0,8 MB) y
+recuento posterior sobre los 140 ejercicios con imagen → 0 sin variante. Sin ese
+segundo paso, el dueño habría seguido viendo fotos negras con el código ya corregido.
+
+---
+
 ## 📌 Lecciones Recientes (Sesión 21 - 2026-09-11)
 
 ### 1. `REVOKE ALL ... FROM PUBLIC` **no le quita el permiso a `anon`** en Supabase
