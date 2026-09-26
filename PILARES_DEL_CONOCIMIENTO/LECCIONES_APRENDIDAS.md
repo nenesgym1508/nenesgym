@@ -4,6 +4,66 @@ Este documento almacena la memoria de errores y gotchas resueltos en el proyecto
 
 ---
 
+## 📌 Lecciones Recientes (Sesión 24 - 2026-09-26)
+
+### 1. Medir antes de optimizar: la base puede ser inocente
+El síntoma era "las pestañas se quedan cargando". La sospecha natural es la base de
+datos. Los números decían otra cosa: la búsqueda de clientes tarda **7 ms** de trabajo
+real; la latencia de red mediana es **214 ms**. Optimizar consultas habría sido tiempo
+perdido.
+
+Cómo separar una de otra: medir primero una consulta trivial (`select id limit 1`) para
+tener la línea base de red, y restarla a todo lo demás. Lo que quede es trabajo real.
+
+Corolario: cuando la red domina, lo que hay que reducir es el **número de viajes**, no
+el peso de cada uno.
+
+### 2. `prefetch` por defecto no precarga los datos de una ruta dinámica
+La documentación de Next 16 es explícita: con `prefetch` en `"auto"` (el valor por
+defecto), una ruta **dinámica** solo precarga hasta el `loading.js` más cercano — el
+contenido se pide al hacer clic. En este panel, 16 de 18 páginas son `force-dynamic`,
+así que la precarga no estaba haciendo prácticamente nada.
+
+`prefetch` explícito precarga la ruta completa **con sus datos**. Para una barra de
+navegación de 5 destinos fijos que el usuario recorre todo el día, es justo lo que se
+quiere. No generalizar: en una lista de 200 enlaces sería un bombardeo de peticiones.
+
+### 3. Una consulta en cascada cuesta un viaje entero de red
+`getClientDebtsAction(ids)` necesitaba los ids de los clientes, así que **esperaba** a
+la búsqueda. Dos viajes en fila donde podía haber uno.
+
+Patrón a vigilar: un `await` que solo existe para pasarle a la segunda consulta algo que
+produce la primera. Muchas veces la segunda puede resolver ese dato por dentro (aquí, un
+join contra `clients` dentro de la RPC) y entonces ambas salen en paralelo.
+
+### 4. ⚠️ RLS sin policies no da error: devuelve cero filas
+El atajo para romper la cascada fue un `select` directo a `client_plan_debts`. Medía
+**181 ms mejor** y estaba **mal**: esa tabla tiene RLS activado y **cero policies**
+(migración 037), porque se lee solo por funciones `SECURITY DEFINER`.
+
+Un `select` así **no falla**. Devuelve `[]` con `error: null`. La app habría mostrado
+"sin deudas" a clientes que deben dinero, sin un solo error en los logs — el peor modo
+de fallo posible, porque nadie se entera.
+
+Dos reglas que salen de aquí:
+
+- Antes de sustituir una RPC por un `select` directo, **comprobar las policies de esa
+  tabla**. Si el acceso está cerrado a propósito, la RPC no es burocracia: es el único
+  camino.
+- **Verificar con la sesión real del usuario, no con `service_role`.** Service-role
+  ignora RLS, así que la comparación "vieja vs nueva" daba idénticas y ocultaba el fallo.
+  Solo apareció al autenticarse como admin con `generateLink` + `verifyOtp`.
+
+### 5. Verificar una optimización comparando resultados, no solo tiempos
+El bug anterior se detectó porque, además de cronometrar, se compararon **los datos**
+que devolvían el método viejo y el nuevo, cliente por cliente. Saltó una diferencia en
+1 de 74. Si solo se hubiera mirado el reloj, el cambio habría pasado como una mejora del
+40% y habría llegado a producción ocultando deudas.
+
+Una optimización no está verificada hasta que devuelve **lo mismo** que lo que sustituye.
+
+---
+
 ## 📌 Lecciones Recientes (Sesión 23 - 2026-09-25)
 
 ### 1. Una función que solo devuelve 5 o 6 no puede modelar planes de 3 y 4

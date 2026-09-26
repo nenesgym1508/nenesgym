@@ -1746,6 +1746,14 @@ export type Database = {
           id: string
         }[]
       }
+      admin_gym_debts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          amount_cents: number
+          client_id: string
+          id: string
+        }[]
+      }
       admin_search_clients: {
         Args: {
           p_limit?: number

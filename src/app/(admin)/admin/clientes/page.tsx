@@ -1,6 +1,5 @@
-import { getClientDebtsAction } from "@/actions/admin.actions"
+import { getAllClientDebtsAction } from "@/actions/admin.actions"
 import { requireAdminSession } from "@/lib/auth/session"
-import { getGymSettings } from "@/services/gym.service"
 import { searchAdminClients, type ClientStatusFilter } from "@/services/memberships.service"
 import { getAvailablePlans } from "@/services/payments.service"
 import { ClientsList } from "@/components/admin/clients-list"
@@ -25,13 +24,20 @@ export default async function AdminClientesPage({
     : "todos"
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1)
 
-  const [result, plans, gym] = await Promise.all([
+  // Las 3 consultas salen JUNTAS.
+  //
+  // Antes los saldos esperaban a la búsqueda para pasarle los ids de cliente, y
+  // esa cascada costaba un segundo viaje completo a la base en la pestaña que
+  // el profesor abre todo el día. `getAllClientDebtsAction` no necesita los ids
+  // (los resuelve la RPC por dentro), así que ya no bloquea a nadie.
+  //
+  // También se quitó `getGymSettings()`: era un cuarto viaje cuyo resultado no
+  // se usaba en esta página.
+  const [result, plans, balances] = await Promise.all([
     searchAdminClients({ search, status, page, pageSize: PAGE_SIZE }),
     getAvailablePlans(),
-    getGymSettings(),
+    getAllClientDebtsAction(),
   ])
-
-  const balances = await getClientDebtsAction(result.rows.map(c => c.id))
   const planOptions = plans.map((p) => ({
     id: p.id,
     name: p.name,

@@ -635,6 +635,51 @@ export async function deleteClientCompletelyAction(
   return { success: true, nombre }
 }
 
+/**
+ * Saldos pendientes de TODOS los clientes del gimnasio.
+ *
+ * Existe por velocidad: `getClientDebtsAction` necesita los ids, así que en
+ * `/admin/clientes` tenía que esperar a que terminara la búsqueda — dos viajes
+ * a la base EN FILA en la pestaña que el profesor abre todo el día. Sin ese
+ * parámetro, sale en paralelo con las demás consultas.
+ *
+ * ⚠️ Va por la RPC `admin_client_debts`, NO por un `select` a la tabla.
+ * `client_plan_debts` tiene RLS activado y **cero policies** (migración 037):
+ * está deliberadamente cerrada y solo se lee a través de funciones
+ * `SECURITY DEFINER`. Un `select` directo devuelve 0 filas **sin error**,
+ * que es el peor modo de fallo posible: la app enseñaría "sin deudas" a
+ * clientes que deben dinero. Verificado con una sesión real de admin.
+ *
+ * Usa `admin_gym_debts()` (migración 041), que hace el join contra `clients`
+ * por dentro y resuelve todo en UN viaje. Si esa migración aún no está
+ * aplicada, cae de vuelta a pedir los ids y llamar a `admin_client_debts`:
+ * más lento, pero correcto — nunca devuelve "sin deudas" por error.
+ */
+export async function getAllClientDebtsAction() {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error }
+
+  const { data, error } = await ctx.supabase.rpc("admin_gym_debts")
+  if (!error) return { debts: data ?? [] }
+
+  if (!/does not exist|could not find/i.test(error.message)) {
+    return { error: "No se pudo consultar el saldo pendiente. Intenta de nuevo." }
+  }
+
+  // Respaldo sin la migración 041.
+  const { data: ids, error: idsError } = await ctx.supabase
+    .from("clients")
+    .select("id")
+    .eq("gym_id", ctx.gymId)
+  if (idsError) return { error: "No se pudo consultar el saldo pendiente. Intenta de nuevo." }
+
+  const { data: viejo, error: errorViejo } = await ctx.supabase.rpc("admin_client_debts", {
+    p_client_ids: (ids ?? []).map((c) => c.id),
+  })
+  if (errorViejo) return { error: "No se pudo consultar el saldo pendiente. Intenta de nuevo." }
+  return { debts: viejo ?? [] }
+}
+
 export async function getClientDebtsAction(clientIds: string[]) {
   const ctx = await requireAdmin()
   if ("error" in ctx) return { error: ctx.error }

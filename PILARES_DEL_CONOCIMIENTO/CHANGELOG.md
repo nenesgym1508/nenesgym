@@ -4,6 +4,73 @@
 
 ---
 
+## 📌 Sesión 24 — 2026-09-26 (Velocidad del panel: precarga de pestañas y fin de la cascada en Clientes)
+
+### 🐛 El síntoma
+
+*"A veces noto que cuando el profe navega en su panel de administrador las pestañas se
+quedan cargando durante mucho tiempo."*
+
+### 📊 Medición primero
+
+Contra producción, separando la latencia de red del trabajo real de la base:
+
+| Consulta | Total | Neto (sin red) |
+|---|---|---|
+| Clientes (RPC búsqueda) | 221 ms | **7 ms** |
+| Asistencias 500 | 249 ms | 35 ms |
+| Ejercicios (catálogo) | 386 ms | 172 ms |
+
+**La base no era el problema.** La latencia de red mediana es de **214 ms** (base en
+`us-east-1`, gimnasio en Colombia) y domina todo lo demás. Conclusión: lo que había que
+atacar era el **número de viajes**, no su contenido.
+
+### 🔧 Lo que se corrigió
+
+**1. Las pestañas no se precargaban.** Los `<Link>` de `bottom-nav.tsx` (barra inferior
+y sidebar) no declaraban `prefetch`. Y el valor por defecto **no bastaba**: la
+documentación de Next 16 es explícita — para rutas dinámicas solo precarga hasta el
+`loading.js` más cercano, no los datos. Con 16 de las 18 páginas del panel en
+`force-dynamic`, cada toque arrancaba el viaje completo. Ahora `prefetch` explícito en
+`FlatTab` y `SidebarNavLink`: el render se adelanta mientras el profesor mira la
+pantalla actual.
+
+**2. Cascada en `/admin/clientes`.** `getClientDebtsAction` necesitaba los ids de los
+clientes, así que **esperaba** a que terminara la búsqueda: dos viajes en fila.
+Corregido con `admin_gym_debts()` (migración **041**), que hace el join contra
+`clients` por dentro y no necesita ids, así que sale en paralelo con las demás.
+
+⚠️ **El atajo obvio era un bug de datos.** El primer intento fue un `select` directo a
+`client_plan_debts` filtrando por `paid_at is null`. Medía **181 ms** mejor… y estaba
+**mal**: esa tabla tiene RLS activado y **cero policies** (migración 037), así que se
+lee solo por funciones `SECURITY DEFINER`. Un select directo devuelve **0 filas sin
+error** — la app habría mostrado "sin deudas" a clientes que deben dinero. Se detectó
+comparando ambos métodos **con una sesión real de admin**, no con service-role (que sí
+lo permitía y ocultaba el fallo).
+
+**3. Un viaje que no se usaba.** `/admin/clientes` llamaba a `getGymSettings()` y nunca
+usaba el resultado. Eliminado.
+
+**4. Faltaban dos `loading.tsx`** (Clases y Rutinas), las dos pestañas que el profesor
+usa a diario. Añadidos siguiendo el patrón existente.
+
+### ✅ Verificación
+
+- `tsc` 0 · `eslint` sin nuevos problemas · `build` OK.
+- Medición alternada (6 pasadas, sesión real de admin) de la pestaña Clientes:
+  **447 ms → 399 ms** solo por romper la cascada, antes de aplicar la 041 y sin contar
+  el viaje de `getGymSettings` que se eliminó.
+- Comprobado que `is_admin()` y `current_gym_id()` existen y responden bien.
+- `getAllClientDebtsAction` lleva **respaldo**: si la 041 no está aplicada, vuelve a
+  `admin_client_debts` con los ids. Más lento, pero nunca devuelve deudas vacías por
+  error.
+
+### ⚠️ Pendiente
+
+**Aplicar la migración 041** en el SQL Editor. Sin ella todo funciona por el respaldo.
+
+---
+
 ## 📌 Sesión 23 — 2026-09-25 (Los días del plan se gastan por asistencia, no por calendario)
 
 ### 🐛 El fallo

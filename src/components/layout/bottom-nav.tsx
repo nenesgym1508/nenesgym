@@ -50,7 +50,20 @@ function FlatTab({ item, active }: { item: NavItem; active: boolean }) {
   const { href } = item
 
   return (
-    <Link href={href} className="flex flex-1 flex-col items-center justify-center gap-0.5 cursor-pointer">
+    <Link
+      href={href}
+      // `prefetch` explícito: son 5 pestañas fijas que el usuario recorre todo
+      // el día, así que adelantar su render mientras mira la pantalla actual
+      // convierte el cambio de pestaña en instantáneo.
+      //
+      // ⚠️ El valor por defecto NO habría servido: con rutas dinámicas
+      // (force-dynamic, que son 16 de las 18 del panel) Next solo precarga el
+      // `loading.tsx` y deja el contenido para el momento del clic. Por eso el
+      // profesor veía las pestañas "cargando mucho tiempo": cada toque
+      // arrancaba el viaje completo a la base, ~214 ms de red antes de empezar.
+      prefetch
+      className="flex flex-1 flex-col items-center justify-center gap-0.5 cursor-pointer"
+    >
       <FlatTabContent item={item} active={active} />
     </Link>
   )
@@ -94,7 +107,7 @@ function FlatTabContent({ item, active }: { item: NavItem; active: boolean }) {
 // Link de sidebar (cliente y admin) con feedback pending inmediato al tocar.
 export function SidebarNavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
-    <Link href={item.href} className="block">
+    <Link href={item.href} prefetch className="block">
       <SidebarNavLinkContent item={item} active={active} />
     </Link>
   )
