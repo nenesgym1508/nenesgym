@@ -7,7 +7,7 @@ import { adjustMembershipAction, cancelMembershipAction } from "@/actions/admin.
 import { LoadingButton } from "@/components/ui/loading-button"
 import { MembershipBadge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/dates"
-import { eligibleDaysElapsed, daysPerWeekForPlan, todayInBogota } from "@/lib/dates"
+import { membershipRemainingDays } from "@/lib/dates"
 import { computeEffectiveStatus } from "@/lib/membership-status"
 import type { MembershipStatus } from "@/types/membership"
 
@@ -17,6 +17,8 @@ interface AdjustMembershipModalProps {
   membershipId: string
   startDate: string
   totalDays: number
+  /** Asistencias ya usadas: es lo que descuenta dias. */
+  usedDays: number
   endDate: string
   graceDays: number
   status: MembershipStatus
@@ -28,6 +30,7 @@ export function AdjustMembershipModal({
   membershipId,
   startDate,
   totalDays,
+  usedDays,
   endDate,
   graceDays,
   status,
@@ -55,10 +58,8 @@ export function AdjustMembershipModal({
 
   // Vista previa en vivo: mismas fórmulas que usa el resto de la app para
   // "días restantes" y el estado (activa/gracia/vencida/sin días).
-  const today = todayInBogota()
-  const elapsed = eligibleDaysElapsed(startDate, today, daysPerWeekForPlan(days))
-  const remaining = Math.max(0, days - elapsed)
-  const previewStatus = computeEffectiveStatus(elapsed, days, vence, graceDays, status === "cancelled" ? "active" : status)
+  const remaining = membershipRemainingDays(days, usedDays)
+  const previewStatus = computeEffectiveStatus(usedDays, days, vence, graceDays, status === "cancelled" ? "active" : status)
 
   const dirty = days !== totalDays || vence !== endDate
   const valid = days > 0 && /^\d{4}-\d{2}-\d{2}$/.test(vence)

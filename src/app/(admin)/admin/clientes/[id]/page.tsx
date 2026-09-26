@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card"
 import { MembershipBadge, PaymentBadge } from "@/components/ui/badge"
 import { MembershipSummaryCard } from "@/components/cliente/membership-summary-card"
 import { DashboardCalendar } from "@/components/cliente/dashboard-calendar"
+import { AttendanceCorrector } from "@/components/admin/attendance-corrector"
 import { ProgressView } from "@/components/progress/progress-view"
 import { ClienteDetalleTabs, type ClienteDetalleTab } from "@/components/admin/cliente-detalle-tabs"
 import { ClientRoutinesSection } from "@/components/admin/client-routines-section"
@@ -25,7 +26,7 @@ import { ClientPaymentStateCard } from "@/components/admin/client-payment-state-
 import { DeleteClientCard } from "@/components/admin/delete-client-card"
 import { getClientAccessState } from "@/services/invitations.service"
 import { ROUTES } from "@/constants/routes"
-import { formatDate, todayInBogota, nowInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
+import { formatDate, todayInBogota, nowInBogota, membershipRemainingDays, daysPerWeekForPlan } from "@/lib/dates"
 import { formatCOP } from "@/lib/utils"
 import { isPlaceholderEmail } from "@/lib/placeholder-email"
 import type { MembershipStatus } from "@/types/membership"
@@ -83,11 +84,13 @@ export default async function AdminClienteDetallePage({
   }
 
   const today = todayInBogota()
+  // Días restantes = comprados − asistidos (ver membershipRemainingDays).
+  const used = membership?.used_days ?? 0
+  // Frecuencia del plan: solo para pintar el calendario de asistencia.
   const daysPerWeek = membership ? daysPerWeekForPlan(membership.plan?.days ?? membership.total_days) : 6
-  const elapsed = membership ? eligibleDaysElapsed(membership.start_date, today, daysPerWeek) : 0
-  const remaining = membership ? Math.max(0, membership.total_days - elapsed) : 0
+  const remaining = membership ? membershipRemainingDays(membership.total_days, used) : 0
   const effectiveStatus = membership
-    ? computeEffectiveStatus(elapsed, membership.total_days, membership.end_date, membership.grace_days, membership.status as MembershipStatus)
+    ? computeEffectiveStatus(used, membership.total_days, membership.end_date, membership.grace_days, membership.status as MembershipStatus)
     : null
 
   const planOptions = plans.map((p) => ({
@@ -185,6 +188,7 @@ export default async function AdminClienteDetallePage({
                   membershipId={membership.id}
                   startDate={membership.start_date}
                   totalDays={membership.total_days}
+                  usedDays={used}
                   endDate={membership.end_date}
                   graceDays={membership.grace_days}
                   status={membership.status as MembershipStatus}
@@ -202,6 +206,22 @@ export default async function AdminClienteDetallePage({
                 membershipEndDate={membership?.end_date}
                 daysPerWeek={daysPerWeek}
               />
+
+              {/* Arreglo para los olvidos: desde que el plan se gasta por
+                  asistencia, un día sin marcar es un día regalado. */}
+              {membership && (
+                <div className="mt-3 border-t border-white/5 pt-3">
+                  <AttendanceCorrector
+                    clientId={clientData.id}
+                    membershipId={membership.id}
+                    attendanceDates={attendance.map((a) => a.check_in_date)}
+                    startDate={membership.start_date}
+                    endDate={membership.end_date}
+                    totalDays={membership.total_days}
+                    usedDays={used}
+                  />
+                </div>
+              )}
             </Card>
 
             <div>

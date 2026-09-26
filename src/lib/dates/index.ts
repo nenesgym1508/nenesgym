@@ -33,52 +33,41 @@ export function daysUntilExpiry(endDate: string, graceDays = 5): number {
 }
 
 /**
- * Días hábiles (no libres) por plan. Domingo siempre es libre; el sábado
- * también lo es en planes de 5 días/semana.
- */
-export function daysPerWeekForPlan(totalDays: number): 5 | 6 {
-  return totalDays <= 20 ? 5 : 6
-}
-
-/**
- * Cuenta los días hábiles transcurridos desde la activación hasta AYER
- * (los días que ya pasaron). Cada día hábil cuenta, haya asistido o no
- * el cliente — por eso las faltas descuentan de la membresía.
+ * Días de entrenamiento por semana que cubre un plan.
  *
- * @param startDate  fecha de activación 'yyyy-MM-dd'
- * @param today      hoy en zona del gym 'yyyy-MM-dd'
- * @param daysPerWeek 5 (lun-vie) o 6 (lun-sáb)
+ * Solo se usa ya para ROTULAR el plan en la interfaz ("3 días/semana"), no
+ * para descontar días: eso ahora depende de las asistencias reales. Se deduce
+ * de los días del plan sobre una vigencia mensual (~4,3 semanas).
  */
-export function eligibleDaysElapsed(
-  startDate: string,
-  today: string,
-  daysPerWeek: number
-): number {
-  const start = new Date(`${startDate.split("T")[0]}T00:00:00`)
-  const end = new Date(`${today.split("T")[0]}T00:00:00`) // exclusivo: solo días pasados
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0
-  let count = 0
-  const d = new Date(start)
-  while (d < end) {
-    const dow = d.getDay() // 0=domingo ... 6=sábado
-    const isFree = dow === 0 || (daysPerWeek === 5 && dow === 6)
-    if (!isFree) count++
-    d.setDate(d.getDate() + 1)
-  }
-  return count
+export function daysPerWeekForPlan(totalDays: number): number {
+  if (totalDays <= 4) return totalDays
+  return Math.max(1, Math.min(7, Math.round(totalDays / 4.3)))
 }
 
 /**
- * Días de membresía restantes contando las faltas. Modelo base calendario:
- * remaining = total_days − días hábiles ya transcurridos.
+ * Días que le quedan a una membresía = los que compró menos los que ya usó.
+ *
+ * ⚠️ CUENTA ASISTENCIAS, NO DÍAS DE CALENDARIO. El modelo anterior restaba
+ * "días hábiles transcurridos": cada día que pasaba descontaba uno, hubiera
+ * venido el cliente o no. Se rompía de dos maneras a la vez:
+ *
+ *   1. `daysPerWeekForPlan` solo sabía devolver 5 o 6, así que un plan de
+ *      3 o 4 días/semana descontaba 6 días por semana. Los 16 días de un
+ *      mensual se agotaban en 19 días corridos en vez de durar los 30 de
+ *      vigencia, y la tarjeta enseñaba "0 entrenamientos restantes" con el
+ *      plan todavía vigente. Le pasaba a 65 de 72 clientes activos.
+ *   2. Aunque el número de días/semana fuera correcto, cobrar las faltas
+ *      contradice lo que el cliente compra: "16 días" son 16 entradas.
+ *
+ * `used_days` lo mantiene `increment_used_days` en cada check-in, y el admin
+ * puede corregirlo marcando o desmarcando días pasados (ver
+ * `setAttendanceForDateAction`) cuando alguien olvidó registrar su entrada.
+ *
+ * La VIGENCIA sigue mandando: `end_date` corta la membresía aunque sobren
+ * días. Eso lo decide `computeEffectiveStatus`, no esta función.
  */
-export function membershipRemainingDays(
-  startDate: string,
-  totalDays: number,
-  today: string,
-  daysPerWeek = daysPerWeekForPlan(totalDays)
-): number {
-  return Math.max(0, totalDays - eligibleDaysElapsed(startDate, today, daysPerWeek))
+export function membershipRemainingDays(totalDays: number, usedDays: number): number {
+  return Math.max(0, totalDays - Math.max(0, usedDays))
 }
 
 /**

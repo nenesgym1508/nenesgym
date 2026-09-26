@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { todayInBogota, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
+import { todayInBogota, membershipRemainingDays } from "@/lib/dates"
 import { computeEffectiveStatus } from "@/lib/membership-status"
 import type { MembershipStatus } from "@/types/membership"
 
@@ -46,6 +46,8 @@ export type AdminClientRow = {
 type MembershipLike = {
   status: string
   total_days: number
+  /** Asistencias ya consumidas. Es lo que descuenta días, no el calendario. */
+  used_days: number
   start_date: string
   end_date: string
   grace_days: number
@@ -53,15 +55,17 @@ type MembershipLike = {
 }
 
 // Calcula el badge (estado efectivo + días restantes) a partir de la membresía vigente.
-function computeClientBadge(mem: MembershipLike | null, today: string) {
+// `today` ya no es parámetro: la fecha la resuelve computeEffectiveStatus.
+function computeClientBadge(mem: MembershipLike | null) {
   if (!mem) {
     return { effectiveStatus: null as MembershipStatus | null, remainingDays: 0, planName: null, startDate: null, endDate: null }
   }
-  const daysPerWeek = daysPerWeekForPlan(mem.plan?.days ?? mem.total_days)
-  const elapsed = eligibleDaysElapsed(mem.start_date, today, daysPerWeek)
-  const remainingDays = Math.max(0, mem.total_days - elapsed)
+  // Los días restantes salen de las asistencias reales, no del calendario
+  // (ver membershipRemainingDays). `end_date` sigue cortando por vigencia
+  // dentro de computeEffectiveStatus.
+  const remainingDays = membershipRemainingDays(mem.total_days, mem.used_days)
   const effectiveStatus = computeEffectiveStatus(
-    elapsed, mem.total_days, mem.end_date, mem.grace_days, mem.status as MembershipStatus
+    mem.used_days, mem.total_days, mem.end_date, mem.grace_days, mem.status as MembershipStatus
   )
   return {
     effectiveStatus,
@@ -95,7 +99,7 @@ export async function searchAdminClients(
   if (error) {
     // 42883 = function does not exist → la migración aún no fue aplicada; usar fallback.
     if (error.code === "42883" || /does not exist/i.test(error.message ?? "")) {
-      return fallbackSearchAdminClients({ search: q, status, page, pageSize, today })
+      return fallbackSearchAdminClients({ search: q, status, page, pageSize })
     }
     throw error
   }
@@ -105,7 +109,7 @@ export async function searchAdminClients(
     auto_aprobacion: r.auto_aprobacion,
     comprobante_bloqueado: r.comprobante_bloqueado,
     profile: { full_name: r.full_name, email: r.email },
-    ...computeClientBadge(r.membership as MembershipLike | null, today),
+    ...computeClientBadge(r.membership as MembershipLike | null),
   }))
   const total = Number(data?.[0]?.total_count ?? 0)
   return { rows, total, page, pageSize }
@@ -113,8 +117,8 @@ export async function searchAdminClients(
 
 // Fallback sin RPC: carga completa (limit 500) + búsqueda/filtro/paginación en JS.
 async function fallbackSearchAdminClients(
-  { search, status, page, pageSize, today }:
-  { search: string; status: ClientStatusFilter; page: number; pageSize: number; today: string }
+  { search, status, page, pageSize }:
+  { search: string; status: ClientStatusFilter; page: number; pageSize: number }
 ): Promise<AdminClientsPage> {
   const raw = await getAllClientsWithMembership()
   const q = search.toLowerCase()
@@ -129,7 +133,7 @@ async function fallbackSearchAdminClients(
       auto_aprobacion: c.auto_aprobacion,
       comprobante_bloqueado: c.comprobante_bloqueado,
       profile: c.profile as AdminClientRow["profile"],
-      ...computeClientBadge(latest, today),
+      ...computeClientBadge(latest),
     }
   })
 

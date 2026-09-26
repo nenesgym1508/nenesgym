@@ -11,8 +11,6 @@ import {
   formatDate,
   formatDatetime,
   todayInBogota,
-  daysPerWeekForPlan,
-  eligibleDaysElapsed,
 } from "@/lib/dates"
 import { ROUTES } from "@/constants/routes"
 
@@ -30,16 +28,12 @@ export default async function ClienteAsistenciaPage() {
   ])
 
   const today = todayInBogota()
-  const daysPerWeek = membership
-    ? daysPerWeekForPlan(membership.plan?.days ?? membership.total_days)
-    : 6
-  const elapsedDays = membership
-    ? eligibleDaysElapsed(membership.start_date, today, daysPerWeek)
-    : 0
+  // El plan se agota por asistencias, no por calendario.
+  const usedDays = membership?.used_days ?? 0
 
   const effectiveStatus = membership
     ? computeEffectiveStatus(
-        elapsedDays,
+        usedDays,
         membership.total_days,
         membership.end_date,
         membership.grace_days,

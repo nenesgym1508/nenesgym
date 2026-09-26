@@ -4,7 +4,7 @@ import { revalidatePath, updateTag } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { computeEffectiveStatus, searchAdminClients } from "@/services/memberships.service"
-import { todayInBogota, nowInBogota, gymSession, eligibleDaysElapsed, daysPerWeekForPlan } from "@/lib/dates"
+import { todayInBogota, nowInBogota, gymSession } from "@/lib/dates"
 import { ROUTES, adminClienteDetalle } from "@/constants/routes"
 import type { MembershipStatus } from "@/types/membership"
 import type { PaymentMethod } from "@/types/payment"
@@ -263,6 +263,58 @@ export async function rejectPaymentAction(paymentId: string, note: string) {
   return { success: true }
 }
 
+/**
+ * Marca o desmarca la asistencia de un día PASADO. Corrección del admin.
+ *
+ * Existe porque los días del plan se gastan al marcar entrada (Sesión 23): si
+ * alguien entrenó y olvidó registrarse, ese día no se le descontó y hay que
+ * poder anotarlo. También sirve al revés, para quitar un día marcado por error.
+ *
+ * ⚠️ `attendance` y `memberships.used_days` DEBEN moverse juntas, por eso todo
+ * ocurre dentro de la RPC `set_attendance_for_date` (migración 040), que
+ * además recuenta las filas en vez de sumar/restar uno. Hacerlo aquí con dos
+ * consultas dejaría descuadres: días visibles en el calendario que no
+ * descuentan del plan, o al revés — y eso son entradas al gimnasio que alguien
+ * pagó.
+ */
+export async function setAttendanceForDateAction(input: {
+  clientId: string
+  membershipId: string
+  date: string
+  attended: boolean
+}) {
+  const ctx = await requireAdmin()
+  if ("error" in ctx) return { error: ctx.error ?? "Sin permisos" }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { error: "Fecha inválida" }
+  if (input.date > todayInBogota()) return { error: "No se puede marcar un día futuro" }
+
+  const admin = createAdminClient()
+  // @ts-expect-error — función de la migración 040; regenerar tipos tras aplicarla
+  const { data, error } = await admin.rpc("set_attendance_for_date", {
+    p_client_id: input.clientId,
+    p_membership_id: input.membershipId,
+    p_date: input.date,
+    p_attended: input.attended,
+    p_gym_id: ctx.gymId,
+  })
+
+  if (error) {
+    if (/does not exist|could not find/i.test(error.message)) {
+      return { error: "Falta aplicar la migración 040 en la base de datos." }
+    }
+    return { error: error.message }
+  }
+
+  const result = data as unknown as { ok: boolean; message?: string; remaining?: number }
+  if (!result?.ok) return { error: result?.message ?? "No se pudo guardar" }
+
+  revalidatePath(adminClienteDetalle(input.clientId))
+  revalidatePath(ROUTES.ADMIN_ASISTENCIAS)
+  revalidatePath(ROUTES.ADMIN_CLIENTES)
+  return { success: true, remaining: result.remaining }
+}
+
 export async function manualCheckInAction(clientId: string) {
   const ctx = await requireAdmin()
   if ("error" in ctx) return { error: ctx.error }
@@ -282,14 +334,10 @@ export async function manualCheckInAction(clientId: string) {
   if (!membership) return { error: "El cliente no tiene una membresía activa" }
 
   const today = todayInBogota()
-  // Modelo base calendario: las faltas también descuentan días.
-  const elapsedDays = eligibleDaysElapsed(
-    membership.start_date,
-    today,
-    daysPerWeekForPlan(membership.total_days)
-  )
+  // El plan se agota por asistencias, no por calendario: una falta no gasta
+  // día. La vigencia (end_date) sigue cortando dentro de computeEffectiveStatus.
   const status = computeEffectiveStatus(
-    elapsedDays,
+    membership.used_days,
     membership.total_days,
     membership.end_date,
     membership.grace_days,
@@ -339,7 +387,8 @@ export async function manualCheckInAction(clientId: string) {
 // Ajuste manual de una membresía existente: días totales y/o fecha de
 // vencimiento. Los "días restantes" que ve el cliente/admin se recalculan
 // siempre en vivo (total_days - días hábiles transcurridos desde start_date,
-// ver eligibleDaysElapsed) — no hay contador que sincronizar aparte.
+// ver membershipRemainingDays: total_days - used_days) — no hay contador que
+// sincronizar aparte.
 export async function adjustMembershipAction(input: {
   membershipId: string
   clientId: string

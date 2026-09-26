@@ -4,6 +4,100 @@
 
 ---
 
+## 📌 Sesión 23 — 2026-09-25 (Los días del plan se gastan por asistencia, no por calendario)
+
+### 🐛 El fallo
+
+El dueño lo vio en la app de una clienta: la tarjeta decía **"0 entrenamientos
+restantes"** con la membresía activa y vigente hasta el 1 de octubre. Su diagnóstico
+fue certero: *"eso sucede con los clientes que compran planes de menos de 5 días a la
+semana. El sistema cuenta todos los días seguidos."*
+
+### 🔍 Causa raíz
+
+Los días restantes se calculaban como `total_days − días hábiles transcurridos`
+(`eligibleDaysElapsed`), no a partir de las asistencias. Dos fallos encadenados:
+
+1. **`daysPerWeekForPlan` solo devolvía 5 o 6.** No contemplaba los planes de 3 y 4
+   días/semana que vende el gimnasio. Para un plan de 16 días devolvía 5, así que solo
+   excluía domingos y **descontaba los otros 6 días de cada semana**. Los 16 días se
+   agotaban en 19 días corridos en vez de durar los 30 de vigencia.
+2. **Cobrar las faltas contradice lo que se vende.** "16 días" son 16 entradas; el
+   cliente que se enferma una semana perdía días que había pagado.
+
+Medido contra producción: **65 de 72 membresías activas** tenían el contador
+descuadrado. Surley: 7 asistencias reales de 16 → le quedaban 9, la app mostraba 0.
+
+### 🔧 La corrección
+
+**El modelo, con dos candados.** Se acaba el plan cuando se cierra el primero:
+
+- **Entradas:** `remaining = total_days − used_days`. Solo descuenta al marcar entrada.
+- **Vigencia:** `end_date` corta igual aunque sobren días (lo decide
+  `computeEffectiveStatus`, sin cambios).
+
+Esto sostiene la estructura de precios del gimnasio, que vende **frecuencia**: quien
+compra 3 días/semana tiene 12 entradas para el mes. Si viene 6 veces en una semana
+puede, pero gasta 6 de sus 12 y se queda sin plan a mitad de mes. El que viene más,
+paga más — sin vigilar semana por semana.
+
+Se descartó un modelo de **cupo semanal** que planteó el dueño (3 cupos por semana, lo
+no usado se pierde): con la vigencia de 30 días el resultado es casi idéntico para
+quien viene juicioso, y solo se diferencia castigando al que falta o al que olvida
+marcar. Más piezas, peor de explicar, mismo efecto.
+
+- `membershipRemainingDays(totalDays, usedDays)` sustituye a la fórmula de calendario.
+  `eligibleDaysElapsed` se elimina.
+- `daysPerWeekForPlan` ahora deduce la frecuencia real (`días / 4,3 semanas`) y queda
+  **solo para rotular** el plan y pintar el calendario, nunca para descontar.
+- Actualizados los 6 sitios que restaban por calendario: `memberships.service`
+  (`computeClientBadge`, + `used_days` en `MembershipLike`), dashboard y asistencia del
+  cliente, ficha del admin, `adjust-membership-modal` (nueva prop `usedDays`) y
+  `manualCheckInAction`.
+- **El calendario ya no pinta "Falta".** Marcaba en rojo todo día hábil sin asistencia:
+  con un plan de 3 días/semana eso era medio mes en rojo para alguien que cumplía su
+  plan al pie de la letra. La leyenda pasa de "Falta" a "Plan vigente".
+
+**Los olvidos.** El dueño advirtió que hay clientes que entrenan y olvidan marcar. Con
+el modelo nuevo ese día no se descuenta, así que hacía falta corregirlo a mano —y hasta
+ahora **solo se podía registrar la entrada del día de hoy**:
+
+- Migración **040** `set_attendance_for_date(client, membership, date, attended, gym)`:
+  mueve `attendance` y `used_days` **en la misma transacción**, con `FOR UPDATE` sobre
+  la membresía. Es idempotente en ambos sentidos y **recuenta las filas** en vez de
+  sumar/restar uno, así el contador no puede desviarse del calendario que ve el cliente.
+  Rechaza días futuros o fuera del plan. Revocada a `PUBLIC`, `anon` y `authenticated`.
+- `setAttendanceForDateAction` + `AttendanceCorrector` en la ficha del cliente: lista
+  los días del plan ya transcurridos, del más reciente al más antiguo, y se marcan o
+  desmarcan con un toque.
+
+Esto encaja con el plan del dueño de poner un **control de entrada** que impida pasar
+sin registrarse: cuando exista, no habrá olvidos que corregir y el corrector queda como
+red de seguridad.
+
+### ✅ Verificación
+
+- `tsc` 0 · `eslint` 0 en los archivos tocados · `build` OK.
+- Reproducido el fallo con la fórmula vieja sobre el caso real de Surley: descontaba 17
+  días el 22 de septiembre (pantalla en 0) cuando solo había asistido 7 veces.
+- Auditoría en producción: 65 de 72 membresías activas descuadradas antes del cambio.
+- Los dos candados probados con casos límite: día suelto vencido sin usar → `expired`;
+  entradas agotadas antes de la fecha → `exhausted`; días de sobra pero vencido →
+  `expired`; Surley → `active` con 9 restantes.
+- Lista del corrector validada contra el plan real (2 sep–1 oct, hoy 25 sep): 24 días,
+  sin futuros ni anteriores a la activación.
+
+### ⚠️ Pendiente de aplicar
+
+**La migración 040 no está aplicada**: esta sesión no tuvo acceso directo a Postgres
+(el conector de Supabase apunta a otro proyecto y no hay `DATABASE_URL` en
+`.env.local`). Hay que pegarla en el SQL Editor. Hasta entonces el corrector responde
+*"Falta aplicar la migración 040"* y **todo lo demás funciona**: el cálculo por
+asistencias no depende de ella. Tras aplicarla, regenerar los tipos y quitar el
+`@ts-expect-error` de `setAttendanceForDateAction`.
+
+---
+
 ## 📌 Sesión 22 — 2026-09-21 (Producción: subir o editar imágenes de ejercicios fallaba — `sharp` estaba en devDependencies)
 
 ### 🐛 El fallo

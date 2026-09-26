@@ -132,18 +132,23 @@ export function DashboardCalendar({
           const isAttended = attendanceSet.has(dStr)
           const inSameMonth = isSameMonth(day, monthStart)
           const isCurrentDay = dStr === todayStr
-          const isPast = dStr < todayStr
           const isFutureDay = dStr > todayStr
           const isSun = isSunday(day)
           const isSat = isSaturday(day)
-          const hasPlan = Boolean(activationStr)
-          const isBeforeActivation = activationStr ? dStr < activationStr : true
-          const isAfterExpiration = expirationStr ? dStr > expirationStr : false
           const isActivationDay = activationStr ? dStr === activationStr : false
           const isExpirationDay = expirationStr ? dStr === expirationStr : false
-          
-          const isFreeDay = daysPerWeek === 5 ? (isSun || isSat) : isSun
-          const isMissed = inSameMonth && isPast && !isAttended && !isFreeDay && hasPlan && !isBeforeActivation && !isAfterExpiration
+
+          // ⚠️ Ya NO existe el estado "Falta", y por eso sobran aquí las
+          // variables de "día pasado dentro del plan" que lo calculaban.
+          //
+          // Tenía sentido cuando el plan se descontaba por calendario: no venir
+          // costaba un día, así que era un aviso real. Desde que los días se
+          // gastan solo al marcar entrada (ver membershipRemainingDays), no
+          // venir un martes no cuesta nada — y con un plan de 3 días/semana
+          // pintaba en rojo los otros 3 días hábiles de cada semana, como si el
+          // cliente estuviera fallando cuando cumplía su plan al pie de la letra.
+          // Era medio calendario en rojo sin ningún motivo.
+          const isFreeDay = daysPerWeek >= 6 ? isSun : (isSun || isSat)
 
           const isInPlanPeriod = activationStr && expirationStr
             ? (dStr >= activationStr && dStr <= expirationStr)
@@ -159,12 +164,9 @@ export function DashboardCalendar({
             dayClasses += "bg-green-600/60 border border-green-500/50 text-white font-bold scale-110"
           } else if (isAttended) {
             dayClasses += "bg-green-600/60 border border-green-500/50 text-white font-semibold"
-          } else if (isMissed) {
-            dayClasses += "bg-red-500/25 border border-red-500/40 text-red-200"
           } else if (isUpcomingPlanDay) {
-            // Gris neutro, NO el rojo de "Falta": son días que todavía no han
-            // llegado. Compartir estilo hacía que estrenar plan se viera como
-            // un mes entero de entrenamientos perdidos.
+            // Gris neutro: son días de plan vigente que aún no han llegado.
+            // Nunca rojo — ver la nota sobre "Falta" más arriba.
             dayClasses += "bg-white/5 border border-white/20 text-zinc-300"
           } else if (isCurrentDay) {
             dayClasses += "text-white font-bold scale-110"

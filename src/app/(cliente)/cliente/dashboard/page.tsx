@@ -22,7 +22,7 @@ import {
   formatDatetime,
   todayInBogota,
   nowInBogota,
-  eligibleDaysElapsed,
+  membershipRemainingDays,
   daysPerWeekForPlan,
   getGreeting,
   computeStreak,
@@ -57,16 +57,14 @@ export default async function ClienteDashboardPage() {
   const streakDates = [...attendanceDates]
 
   const today = todayInBogota()
-  const daysPerWeek = membership
-    ? daysPerWeekForPlan(membership.plan?.days ?? membership.total_days)
-    : 6
-  const elapsedDays = membership
-    ? eligibleDaysElapsed(membership.start_date, today, daysPerWeek)
-    : 0
+  // Días restantes = comprados − asistidos (ver membershipRemainingDays).
+  const usedDays = membership?.used_days ?? 0
+  // Frecuencia del plan (3, 4, 5/semana): solo para el calendario y la racha.
+  const daysPerWeek = membership ? daysPerWeekForPlan(membership.plan?.days ?? membership.total_days) : 6
 
   const effectiveStatus = membership
     ? computeEffectiveStatus(
-        elapsedDays,
+        usedDays,
         membership.total_days,
         membership.end_date,
         membership.grace_days,
@@ -74,7 +72,7 @@ export default async function ClienteDashboardPage() {
       )
     : null
 
-  const remainingDays = membership ? Math.max(0, membership.total_days - elapsedDays) : 0
+  const remainingDays = membership ? membershipRemainingDays(membership.total_days, usedDays) : 0
 
   const todayRows = attendance.filter(a => a.check_in_date === today)
   const sessionsToday = todayRows.length

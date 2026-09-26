@@ -4,6 +4,68 @@ Este documento almacena la memoria de errores y gotchas resueltos en el proyecto
 
 ---
 
+## 📌 Lecciones Recientes (Sesión 23 - 2026-09-25)
+
+### 1. Una función que solo devuelve 5 o 6 no puede modelar planes de 3 y 4
+`daysPerWeekForPlan` tenía firma `: 5 | 6` y `return totalDays <= 20 ? 5 : 6`. El
+gimnasio vende planes de 3, 4 y 5 días/semana desde siempre. El tipo *parecía*
+riguroso y en realidad estaba documentando una suposición falsa: que todos los planes
+son de 5 o 6 días. Resultado: a un plan de 3 días/semana se le descontaban 6 días por
+semana y se agotaba en la mitad de tiempo.
+
+Cuando un tipo enumera valores (`5 | 6`), confirmar que esa enumeración cubre **los
+datos reales**, no los que había el día que se escribió. Una consulta a la tabla
+`plans` habría bastado.
+
+### 2. Calcular en vivo lo que ya está guardado invita a que ambos difieran
+Los días restantes se derivaban del calendario mientras `memberships.used_days` —el
+dato real, mantenido por `increment_used_days` en cada check-in— existía y no se
+miraba. La app enseñaba 0 y la base decía 9.
+
+Si hay una columna que ya guarda el hecho, **esa es la fuente de verdad**. Derivar una
+segunda versión del mismo número en tiempo de render solo garantiza que algún día se
+contradigan, y el usuario siempre ve la equivocada.
+
+### 3. Un indicador que miente erosiona la confianza en todo lo demás
+El calendario pintaba en rojo ("Falta") cada día hábil sin asistencia. Con un plan de
+3 días/semana eso es **medio mes en rojo para alguien que cumple su plan**. No era un
+detalle estético: el cliente abría la app y veía un historial de fracaso inventado.
+
+Antes de pintar un estado negativo, preguntar si el usuario hizo algo mal **según las
+reglas que compró**, no según un calendario genérico.
+
+### 4. Preguntar el modelo de negocio antes de elegir la fórmula
+La pregunta técnica era "¿por qué el contador llega a cero antes?". La pregunta útil
+era "¿qué vende exactamente el gimnasio?". La respuesta —frecuencia semanal: 3 días
+cuesta menos que 5— es la que decide si las faltas descuentan o no, y ninguna lectura
+del código la contenía.
+
+El dueño propuso además un modelo de **cupo semanal** (3 por semana, lo no usado se
+pierde). Descartarlo no fue cuestión de gusto: se simuló contra un caso real y resultó
+casi idéntico al modelo simple para quien viene juicioso —la vigencia de 30 días ya
+hace ese trabajo— y solo se diferenciaba castigando al que falta. **Cuando dos modelos
+dan el mismo resultado en el caso normal, gana el que tiene menos piezas.**
+
+### 5. Un cambio de modelo abre un hueco operativo: buscarlo antes de cerrar
+Pasar a "solo descuenta si asiste" convierte cada olvido de marcar en un día regalado.
+Y hasta esta sesión **solo se podía registrar la entrada del día de hoy**: no existía
+forma de anotar un día pasado ni de borrar uno puesto por error.
+
+Cambiar la regla sin dar la herramienta de corrección habría trasladado el problema en
+vez de resolverlo. Al cambiar un modelo, listar qué correcciones manuales pasan a ser
+necesarias — y comprobar si la app ya las permite.
+
+### 6. Dos tablas que deben moverse juntas van en una transacción, y se recuentan
+`attendance` y `memberships.used_days` representan el mismo hecho. Escribirlas con dos
+consultas desde el servidor deja descuadres en cuanto una falle: días visibles en el
+calendario que no descuentan del plan. Y eso es dinero — entradas al gimnasio pagadas.
+
+La migración 040 hace las dos cosas en una transacción con `FOR UPDATE`, y además
+**recuenta las filas** (`count(*)`) en vez de hacer `+1`/`-1`. Un contador que se
+recalcula no puede desviarse; uno que se incrementa acumula el error de cada fallo.
+
+---
+
 ## 📌 Lecciones Recientes (Sesión 22 - 2026-09-21)
 
 ### 1. Lo que importa el código de la app va en `dependencies`, nunca en `devDependencies`
