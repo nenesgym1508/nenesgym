@@ -87,14 +87,31 @@ red de seguridad.
 - Lista del corrector validada contra el plan real (2 sep–1 oct, hoy 25 sep): 24 días,
   sin futuros ni anteriores a la activación.
 
-### ⚠️ Pendiente de aplicar
+### ✅ Migración 040 aplicada
 
-**La migración 040 no está aplicada**: esta sesión no tuvo acceso directo a Postgres
-(el conector de Supabase apunta a otro proyecto y no hay `DATABASE_URL` en
-`.env.local`). Hay que pegarla en el SQL Editor. Hasta entonces el corrector responde
-*"Falta aplicar la migración 040"* y **todo lo demás funciona**: el cálculo por
-asistencias no depende de ella. Tras aplicarla, regenerar los tipos y quitar el
+Aplicada por el usuario en el SQL Editor (proyecto `nqhkfqoroisszycdxwuy`,
+"nenes-gym-app") el 2026-09-25. Verificada end-to-end contra la base real con un
+cliente desechable, 7 pruebas, todas OK:
+
+| Prueba | Resultado |
+|---|---|
+| Marcar un día | `used_days` 0 → 1, restantes 11 |
+| Marcarlo **otra vez** | sigue en 1 (idempotente) |
+| Marcar un segundo día | 2, restantes 10 |
+| Desmarcar el primero | vuelve a 1 |
+| Desmarcarlo **otra vez** | sigue en 1 (no resta de más) |
+| Día futuro | rechazado |
+| Día fuera del plan | rechazado |
+
+`used_days` final = filas de `attendance`: **cuadra**. Cliente de prueba eliminado.
+
+Tipos actualizados a mano (el CLI de Supabase pedía autenticación) y retirado el
 `@ts-expect-error` de `setAttendanceForDateAction`.
+
+⚠️ **Nota de entorno:** el conector de Supabase de la sesión apunta a otro proyecto
+(`pfbtigcwwuxyzqzuwevx`, TodoAquiApp), no al gimnasio. Las lecturas y pruebas se
+hacen con la `service_role` de `.env.local`, que sí es la correcta, pero **no
+permite crear funciones**: las migraciones las aplica el usuario a mano.
 
 ---
 

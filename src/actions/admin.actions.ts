@@ -290,7 +290,6 @@ export async function setAttendanceForDateAction(input: {
   if (input.date > todayInBogota()) return { error: "No se puede marcar un día futuro" }
 
   const admin = createAdminClient()
-  // @ts-expect-error — función de la migración 040; regenerar tipos tras aplicarla
   const { data, error } = await admin.rpc("set_attendance_for_date", {
     p_client_id: input.clientId,
     p_membership_id: input.membershipId,

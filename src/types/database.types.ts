@@ -1720,6 +1720,16 @@ export type Database = {
     }
     Functions: {
       accept_client_invitation: { Args: { p_token: string }; Returns: Json }
+      set_attendance_for_date: {
+        Args: {
+          p_attended: boolean
+          p_client_id: string
+          p_date: string
+          p_gym_id: string
+          p_membership_id: string
+        }
+        Returns: Json
+      }
       add_client_debt: {
         Args: {
           p_amount_cents: number
