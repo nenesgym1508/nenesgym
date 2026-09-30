@@ -582,7 +582,7 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
       {/* Modal editar metadatos */}
       {editMetaOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => setEditMetaOpen(false)}
         >
           <div
@@ -672,7 +672,7 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
       {/* Modal asignar a cliente */}
       {assignModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => setAssignModalOpen(false)}
         >
           <div
@@ -709,7 +709,7 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
       {/* Modal programar en clase */}
       {scheduleModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => setScheduleModalOpen(false)}
         >
           <div

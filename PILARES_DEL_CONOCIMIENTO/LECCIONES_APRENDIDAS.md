@@ -4,6 +4,44 @@ Este documento almacena la memoria de errores y gotchas resueltos en el proyecto
 
 ---
 
+## 📌 Lecciones Recientes (Sesión 25 - 2026-09-30)
+
+### 1. Una regla de negocio que vive en dos sitios hay que cambiarla en los dos
+La Sesión 23 cambió cómo se cuentan los días **en TypeScript** y dio el trabajo por
+terminado. Pero la misma regla estaba duplicada **en SQL** (`membership_effective_status`,
+`process_client_check_in`, `apply_membership_purchase`). Mientras las dos copias estaban
+igual de mal, coincidían y nadie lo notó; al arreglar solo una, se contradijeron y 17
+clientes quedaron bloqueados.
+
+Antes de dar por cerrado un cambio de regla, buscar **también en `supabase/migrations/`**
+cada función de la base que la implemente — y no solo por el nombre de la función de TS,
+sino por su equivalente SQL (`eligible_days_elapsed`). Si la regla existe en los dos
+lados, dejar escrito en ambos dónde está su gemela.
+
+### 2. Verificar contra la función real, no contra una réplica
+El diagnóstico se confirmó llamando a `membership_effective_status` **en la base** por
+RPC, fila por fila, y comparando con lo que muestra la app. Una réplica en JavaScript de
+"lo que creo que hace la función" habría repetido mi suposición en vez de comprobarla —
+que es exactamente como se coló el fallo en la Sesión 23.
+
+### 3. Cambiar qué significa un contador obliga a revisar a quien lo reinicia
+Al pasar de "días de calendario" a `total − used`, `used_days` se convirtió en dato de
+negocio. La renovación hacía `total = restantes + nuevos` sin tocar `used_days`, lo que
+con el modelo nuevo resta lo usado dos veces. Nadie lo reportó porque aún no había
+ocurrido una renovación anticipada: lo encontró la lectura de la función, no un usuario.
+
+Cuando cambia el significado de un campo, listar **todo lo que lo escribe**, no solo lo
+que lo lee.
+
+### 4. Mismo `z-index` que la barra de navegación = el modal pierde
+Un modal anclado abajo en móvil (`items-end`) con `z-50` empata con la barra inferior
+(`z-50`), y en un empate gana lo que se pinta después: la barra, que tapa justo el botón
+de acción. El proyecto ya tenía la convención (`z-[100]` en el editor de clases, en
+`exercise-form`), pero seis modales no la seguían. Buscar el patrón en todo el proyecto
+en vez de arreglar solo el que se reportó.
+
+---
+
 ## 📌 Lecciones Recientes (Sesión 24 - 2026-09-26)
 
 ### 1. Medir antes de optimizar: la base puede ser inocente

@@ -876,7 +876,7 @@ export function RoutineEditor({
       {/* Modal guardar en biblioteca */}
       {templateModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => setTemplateModalOpen(false)}
         >
           <div
@@ -917,7 +917,7 @@ export function RoutineEditor({
       {/* Modal asignar cliente */}
       {assignModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => setAssignModalOpen(false)}
         >
           <div
@@ -963,7 +963,7 @@ export function RoutineEditor({
       {/* Modal editar metadatos */}
       {editMetaOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => setEditMetaOpen(false)}
         >
           <div

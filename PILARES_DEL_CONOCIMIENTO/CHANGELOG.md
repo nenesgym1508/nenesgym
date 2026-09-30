@@ -4,6 +4,63 @@
 
 ---
 
+## 📌 Sesión 25 — 2026-09-30 (Clientes bloqueados al registrar entrada, y botón tapado en "Guardar en biblioteca")
+
+### 🚨 1. "No tienes días disponibles" con días en la app — regresión de la Sesión 23
+
+Reporte: un cliente con días restantes en su app tocó *Registrar* y recibió *"No tienes
+días disponibles"*. El usuario sospechó de la corrección anterior, con razón.
+
+**Causa.** La Sesión 23 pasó el cálculo a `total_days − used_days` **en la app**, pero
+tres funciones **de la base** siguieron restando días de calendario
+(`eligible_days_elapsed`). Antes coincidían porque ambas contaban igual de mal; desde
+entonces se contradecían. El registro del cliente va por `process_client_check_in`, que
+consulta `membership_effective_status` **en la base** → `'exhausted'` → bloqueo. El
+registro manual del admin no lo sufría porque valida en TypeScript.
+
+Medido contra producción llamando a la función real: **17 de 87 membresías activas**
+bloqueadas con días disponibles (ej.: 8, 13, 11 días en la app).
+
+**Segundo fallo, escondido y peor: la renovación.** `apply_membership_purchase` hacía
+`total_days = restantes + nuevos` sin tocar `used_days`. Con el modelo por asistencia lo
+usado se restaba **dos veces**: plan 16, usó 7, renueva 16 → debía quedar en 25 y
+quedaba en 18. Nadie lo había reportado aún; habría hecho perder días pagados en cada
+renovación anticipada.
+
+**Corrección — migración 042** (las tres con `CREATE OR REPLACE`, mismas firmas):
+
+- `membership_effective_status(m, p_today)` → espejo exacto de `computeEffectiveStatus`:
+  cancelada → sin días (`used_days >= total_days`) → activa (fecha) → gracia → vencida.
+- `process_client_check_in` → `remaining = total − (used + 1)`.
+- `apply_membership_purchase` → `total = used + restantes + nuevos` (**`used_days` no se
+  reinicia**: la 040 lo recuenta por filas de `attendance` de esa membresía). Los
+  sobrantes solo se arrastran si la membresía seguía **vigente**; en gracia se pierden
+  ("la vigencia manda").
+
+### 📱 2. "Guardar en biblioteca de rutinas": el botón no salía en el celular
+
+El modal se ancla abajo en móvil (`items-end`) con `z-50`, el mismo nivel que la barra
+de navegación inferior, que se pinta después y gana el empate: tapaba justo el botón
+*Guardar rutina*. El editor de clases usaba `z-[100]` y por eso su versión funcionaba.
+Mismo fallo en **6 modales** de `routine-editor.tsx` y `training-routine-editor.tsx`
+(guardar en biblioteca, asignar cliente, etc.). Todos a `z-[100]`.
+
+La copia en sí funcionaba: verificada contra producción con sesión real de admin sobre
+"Mantenimiento físico semana 1" → 5 días, **61 de 61 ejercicios**, sin errores. Copia de
+prueba borrada.
+
+### ✅ Verificación
+
+- `tsc` 0 · `build` OK.
+- Los 17 bloqueados detectados consultando la función real de la base, no simulándola.
+
+### ⚠️ Pendiente
+
+**Aplicar la migración 042 en el SQL Editor. Es urgente**: hasta entonces esos clientes
+no pueden registrar su entrada desde la app (el admin sí puede registrarlos a mano).
+
+---
+
 ## 📌 Sesión 24 — 2026-09-26 (Velocidad del panel: precarga de pestañas y fin de la cascada en Clientes)
 
 ### 🐛 El síntoma
