@@ -93,9 +93,19 @@ el mismo día. No hay datos que reparar; se cambia la regla antes de que ocurra.
 Se conservan las dos filas de `attendance`: el turno sigue registrado y el tope de 2 por
 día no cambia. Solo cambia cuánto se descuenta.
 
-### ⚠️ Pendiente
+### ✅ Migración 043 aplicada y verificada
 
-**Aplicar la migración 043** en el SQL Editor. Hasta entonces el registro del cliente sigue gastando un día por cada turno; el del admin ya aplica la regla nueva.
+Un primer intento de verificación falló: la base seguía con la regla de la 042 (probablemente se pegó el archivo equivocado). Tras reaplicarla, prueba end-to-end con un cliente desechable, todas OK:
+
+| Escenario | Resultado |
+|---|---|
+| Segundo turno del día | se registra, `used_days` no cambia, 11 restantes |
+| Último día gastado en el otro turno | puede volver ese mismo día |
+| Plan agotado sin haber entrado hoy | bloquea con `NO_DAYS` |
+| Primera entrada de un día nuevo | sí gasta un día (3 → 4) |
+| Corrector: 3 filas en 2 días distintos | `used_days` = 2 |
+
+Lección práctica: verificar **el comportamiento** tras aplicar una migración, no el mensaje *Success*. Pegar la migración anterior también devuelve *Success*.
 
 ---
 
