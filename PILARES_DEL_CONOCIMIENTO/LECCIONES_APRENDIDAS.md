@@ -40,6 +40,14 @@ de acción. El proyecto ya tenía la convención (`z-[100]` en el editor de clas
 `exercise-form`), pero seis modales no la seguían. Buscar el patrón en todo el proyecto
 en vez de arreglar solo el que se reportó.
 
+### 5. Cambiar lo que cuenta un contador obliga a revisar sus excepciones
+Al decidir que "mañana + tarde = un día", no bastaba con no incrementar en el segundo
+turno. El bloqueo por "sin días" también tenía que saberlo: sin la excepción, quien
+gastaba su último día en la mañana quedaba bloqueado en la tarde de un día que ya había
+pagado. Y la regla vivía en cuatro sitios (función SQL, acción del admin en TS y dos
+pantallas del cliente). Al cambiar una regla de conteo, preguntar también **quién
+bloquea usándola**, no solo quién la incrementa.
+
 ---
 
 ## 📌 Lecciones Recientes (Sesión 24 - 2026-09-26)

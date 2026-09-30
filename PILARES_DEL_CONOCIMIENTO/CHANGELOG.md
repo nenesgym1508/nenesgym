@@ -54,10 +54,48 @@ prueba borrada.
 - `tsc` 0 · `build` OK.
 - Los 17 bloqueados detectados consultando la función real de la base, no simulándola.
 
+### ✅ Migración 042 aplicada y verificada
+
+Aplicada por el usuario en el SQL Editor. Comprobada **llamando a la función real** en
+las 87 membresías no canceladas: **0 bloqueadas** con días disponibles y **0
+desacuerdos** entre `membership_effective_status` (base) y `computeEffectiveStatus`
+(app).
+
+Prueba end-to-end con un cliente desechable que se registra **con su propia sesión**:
+
+| Escenario | Resultado |
+|---|---|
+| Plan 16, empezó hace 25 días, usó 7 (el caso del reporte) | se registra, devuelve 8 restantes |
+| Renovación anticipada: le quedan 8, compra 16 | 24 restantes (total 32, usados 8) |
+| `used_days` tras renovar | sigue en 8, no se reinicia |
+| Plan agotado | bloquea con `NO_DAYS` |
+| Vencido con días de sobra | bloquea con `EXPIRED` |
+
+### 🔁 Dos entradas el mismo día cuentan UNA — migración 043
+
+Pregunta abierta de esta sesión, respondida por el dueño: *"sí, 2 entradas del mismo día
+deben contar 1 sola"*. El gimnasio permite turno mañana y tarde; con el modelo por
+asistencia, quien venía dos veces gastaba dos días de su plan en una sola fecha.
+
+Auditoría previa: 448 filas de asistencia en 81 membresías, **ninguna** con dos entradas
+el mismo día. No hay datos que reparar; se cambia la regla antes de que ocurra.
+
+- **043 `process_client_check_in`:** solo el **primer** ingreso del día incrementa
+  `used_days`. Y el `NO_DAYS` solo aplica si **aún no entró hoy**: quien gasta su último
+  día en la mañana puede volver en la tarde, porque ese día ya está pagado.
+- **043 `set_attendance_for_date`:** recuenta `count(DISTINCT check_in_date)` en vez de
+  filas. `used_days` pasa a significar *días distintos con asistencia*.
+- **`manualCheckInAction`** (TS): misma regla — consulta si ya entró hoy, solo entonces
+  llama a `increment_used_days`, y no bloquea el segundo turno por "sin días".
+- **Pantallas del cliente** (Entrada y dashboard): el botón sigue disponible si el plan
+  figura agotado pero ya entró hoy.
+
+Se conservan las dos filas de `attendance`: el turno sigue registrado y el tope de 2 por
+día no cambia. Solo cambia cuánto se descuenta.
+
 ### ⚠️ Pendiente
 
-**Aplicar la migración 042 en el SQL Editor. Es urgente**: hasta entonces esos clientes
-no pueden registrar su entrada desde la app (el admin sí puede registrarlos a mano).
+**Aplicar la migración 043** en el SQL Editor. Hasta entonces el registro del cliente sigue gastando un día por cada turno; el del admin ya aplica la regla nueva.
 
 ---
 

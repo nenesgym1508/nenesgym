@@ -182,7 +182,12 @@ export default async function ClienteDashboardPage() {
                 lastCheckInAt={lastCheckInAt}
                 paymentAlert={paymentAlert}
                 showRegisterCta={!bothSessionsDone}
-                hasActivePlan={effectiveStatus === "active" || effectiveStatus === "grace"}
+                // Si ya entró hoy, el segundo turno no gasta día (migración 043).
+                hasActivePlan={
+                  effectiveStatus === "active" ||
+                  effectiveStatus === "grace" ||
+                  (effectiveStatus === "exhausted" && alreadyToday)
+                }
               />
               <TodayRoutineCard hasRoutine={!!activeRoutine} />
             </div>

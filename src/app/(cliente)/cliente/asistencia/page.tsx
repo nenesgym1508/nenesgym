@@ -41,9 +41,14 @@ export default async function ClienteAsistenciaPage() {
       )
     : null
 
-  const hasActivePlan = effectiveStatus === "active" || effectiveStatus === "grace"
   const sessionsToday = recent.filter((r) => r.check_in_date === today).length
   const alreadyToday = sessionsToday > 0
+  // Si ya entró hoy, el día está pagado: el segundo turno no gasta otro, así
+  // que se permite aunque ese fuera su último día (migración 043).
+  const hasActivePlan =
+    effectiveStatus === "active" ||
+    effectiveStatus === "grace" ||
+    (effectiveStatus === "exhausted" && alreadyToday)
 
   return (
     <div>

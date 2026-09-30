@@ -333,6 +333,17 @@ export async function manualCheckInAction(clientId: string) {
   if (!membership) return { error: "El cliente no tiene una membresía activa" }
 
   const today = todayInBogota()
+
+  // ¿Ya entró hoy en el otro turno? Dos entradas el mismo día gastan UN solo
+  // día del plan (decisión del dueño, migración 043). Misma regla que
+  // `process_client_check_in` en la base: si se cambia aquí, cambiarla allí.
+  const { count: entradasHoy } = await admin
+    .from("attendance")
+    .select("id", { count: "exact", head: true })
+    .eq("client_id", clientId)
+    .eq("check_in_date", today)
+  const yaEntroHoy = (entradasHoy ?? 0) > 0
+
   // El plan se agota por asistencias, no por calendario: una falta no gasta
   // día. La vigencia (end_date) sigue cortando dentro de computeEffectiveStatus.
   const status = computeEffectiveStatus(
@@ -342,7 +353,9 @@ export async function manualCheckInAction(clientId: string) {
     membership.grace_days,
     membership.status as MembershipStatus
   )
-  if (status === "exhausted") return { error: "El cliente no tiene días disponibles" }
+  // El segundo turno no gasta día, así que no se bloquea por "sin días": si
+  // gastó su último día en la mañana, puede volver en la tarde.
+  if (status === "exhausted" && !yaEntroHoy) return { error: "El cliente no tiene días disponibles" }
   if (status === "expired") return { error: "La membresía del cliente está vencida" }
 
   // Franja del día: permite hasta 2 ingresos (mañana + tarde), 1 por franja.
@@ -372,11 +385,14 @@ export async function manualCheckInAction(clientId: string) {
   })
   if (insertError) return { error: insertError.message }
 
-  // @ts-expect-error — función creada en REGISTROS/migrations/increment_used_days.sql, regenerar tipos tras aplicarla
-  const { error: updateError } = await admin.rpc("increment_used_days", {
-    p_membership_id: membership.id,
-  })
-  if (updateError) return { error: updateError.message }
+  // Solo el primer ingreso del día gasta un día del plan.
+  if (!yaEntroHoy) {
+    // @ts-expect-error — función creada en REGISTROS/migrations/increment_used_days.sql, regenerar tipos tras aplicarla
+    const { error: updateError } = await admin.rpc("increment_used_days", {
+      p_membership_id: membership.id,
+    })
+    if (updateError) return { error: updateError.message }
+  }
 
   revalidatePath(ROUTES.ADMIN_ASISTENCIAS)
   revalidatePath(ROUTES.ADMIN_DASHBOARD)
