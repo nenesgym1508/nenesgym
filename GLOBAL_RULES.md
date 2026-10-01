@@ -65,7 +65,7 @@ Estas reglas aplican a todos los proyectos, workspaces, agentes y workflows sin 
 - rel="noopener noreferrer" en links externos con target="_blank".
 - Pensar en seguridad desde el MVP, no al final.
 - Headers de seguridad en producción (X-Content-Type-Options, X-Frame-Options).
-- *Prohibición de Git Push:* Queda estrictamente prohibido realizar cualquier comando de subida (git push) a repositorios remotos sin la autorización explícita por escrito del usuario. La palabra clave secreta para otorgar este permiso y habilitar el push en el chat es *"loki"*.
+- *Git Push:* Solo se hace `git push` a repositorios remotos cuando el usuario lo pide explícitamente en el chat. No se requiere ninguna palabra clave (la clave "loki" se retiró el 2026-09-30 a petición del usuario).
 
 9️⃣ DOCUMENTACIÓN Y MEMORIA HISTÓRICA (NUEVAS REGLAS v2.2)
 - *Documentación de Proyecto Obligatoria:* Todo proyecto debe contar con documentación de contexto técnica y comercial actualizada (README.md, PROJECT_CONTEXT.md y diagramas de flujo de datos). Un proyecto sin documentación legible se considera incompleto.

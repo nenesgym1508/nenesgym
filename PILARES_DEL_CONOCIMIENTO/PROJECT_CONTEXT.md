@@ -141,5 +141,5 @@ Este documento describe el estado actual de la arquitectura, base de datos, regl
 
 *   **Aislamiento:** Cada consulta a base de datos y Storage debe filtrar estrictamente por el `gym_id` del contexto del usuario (`current_gym_id()`).
 *   **Guard admin en páginas (Sesión 9):** las páginas del panel admin deben usar `requireAdminSession()` (`src/lib/auth/session.ts`), que reutiliza la sesión cacheada del layout. NO llamar `supabase.auth.getUser()` + `profiles.select("role")` directo en cada página (duplica llamadas de red por navegación).
-*   **Restricción de Subidas (Git):** Prohibido ejecutar `git push` a repositorios remotos sin la autorización explícita y por escrito del usuario utilizando la clave secreta *"loki"*.
+*   **Subidas (Git):** `git push` solo cuando el usuario lo pide explícitamente en el chat. Sin palabra clave: la clave *"loki"* se retiró el 2026-09-30 a petición del usuario.
 *   **Ejercicios (Lectura):** `select_exercises_authenticated` (reemplazada en la migración 008) ya no da lectura sin restricción — permite ver los ejercicios `visibility='gym'` del gimnasio, más los `visibility='client'` propios (por `owner_client_id`). Un cliente no puede leer los ejercicios privados de otro cliente.
