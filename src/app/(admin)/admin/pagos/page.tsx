@@ -10,16 +10,21 @@ import { MediosDePagoForm } from "@/components/admin/medios-de-pago-form"
 import { RefreshButton } from "@/components/ui/refresh-button"
 import { AdminPaymentsRealtime } from "@/components/admin/admin-payments-realtime"
 import { formatCOP } from "@/lib/utils"
-import { formatDate } from "@/lib/dates"
+import { formatDate, todayInBogota } from "@/lib/dates"
+import { FinancePanel } from "@/components/admin/finance-panel"
+import { normalizeMonth } from "@/services/finance.service"
 import { ROUTES } from "@/constants/routes"
 import type { PaymentMethod } from "@/types/payment"
 
 export const dynamic = "force-dynamic"
 
+const TABS = ["por-aprobar", "historial", "medios-de-pago", "finanzas"] as const
+type Tab = (typeof TABS)[number]
+
 export default async function AdminPagosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; mes?: string }>
 }) {
   const session = await getAuthenticatedSession()
   if (!session) redirect(ROUTES.LOGIN)
@@ -29,7 +34,8 @@ export default async function AdminPagosPage({
   const [pending, allPayments, gym] = await Promise.all([getPendingPayments(), getAllPayments(), getGymSettings()])
 
   const sp = await searchParams
-  const activeTab = sp.tab === "historial" ? "historial" : sp.tab === "medios-de-pago" ? "medios-de-pago" : "por-aprobar"
+  const activeTab: Tab = (TABS as readonly string[]).includes(sp.tab ?? "") ? (sp.tab as Tab) : "por-aprobar"
+  const today = todayInBogota()
 
   return (
     <div className="md:max-w-6xl md:mx-auto">
@@ -44,19 +50,21 @@ export default async function AdminPagosPage({
       </header>
 
       <div className="px-6 pb-24 md:px-10 space-y-6">
-        {/* Selector de pestañas */}
-        <div className="flex bg-[#0a0a0a] border border-[#222] rounded-xl p-1">
+        {/* Selector de pestañas. Con cuatro, en un celular de ~400 px el texto
+            baja a xs y la barra puede desplazarse en horizontal si no cabe. */}
+        <div className="flex overflow-x-auto bg-[#0a0a0a] border border-[#222] rounded-xl p-1 gap-0.5">
           {[
             { key: "por-aprobar", label: "Por aprobar" },
             { key: "historial", label: "Historial" },
             { key: "medios-de-pago", label: "Medios de pago" },
+            { key: "finanzas", label: "Finanzas" },
           ].map((t) => (
             <Link
               key={t.key}
               href={t.key === "por-aprobar" ? ROUTES.ADMIN_PAGOS : `${ROUTES.ADMIN_PAGOS}?tab=${t.key}`}
               replace
               scroll={false}
-              className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors cursor-pointer text-center ${
+              className={`flex-1 shrink-0 whitespace-nowrap px-2 text-xs sm:text-sm font-medium py-2 rounded-lg transition-colors cursor-pointer text-center ${
                 activeTab === t.key
                   ? "text-red-500 border-b-2 border-red-500 bg-zinc-900/60"
                   : "text-zinc-400 hover:text-white"
@@ -163,6 +171,10 @@ export default async function AdminPagosPage({
               )}
             </Card>
           </div>
+        )}
+
+        {activeTab === "finanzas" && (
+          <FinancePanel month={normalizeMonth(sp.mes, today)} today={today} />
         )}
 
         {activeTab === "medios-de-pago" && (

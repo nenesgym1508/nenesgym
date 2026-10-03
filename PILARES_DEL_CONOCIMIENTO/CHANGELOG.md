@@ -4,6 +4,64 @@
 
 ---
 
+## 📌 Sesión 26 — 2026-10-02 (Pagos → Finanzas: panel del mes con otros ingresos y gastos)
+
+### 🎯 Qué se pidió
+
+*"Dentro de la sección de pagos me gustaría añadir una nueva que se llame Finanzas, y
+haya un panel básico que le diga cuánto ha recibido en el mes, que le permita añadir
+otros ingresos y egresos, que sea sencillo y práctico."*
+
+### 🧱 Qué se hizo
+
+Cuarta pestaña en `/admin/pagos?tab=finanzas&mes=yyyy-MM`:
+
+- **Balance del mes** arriba y en grande: ganancia en verde o pérdida en rojo, con
+  "entró X · salió Y" debajo.
+- **Planes cobrados**, con el número de pagos y el **desglose por medio de pago**
+  (efectivo, Nequi, transferencia…), para cuadrar la caja contra lo que llegó al banco.
+- **Otros ingresos** y **gastos** anotados a mano.
+- **Formulario corto**: ingreso/gasto, concepto con sugerencias de un toque (arriendo,
+  servicios, pago entrenador, venta de bebidas…), monto en pesos y fecha.
+- **Lista de lo anotado** en el mes, con borrar (con confirmación).
+- Navegación entre meses; no deja avanzar más allá del mes actual.
+
+Archivos: migración **044** `finance_entries`; `src/services/finance.service.ts`;
+`src/actions/finance.actions.ts`; `src/components/admin/finance-panel.tsx`,
+`finance-entry-form.tsx`, `finance-entry-delete.tsx`; pestaña nueva en
+`src/app/(admin)/admin/pagos/page.tsx`; tipo de la tabla en `database.types.ts`.
+
+### 🧭 Decisiones
+
+- **Los cobros de planes NO se copian a `finance_entries`**: se leen de `payments`. Una
+  sola fuente por cada peso; duplicarlos dejaría Finanzas descuadrado ante cualquier
+  rechazo o saldo pendiente que se salde en Pagos.
+- **El mes se corta en hora de Colombia** (`-05:00`). Comprobado que importa: cortando en
+  UTC, septiembre daba 95 pagos / $7.356.000; en hora de Colombia son **92 / $7.172.000**.
+  La diferencia son pagos de la noche del último día del mes.
+- **El botón de guardar nunca se deshabilita por datos incompletos**: dice qué falta
+  (lección de la Sesión 21).
+- **RLS con policy de admin**, a diferencia de `client_plan_debts`: aquí el acceso
+  directo es el camino normal. `REVOKE … FROM PUBLIC, anon` (lección de la 038).
+- Monto tope de 1.000 millones de pesos en la base: un error de dedo con ceros de más no
+  debe poder volver absurdo el balance.
+- Pestañas de Pagos: con cuatro, en ~400 px el texto baja a `xs` y la barra puede
+  desplazarse en horizontal.
+
+### ✅ Verificación
+
+- `tsc` 0 · `eslint` 0 en los archivos nuevos · `build` OK.
+- Totales del mes con **sesión real de admin** (RLS) contra una referencia independiente
+  con service-role: septiembre 92 pagos / $7.172.000 y octubre 4 / $332.000, **coinciden**.
+- Sin la 044, PostgREST responde *"Could not find the table … in the schema cache"*; el
+  panel lo detecta, muestra lo cobrado por planes y avisa en vez de romperse.
+
+### ⚠️ Pendiente
+
+**Aplicar la migración 044** en el SQL Editor.
+
+---
+
 ## 📌 Sesión 25 — 2026-09-30 (Clientes bloqueados al registrar entrada, y botón tapado en "Guardar en biblioteca")
 
 ### 🚨 1. "No tienes días disponibles" con días en la app — regresión de la Sesión 23

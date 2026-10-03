@@ -934,6 +934,39 @@ export type Database = {
           },
         ]
       }
+      finance_entries: {
+        Row: {
+          amount_cents: number
+          concept: string
+          created_at: string
+          created_by: string | null
+          gym_id: string
+          id: string
+          kind: string
+          occurred_on: string
+        }
+        Insert: {
+          amount_cents: number
+          concept: string
+          created_at?: string
+          created_by?: string | null
+          gym_id: string
+          id?: string
+          kind: string
+          occurred_on?: string
+        }
+        Update: {
+          amount_cents?: number
+          concept?: string
+          created_at?: string
+          created_by?: string | null
+          gym_id?: string
+          id?: string
+          kind?: string
+          occurred_on?: string
+        }
+        Relationships: []
+      }
       gym_config: {
         Row: {
           key: string
