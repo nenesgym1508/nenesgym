@@ -50,7 +50,7 @@ export async function getRoutineWithDays(id: string): Promise<ClientRoutineWithD
     supabase
       .from("client_routine_days")
       .select(
-        "*, blocks:client_routine_blocks(*, exercises:client_routine_exercises(*, exercise:exercises(id, name, muscle_group, exercise_type, equipment, secondary_muscle_groups, media_url, instructions)))"
+        "*, blocks:client_routine_blocks(*, exercises:client_routine_exercises(*, exercise:exercises(id, name, muscle_group, exercise_type, equipment, secondary_muscle_groups, media_url, instructions, source)))"
       )
       .eq("routine_id", id)
       .order("position")

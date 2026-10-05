@@ -44,6 +44,8 @@ export interface BlockExercise {
     secondary_muscle_groups: MuscleGroup[] | null
     media_url: string | null
     instructions: string | null
+    /** "lista" = creado desde «Añadir a la lista» (ver FUENTE_LISTA). */
+    source?: string | null
   }
 }
 

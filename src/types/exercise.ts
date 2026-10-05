@@ -65,6 +65,24 @@ export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, string> = {
   full_body: "Full Body",
 }
 
+/**
+ * `source` de un ejercicio «de lista» (Sesión 27): el que se crea desde «Añadir a la
+ * lista» del editor de rutinas, con solo un nombre y, si acaso, una descripción.
+ *
+ * Es un ejercicio de verdad —las filas de rutina exigen `exercise_id`, y así copiar,
+ * asignar y duplicar rutinas siguen funcionando sin tocar nada—, pero NO es parte de
+ * la biblioteca: toda consulta que la lista tiene que dejarlo fuera
+ * (`SIN_LOS_DE_LISTA`).
+ */
+export const FUENTE_LISTA = "lista"
+
+/** Filtro de PostgREST para dejar fuera los de lista (un `source` nulo también pasa). */
+export const SIN_LOS_DE_LISTA = `source.is.null,source.neq.${FUENTE_LISTA}`
+
+export function esDeLista(ejercicio: { source?: string | null } | null | undefined): boolean {
+  return ejercicio?.source === FUENTE_LISTA
+}
+
 /** Un grupo muscular del catálogo del gimnasio (tabla `muscle_groups`). */
 export interface GrupoMuscular {
   key: string

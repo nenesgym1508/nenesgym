@@ -63,6 +63,7 @@ export interface TrainingRoutineExercise {
     secondary_muscle_groups: MuscleGroup[] | null
     media_url: string | null
     instructions: string | null
+    source?: string | null
   }
 }
 
@@ -262,7 +263,7 @@ export async function getTrainingRoutineWithDays(id: string): Promise<(TrainingR
     supabase
       .from("training_routine_days")
       .select(
-        "*, blocks:training_routine_blocks(*, exercises:training_routine_exercises(*, exercise:exercises(id, name, muscle_group, exercise_type, equipment, secondary_muscle_groups, media_url, instructions)))"
+        "*, blocks:training_routine_blocks(*, exercises:training_routine_exercises(*, exercise:exercises(id, name, muscle_group, exercise_type, equipment, secondary_muscle_groups, media_url, instructions, source)))"
       )
       .eq("routine_id", id)
       .order("position")

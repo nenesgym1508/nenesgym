@@ -4,7 +4,7 @@ import { useCallback, useState, useTransition, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   ChevronLeft, ChevronUp, ChevronDown, Plus, Trash2, BookmarkPlus,
-  Copy, Eye, Loader2, X, Check, Info, CalendarPlus, Layers, Dumbbell,
+  Copy, Eye, Loader2, X, Check, Info, CalendarPlus, Layers, Dumbbell, ListChecks, ListPlus,
   Archive, Send, Pencil,
 } from "lucide-react"
 import Link from "next/link"
@@ -25,12 +25,14 @@ import {
 import { saveClassAsTrainingRoutineAction } from "@/actions/training-routines.actions"
 import { ExerciseForm } from "@/components/admin/exercise-form"
 import { AvisoDeGuardado, NO_SE_GUARDO } from "@/components/ui/aviso-de-guardado"
+import { AgregarALaLista, type DatosDeLaLista } from "@/components/admin/agregar-a-la-lista"
+import { crearEjercicioDeListaAction } from "@/actions/exercises.actions"
 import { useGruposMusculares } from "@/lib/grupos-musculares"
 import { ActionMenu } from "@/components/ui/action-menu"
 import { ExerciseImageThumbnail } from "@/components/ui/exercise-image-thumbnail"
 import { ROUTES } from "@/constants/routes"
 import { addDays } from "@/lib/dates"
-import { ExerciseImageDetail } from "@/components/ui/exercise-image-detail"
+import { ExerciseImageCompleta } from "@/components/ui/exercise-image-completa"
 import {
   CLASS_OBJECTIVE_LABELS,
   type DailyClassWithBlocks,
@@ -39,6 +41,7 @@ import {
 } from "@/types/class"
 import {
   etiquetaDeGrupo,
+  esDeLista,
   EQUIPMENT_LABELS,
   EXERCISE_TYPE_LABELS,
   USAGE_TAG_LABELS,
@@ -200,7 +203,7 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
 
   // ── Ejercicios ────────────────────────────────────────────────────────────
 
-  type Overrides = { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null }
+  type Overrides = { sets: number | null; reps: number | null; rest_seconds: number | null; duration_seconds?: number | null }
 
   /**
    * Añade uno o varios ejercicios con UNA sola acción y con sus ids REALES (ver
@@ -227,10 +230,10 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
         block_id: blockId,
         exercise_id: exercise.id,
         position: startPos + i,
-        sets: overrides?.sets ?? 3,
-        reps: overrides?.reps ?? 12,
+        sets: overrides ? overrides.sets : 3,
+        reps: overrides ? overrides.reps : 12,
         duration_seconds: overrides?.duration_seconds ?? null,
-        rest_seconds: overrides?.rest_seconds ?? 60,
+        rest_seconds: overrides ? overrides.rest_seconds : 60,
         suggested_weight: null,
         notes: null,
         exercise: {
@@ -255,6 +258,24 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
 
   const handleAddExercise = (blockId: string, exercise: Exercise, overrides?: Overrides) =>
     handleAddExercises(blockId, [{ exercise, overrides }])
+
+  // «Añadir a la lista»: crea el ejercicio rápido (sin foto, fuera de la biblioteca)
+  // y lo añade al bloque con la misma acción de siempre.
+  const [listaBlockId, setListaBlockId] = useState<string | null>(null)
+  const agregarALaLista = async (blockId: string, datos: DatosDeLaLista): Promise<string | null> => {
+    const res = await crearEjercicioDeListaAction({ nombre: datos.nombre, descripcion: datos.descripcion }).catch(() => ({
+      error: "No se pudo añadir a la lista. Revisa tu conexión e intenta otra vez.",
+    }))
+    if ("error" in res) return res.error
+    handleAddExercises(blockId, [
+      {
+        exercise: res.exercise,
+        overrides: { sets: datos.sets, reps: datos.reps, rest_seconds: null, duration_seconds: datos.duration_seconds },
+      },
+    ])
+    setListaBlockId(null)
+    return null
+  }
 
 
   const handleRemoveExercise = (exId: string, blockId: string) => {
@@ -489,6 +510,7 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
                 onMoveDown={() => handleMoveBlock(block.id, "down")}
                 onDelete={() => handleDeleteBlock(block.id)}
                 onOpenPicker={() => setPickerBlockId(block.id)}
+                onOpenListItem={() => setListaBlockId(block.id)}
                 onMoveExercise={(exId, dir) => handleMoveExercise(exId, block.id, dir)}
                 onRemoveExercise={(exId) => handleRemoveExercise(exId, block.id)}
                 onUpdateExercise={(exId, field, val) => handleUpdateExerciseField(exId, block.id, field, val)}
@@ -529,6 +551,13 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
           onClose={() => setPickerBlockId(null)}
           onCreateNew={openCreateExercise}
           existingIds={cls.blocks.find((b) => b.id === pickerBlockId)?.exercises.map((e) => e.exercise_id) ?? []}
+        />
+      )}
+
+      {listaBlockId && (
+        <AgregarALaLista
+          onAgregar={(datos) => agregarALaLista(listaBlockId, datos)}
+          onClose={() => setListaBlockId(null)}
         />
       )}
 
@@ -633,6 +662,12 @@ export interface BlockCardProps {
   onMoveExercise?: (exId: string, dir: "up" | "down") => void
   onRemoveExercise?: (exId: string) => void
   onUpdateExercise?: (exId: string, field: string, val: string | number | null) => void
+  /** Abre «Añadir a la lista» (ejercicio rápido sin foto). Sin esto, solo sale «Añadir ejercicio». */
+  onOpenListItem?: () => void
+  /** Los ejercicios que el socio ya tachó hoy (ids de fila). */
+  hechos?: Set<string>
+  /** Tachar o destachar un ejercicio. Solo en las vistas del socio. */
+  onToggleHecho?: (exId: string) => void
 }
 
 export function BlockCard({
@@ -640,7 +675,7 @@ export function BlockCard({
   editingTitle = false, editTitleValue = "",
   readOnly = false,
   onStartEditTitle, onChangeTitleValue, onSaveTitle, onCancelTitle,
-  onMoveUp, onMoveDown, onDelete, onOpenPicker,
+  onMoveUp, onMoveDown, onDelete, onOpenPicker, onOpenListItem, hechos, onToggleHecho,
   onMoveExercise, onRemoveExercise, onUpdateExercise,
 }: BlockCardProps) {
   return (
@@ -715,19 +750,33 @@ export function BlockCard({
             onMoveDown={() => onMoveExercise?.(ex.id, "down")}
             onRemove={() => onRemoveExercise?.(ex.id)}
             onUpdate={(field, val) => onUpdateExercise?.(ex.id, field, val)}
+            hecho={hechos?.has(ex.id) ?? false}
+            onToggleHecho={onToggleHecho ? () => onToggleHecho(ex.id) : undefined}
           />
         ))}
       </div>
 
-      {/* Add exercise */}
+      {/* Añadir: de la biblioteca (o uno completo nuevo) y, si el editor lo ofrece, uno
+          rápido «a la lista», con solo el nombre (Sesión 27). */}
       {!readOnly && (
-        <button
-          onClick={onOpenPicker}
-          className="flex w-full items-center justify-center gap-1.5 border-t border-white/5 py-2.5 text-xs text-zinc-500 hover:text-red-400 hover:bg-zinc-800/40 transition-colors"
-        >
-          <Plus className="size-3.5" />
-          Añadir ejercicio
-        </button>
+        <div className="flex border-t border-white/5">
+          <button
+            onClick={onOpenPicker}
+            className="flex flex-1 items-center justify-center gap-1.5 py-3 text-xs font-medium text-zinc-400 hover:text-red-400 hover:bg-zinc-800/40 transition-colors"
+          >
+            <Plus className="size-3.5" />
+            Añadir ejercicio
+          </button>
+          {onOpenListItem && (
+            <button
+              onClick={onOpenListItem}
+              className="flex flex-1 items-center justify-center gap-1.5 border-l border-white/5 py-3 text-xs font-medium text-zinc-400 hover:text-red-400 hover:bg-zinc-800/40 transition-colors"
+            >
+              <ListPlus className="size-3.5" />
+              Añadir a la lista
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
@@ -745,13 +794,16 @@ export interface ExerciseRowProps {
   onMoveDown?: () => void
   onRemove?: () => void
   onUpdate?: (field: string, val: string | number | null) => void
+  hecho?: boolean
+  onToggleHecho?: () => void
 }
 
-export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, onMoveUp, onMoveDown, onRemove, onUpdate }: ExerciseRowProps) {
+export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, onMoveUp, onMoveDown, onRemove, onUpdate, hecho = false, onToggleHecho }: ExerciseRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
 
   const grupos = useGruposMusculares()
+  const deLista = esDeLista(ex.exercise)
   const muscleLabel = ex.exercise.muscle_group ? etiquetaDeGrupo(ex.exercise.muscle_group, grupos) : null
   const formatDuracion = (segundos: number) =>
     segundos >= 60 && segundos % 60 === 0 ? `${segundos / 60} min` : `${segundos}s`
@@ -772,17 +824,48 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, 
   if (ex.suggested_weight) summaryParts.push(ex.suggested_weight)
 
   return (
-    <div className="px-3 py-2.5">
+    <div className={`px-3 py-2.5 transition-opacity ${hecho ? "opacity-50" : ""}`}>
       <div className="flex items-center gap-2.5">
-        <ExerciseImageThumbnail src={ex.exercise.media_url} alt={ex.exercise.name} />
+        {/* Tachar lo ya hecho (vistas del socio). Un círculo aparte y grande, para que
+            tocar el nombre siga abriendo la foto y las instrucciones. */}
+        {onToggleHecho && (
+          <button
+            type="button"
+            onClick={onToggleHecho}
+            aria-pressed={hecho}
+            aria-label={hecho ? `Desmarcar ${ex.exercise.name}` : `Marcar ${ex.exercise.name} como hecho`}
+            className="-m-1 flex size-10 shrink-0 items-center justify-center"
+          >
+            <span
+              className={`flex size-6 items-center justify-center rounded-full border-2 transition-colors ${
+                hecho ? "border-emerald-500 bg-emerald-500 text-zinc-950" : "border-zinc-600"
+              }`}
+            >
+              {hecho && <Check className="size-4" strokeWidth={3} />}
+            </span>
+          </button>
+        )}
+
+        {deLista ? (
+          // Sin foto: un ícono de lista, para que no parezca un ejercicio con la foto rota.
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-white/10 bg-zinc-800 text-zinc-500">
+            <ListChecks className="size-4" />
+          </div>
+        ) : (
+          <ExerciseImageThumbnail src={ex.exercise.media_url} alt={ex.exercise.name} />
+        )}
 
         <button
           onClick={() => setShowDetails(true)}
           className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
         >
-          <p className="text-sm font-medium text-zinc-200 leading-snug truncate">{ex.exercise.name}</p>
-          <p className="text-[11px] text-zinc-500 truncate">
-            {[muscleLabel, equipmentLabel].filter(Boolean).join(" · ") || "Sin datos"}
+          <p className={`text-sm font-medium leading-snug truncate ${hecho ? "text-zinc-400 line-through decoration-2" : "text-zinc-200"}`}>
+            {ex.exercise.name}
+          </p>
+          <p className={`text-[11px] text-zinc-500 ${deLista ? "line-clamp-2" : "truncate"}`}>
+            {deLista
+              ? ex.exercise.instructions || "Añadido a la lista"
+              : [muscleLabel, equipmentLabel].filter(Boolean).join(" · ") || "Sin datos"}
           </p>
           {summaryParts.length > 0 && (
             <p className="text-[11px] text-zinc-400 truncate">{summaryParts.join(" · ")}</p>
@@ -1348,13 +1431,8 @@ function ExerciseDetailSheet({
 
         <div className="flex-1 overflow-y-auto">
           {exercise.media_url ? (
-            <div className="relative w-full h-56 bg-zinc-800">
-              <ExerciseImageDetail
-                src={exercise.media_url}
-                alt=""
-                sizes="(max-width: 768px) 100vw, 512px"
-              />
-            </div>
+            // Entera y con su forma: en una caja fija con object-cover salía recortada.
+            <ExerciseImageCompleta src={exercise.media_url} alt={exercise.name} />
           ) : (
             <div className="flex h-40 w-full items-center justify-center bg-zinc-800 text-zinc-600">
               <Dumbbell className="size-12" />

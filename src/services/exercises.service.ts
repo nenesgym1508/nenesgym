@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { GYM_ID } from "@/constants/plans"
+import { SIN_LOS_DE_LISTA } from "@/types/exercise"
 import type { MuscleGroup, Equipment, ExerciseType, Exercise, UsageTag } from "@/types/exercise"
 
 // Re-export types and labels so server components can import from here
@@ -28,6 +29,8 @@ export async function getExercises(filters?: {
     .from("exercises")
     .select(EXERCISE_COLUMNS)
     .eq("gym_id", GYM_ID)
+    // Los «de lista» son de una rutina, no de la biblioteca (ver FUENTE_LISTA).
+    .or(SIN_LOS_DE_LISTA)
     .order("name")
 
   if (!filters?.includeInactive) query = query.eq("is_active", true)
@@ -61,6 +64,7 @@ export async function getMyCreatedExercises(clientId: string): Promise<Exercise[
     .eq("owner_client_id", clientId)
     .eq("visibility", "client")
     .eq("is_active", true)
+    .or(SIN_LOS_DE_LISTA)
     .order("name")
   return (data ?? []) as Exercise[]
 }
@@ -74,7 +78,7 @@ export async function getMyCreatedExercises(clientId: string): Promise<Exercise[
 export async function getMyLibrary(clientId: string): Promise<Exercise[]> {
   const supabase = await createClient()
   const [{ data: gymExercises }, { data: libRows }] = await Promise.all([
-    (supabase as any).from("exercises").select(EXERCISE_COLUMNS).eq("gym_id", GYM_ID).eq("visibility", "gym").order("name"),
+    (supabase as any).from("exercises").select(EXERCISE_COLUMNS).eq("gym_id", GYM_ID).eq("visibility", "gym").or(SIN_LOS_DE_LISTA).order("name"),
     (supabase as any).from("client_exercise_library").select("exercise_id, is_active").eq("client_id", clientId),
   ])
   const overrides = new Map<string, boolean>(
@@ -88,9 +92,9 @@ export async function getMyLibrary(clientId: string): Promise<Exercise[]> {
 export async function getMyExerciseIds(clientId: string): Promise<string[]> {
   const supabase = await createClient()
   const [{ data: gymRows }, { data: libRows }, { data: ownRows }] = await Promise.all([
-    (supabase as any).from("exercises").select("id, is_active").eq("gym_id", GYM_ID).eq("visibility", "gym"),
+    (supabase as any).from("exercises").select("id, is_active").eq("gym_id", GYM_ID).eq("visibility", "gym").or(SIN_LOS_DE_LISTA),
     (supabase as any).from("client_exercise_library").select("exercise_id, is_active").eq("client_id", clientId),
-    (supabase as any).from("exercises").select("id").eq("owner_client_id", clientId).eq("is_active", true),
+    (supabase as any).from("exercises").select("id").eq("owner_client_id", clientId).eq("is_active", true).or(SIN_LOS_DE_LISTA),
   ])
   const overrides = new Map<string, boolean>(
     (libRows ?? []).map((r: { exercise_id: string; is_active: boolean }) => [r.exercise_id, r.is_active])

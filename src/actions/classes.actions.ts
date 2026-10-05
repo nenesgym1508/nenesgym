@@ -210,7 +210,8 @@ export async function addExerciseToBlockAction(
 export async function addExercisesToBlockAction(
   blockId: string,
   classId: string,
-  items: { exerciseId: string; overrides?: { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null } }[],
+  // null en un override = vacío a propósito (los de lista pueden no llevar series ni reps).
+  items: { exerciseId: string; overrides?: { sets: number | null; reps: number | null; rest_seconds: number | null; duration_seconds?: number | null } }[],
   startPosition: number
 ): Promise<{ error: string } | { success: true; ids: string[] }> {
   if (items.length === 0) return { success: true, ids: [] }
@@ -224,10 +225,10 @@ export async function addExercisesToBlockAction(
         block_id: blockId,
         exercise_id: item.exerciseId,
         position: startPosition + i,
-        sets: item.overrides?.sets ?? 3,
-        reps: item.overrides?.reps ?? 12,
+        sets: item.overrides ? item.overrides.sets : 3,
+        reps: item.overrides ? item.overrides.reps : 12,
         duration_seconds: item.overrides?.duration_seconds ?? null,
-        rest_seconds: item.overrides?.rest_seconds ?? 60,
+        rest_seconds: item.overrides ? item.overrides.rest_seconds : 60,
       }))
     )
     .select("id, position")

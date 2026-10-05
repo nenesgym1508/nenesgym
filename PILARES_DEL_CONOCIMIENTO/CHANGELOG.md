@@ -4,6 +4,77 @@
 
 ---
 
+## 📌 Sesión 28 — 2026-10-05 (Imagen completa, «Añadir a la lista» y tachar lo hecho)
+
+### 🎯 Qué se pidió
+
+1. *"Cuando guardo una imagen como «completa» me sale recortada siempre. Quiero que se
+   muestre en pantalla completa, justo como se guarda."* (Foto: «Hit tabata» con los pasos
+   cortados en el detalle.)
+2. *"Donde dice «Añadir ejercicio», dos botones: uno para crear un ejercicio completo, y
+   otro «añadir en lista» que solo pida un nombre y, opcional, reps, tiempo y series. Sin
+   foto, con descripción opcional."*
+3. *"Que los clientes puedan darle clic a un ejercicio y se tache, para llevar nota de lo
+   que ya hicieron."*
+
+### 🧱 Qué se hizo
+
+- **Imagen completa** (`components/ui/exercise-image-completa.tsx`):
+  - Antes los dos detalles (el del editor y el del socio) metían la foto en una caja de 224
+    px con `object-cover`, así que salía recortada. La variante `-detail` de R2 ya la guarda
+    entera (`scaleDown`).
+  - Ahora se muestra con su proporción real, `h-auto` y tope de 70vh. Tocarla la abre a
+    pantalla completa (fondo negro, `object-contain`, se cierra con la X, tocándola o con
+    Escape).
+  - `ExerciseImageDetail` se borró: quedó sin uso.
+- **«Añadir a la lista»** (`components/admin/agregar-a-la-lista.tsx`):
+  - Segundo botón en cada bloque de los tres editores (rutinas de clientes, biblioteca y
+    clases, y también en las rutinas propias del socio).
+  - Pide el nombre (obligatorio) y, opcionales, series, reps, tiempo en minutos y una
+    descripción.
+  - Crea un ejercicio con `source = "lista"` (`crearEjercicioDeListaAction`) y lo añade con
+    la acción por lote de la Sesión 27.
+  - En la fila sale con un ícono de lista en vez de foto, y con su descripción debajo del
+    nombre.
+- **Tachar lo hecho** (`lib/hechos-del-dia.ts`):
+  - Un círculo a la izquierda de cada ejercicio en la rutina asignada y en las propias del
+    socio. Tocarlo tacha el nombre, pone ✓ verde y aclara la fila.
+  - Tocar el nombre sigue abriendo la foto y las instrucciones.
+
+### 🧭 Decisiones
+
+- **Los ejercicios de lista son ejercicios de verdad, marcados con `source = "lista"`**, y
+  no filas sin `exercise_id`. `client_routine_exercises.exercise_id` es NOT NULL, y así
+  copiar, asignar, duplicar y guardar rutinas como plantilla siguen funcionando sin
+  migración.
+  - Quedan fuera de toda lista de la biblioteca (`SIN_LOS_DE_LISTA`) en `getExercises`,
+    `getMyCreatedExercises`, `getMyLibrary`, `getMyExerciseIds` y el generador de rutinas.
+  - Tampoco gastan el cupo de 15 ejercicios propios del socio.
+  - El admin los crea del gimnasio; el socio, suyos.
+- **Lo tachado vive en el teléfono** (localStorage, clave con rutina y día de Colombia) y
+  no en la base.
+  - Es una ayuda para no perderse a mitad de la rutina, no un registro: responde al
+    instante, funciona sin señal y mañana amanece sin tachar.
+  - Lo que sí queda en la base sigue siendo «Hecho hoy».
+  - Si algún día el entrenador necesita ver qué tachó cada socio, hace falta una tabla.
+- **Un círculo aparte y no tocar toda la fila**: tocar el nombre ya abre la foto y las
+  instrucciones, que es lo que el socio necesita para hacer bien el ejercicio.
+
+### ✅ Verificación
+
+- `tsc` 0 · `build` OK.
+- `eslint`: los mismos 106 problemas de antes. El único nuevo era un `as any` en la acción
+  nueva y se quitó.
+- Páginas temporales de prueba (borradas), a 390 px:
+  - Una foto vertical de 3000×4000 se muestra a 356×475: la misma proporción, sin recorte.
+    Abre y cierra la pantalla completa.
+  - Los dos botones del bloque.
+  - «Añadir a la lista» con «Saltar lazo», 3 series y 2 min sale como «Saltar lazo · A
+    ritmo suave, sin parar · 3 series · 2 min».
+  - El círculo tacha (`line-through`), y lo tachado sigue así al recargar.
+
+---
+
 ## 📌 Sesión 27 — 2026-10-05 (Editor de rutinas: números que se dejan borrar, añadir ejercicios rápido y grupos musculares propios)
 
 ### 🎯 Qué se pidió

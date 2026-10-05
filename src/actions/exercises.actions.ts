@@ -8,6 +8,8 @@ import { uploadToR2, deleteFromR2, r2KeyFromPublicUrl } from "@/lib/r2"
 import { variantKeysFor } from "@/lib/images"
 import { generateAndUploadVariants } from "@/lib/image-variants.server"
 import type { MuscleGroup, Equipment, ExerciseType, Exercise, UsageTag } from "@/services/exercises.service"
+import { FUENTE_LISTA, SIN_LOS_DE_LISTA } from "@/types/exercise"
+import { getAuthenticatedSession } from "@/lib/auth/session"
 
 interface ExerciseData {
   name: string
@@ -324,6 +326,8 @@ export async function createMyExerciseAction(
     .eq("owner_client_id", ctx.clientId)
     .eq("visibility", "client")
     .eq("is_active", true)
+    // Los «de lista» no son ejercicios de su biblioteca: no gastan cupo.
+    .or(SIN_LOS_DE_LISTA)
 
   if ((count ?? 0) >= 15) {
     return {
@@ -455,4 +459,56 @@ export async function removeFromMyLibraryAction(exerciseId: string) {
   if (error) return { error: error.message }
   revalidatePath(ROUTES.CLIENTE_RUTINAS_EJERCICIOS)
   return { success: true }
+}
+
+/**
+ * Crea un ejercicio «de lista» (Sesión 27): solo nombre y, si acaso, una
+ * descripción. Es lo que hay detrás de «Añadir a la lista» en el editor de rutinas,
+ * para anotar algo rápido —«Saltar lazo», «Caminadora suave»— sin armar un
+ * ejercicio completo con foto, grupo y equipo.
+ *
+ * Queda fuera de la biblioteca (`source = "lista"`, ver FUENTE_LISTA): no aparece
+ * en el selector, ni en «Mis ejercicios», ni gasta el cupo de 15 del socio.
+ *
+ * El admin lo crea del gimnasio; un socio, en su propia rutina, lo crea suyo
+ * (`visibility = "client"`), igual que sus ejercicios personales. Sin revalidar
+ * nada: no está en ninguna lista, y la fila de la rutina la revalida su acción.
+ */
+export async function crearEjercicioDeListaAction(datos: {
+  nombre: string
+  descripcion?: string | null
+}): Promise<{ error: string } | { exercise: Exercise }> {
+  const nombre = datos.nombre.trim().replace(/\s+/g, " ").slice(0, 80)
+  if (!nombre) return { error: "Escribe el nombre del ejercicio." }
+  const descripcion = datos.descripcion?.trim().slice(0, 500) || null
+
+  const session = await getAuthenticatedSession()
+  if (!session) return { error: "Tu sesión se cerró. Vuelve a entrar e intenta otra vez." }
+  const supabase = await createClient()
+
+  let propietario: { visibility: "gym" | "client"; owner_client_id: string | null; created_by_role: "admin" | "client" }
+  if (session.profile?.role === "admin") {
+    propietario = { visibility: "gym", owner_client_id: null, created_by_role: "admin" }
+  } else {
+    const ctx = await getClientIdForCurrentUser(supabase)
+    if ("error" in ctx) return ctx
+    propietario = { visibility: "client", owner_client_id: ctx.clientId, created_by_role: "client" }
+  }
+
+  const { data: row, error } = await supabase
+    .from("exercises")
+    .insert({
+      gym_id: GYM_ID,
+      name: nombre,
+      instructions: descripcion,
+      usage_tags: [],
+      source: FUENTE_LISTA,
+      is_active: true,
+      ...propietario,
+    })
+    .select("*")
+    .single()
+
+  if (error) return { error: "No se pudo añadir a la lista. Revisa tu conexión e intenta otra vez." }
+  return { exercise: row as Exercise }
 }

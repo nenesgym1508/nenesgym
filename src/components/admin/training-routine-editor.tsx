@@ -40,8 +40,10 @@ import {
 } from "@/types/routine"
 import type { Exercise } from "@/types/exercise"
 import { AvisoDeGuardado, NO_SE_GUARDO } from "@/components/ui/aviso-de-guardado"
+import { AgregarALaLista, type DatosDeLaLista } from "@/components/admin/agregar-a-la-lista"
+import { crearEjercicioDeListaAction } from "@/actions/exercises.actions"
 
-type Overrides = { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null }
+type Overrides = { sets: number | null; reps: number | null; rest_seconds: number | null; duration_seconds?: number | null }
 import type { TrainingRoutine, TrainingRoutineDay } from "@/services/training-routines.service"
 
 interface TrainingRoutineEditorProps {
@@ -327,10 +329,10 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
         block_id: blockId,
         exercise_id: it.exercise.id,
         position: startPos + i,
-        sets: it.overrides?.sets ?? 3,
-        reps: it.overrides?.reps ?? 10,
+        sets: it.overrides ? it.overrides.sets : 3,
+        reps: it.overrides ? it.overrides.reps : 10,
         duration_seconds: it.overrides?.duration_seconds ?? null,
-        rest_seconds: it.overrides?.rest_seconds ?? 60,
+        rest_seconds: it.overrides ? it.overrides.rest_seconds : 60,
         suggested_weight: null,
         notes: null,
         exercise: { ...it.exercise }
@@ -348,6 +350,24 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
 
   const handleAddExercise = (blockId: string, ex: Exercise, overrides?: Overrides) =>
     handleAddExercises(blockId, [{ exercise: ex, overrides }])
+
+  // «Añadir a la lista»: crea el ejercicio rápido (sin foto, fuera de la biblioteca)
+  // y lo añade al bloque con la misma acción de siempre.
+  const [listaBlockId, setListaBlockId] = useState<string | null>(null)
+  const agregarALaLista = async (blockId: string, datos: DatosDeLaLista): Promise<string | null> => {
+    const res = await crearEjercicioDeListaAction({ nombre: datos.nombre, descripcion: datos.descripcion }).catch(() => ({
+      error: "No se pudo añadir a la lista. Revisa tu conexión e intenta otra vez.",
+    }))
+    if ("error" in res) return res.error
+    handleAddExercises(blockId, [
+      {
+        exercise: res.exercise,
+        overrides: { sets: datos.sets, reps: datos.reps, rest_seconds: null, duration_seconds: datos.duration_seconds },
+      },
+    ])
+    setListaBlockId(null)
+    return null
+  }
 
 
   const handleRemoveExercise = (exId: string, blockId: string) => {
@@ -541,6 +561,7 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
                     onMoveUp={() => handleMoveBlock(block.id, "up")}
                     onMoveDown={() => handleMoveBlock(block.id, "down")}
                     onOpenPicker={() => setPickerBlockId(block.id)}
+                    onOpenListItem={() => setListaBlockId(block.id)}
                     onDelete={() => handleDeleteBlock(block.id)}
                     editingTitle={blockTitleEdit === block.id}
                     editTitleValue={blockTitleValue}
@@ -576,6 +597,13 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
           <div className="text-center py-10 text-xs text-zinc-500">Añade un día para comenzar a estructurar la rutina.</div>
         )}
       </div>
+
+      {listaBlockId && (
+        <AgregarALaLista
+          onAgregar={(datos) => agregarALaLista(listaBlockId, datos)}
+          onClose={() => setListaBlockId(null)}
+        />
+      )}
 
       <AvisoDeGuardado mensaje={aviso} onCerrar={cerrarAviso} />
 

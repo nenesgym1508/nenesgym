@@ -1,5 +1,6 @@
 "use client"
 
+import { useHechosDelDia } from "@/lib/hechos-del-dia"
 import { useState } from "react"
 import { ChevronLeft } from "lucide-react"
 import Link from "next/link"
@@ -21,6 +22,8 @@ export function RoutineDetailView({ routine, isDoneToday, todayStr }: RoutineDet
   )
 
   const activeDay = routine.days.find((d) => d.id === activeDayId)
+  // Tachar lo ya hecho hoy: queda en este teléfono y se reinicia mañana.
+  const { hechos, alternar } = useHechosDelDia(routine.id, todayStr)
 
   return (
     <div className="min-h-screen bg-zinc-950 pb-32 text-zinc-100">
@@ -80,6 +83,10 @@ export function RoutineDetailView({ routine, isDoneToday, todayStr }: RoutineDet
           onDeleteDay={() => {}}
         />
 
+        {activeDay && activeDay.blocks.some((b) => b.exercises.length > 0) && (
+          <p className="text-[11px] text-zinc-500">Toca el círculo de cada ejercicio cuando lo termines.</p>
+        )}
+
         {/* Bloques del día activo */}
         {activeDay ? (
           <div className="space-y-4">
@@ -97,6 +104,8 @@ export function RoutineDetailView({ routine, isDoneToday, todayStr }: RoutineDet
                     isLast={false}
                     isPending={false}
                     readOnly={true}
+                    hechos={hechos}
+                    onToggleHecho={alternar}
                   />
                 ))}
               </div>

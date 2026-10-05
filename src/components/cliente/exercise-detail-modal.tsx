@@ -1,7 +1,7 @@
 "use client"
 
 import { Dumbbell, X } from "lucide-react"
-import { ExerciseImageDetail } from "@/components/ui/exercise-image-detail"
+import { ExerciseImageCompleta } from "@/components/ui/exercise-image-completa"
 import { useGruposMusculares } from "@/lib/grupos-musculares"
 import {
   etiquetaDeGrupo,
@@ -52,16 +52,17 @@ export function ExerciseDetailModal({ exercise, onClose }: ExerciseDetailModalPr
             // en horizontal: es lo natural en móvil, que es donde el cliente
             // consulta su rutina, y no necesita flechas ni puntitos.
             <div
-              className={`flex w-full snap-x snap-mandatory bg-zinc-800 ${
+              className={`flex w-full items-center snap-x snap-mandatory bg-zinc-800 ${
                 galeria.length > 1 ? "overflow-x-auto" : ""
               }`}
             >
               {galeria.map((url, i) => (
-                <div key={`${url}-${i}`} className="relative h-56 w-full shrink-0 snap-center">
-                  <ExerciseImageDetail
+                // Cada foto entera y con su forma (antes, caja fija de 224 px con
+                // object-cover: salían recortadas). Tocarla la abre en pantalla completa.
+                <div key={`${url}-${i}`} className="relative w-full shrink-0 snap-center">
+                  <ExerciseImageCompleta
                     src={url}
                     alt={galeria.length > 1 ? `${exercise.name} (${i + 1} de ${galeria.length})` : exercise.name}
-                    sizes="(max-width: 768px) 100vw, 512px"
                   />
                   {galeria.length > 1 && (
                     <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white">

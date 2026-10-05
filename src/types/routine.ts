@@ -49,6 +49,8 @@ export interface RoutineExercise {
     id: string; name: string; muscle_group: string | null; exercise_type: string | null
     equipment: Equipment | null; secondary_muscle_groups: MuscleGroup[] | null
     media_url: string | null; instructions: string | null
+    /** "lista" = creado desde «Añadir a la lista» (ver FUENTE_LISTA). */
+    source?: string | null
   }
 }
 export interface RoutineBlock { id: string; routine_day_id: string; title: string; position: number; exercises: RoutineExercise[] }

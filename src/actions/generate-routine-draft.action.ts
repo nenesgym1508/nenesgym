@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { updateTag } from "next/cache"
 import { GYM_ID } from "@/constants/plans"
 import { addDays } from "@/lib/dates"
-import { etiquetaDeGrupo } from "@/types/exercise"
+import { etiquetaDeGrupo, SIN_LOS_DE_LISTA } from "@/types/exercise"
 import { getMuscleGroups } from "@/services/muscle-groups.service"
 import type { ClassObjective, ClassLevel } from "@/services/classes.service"
 import type { MuscleGroup } from "@/services/exercises.service"
@@ -66,6 +66,8 @@ export async function generateTrainingRoutineDraftAction(params: {
     .select("id, name, muscle_group, exercise_type")
     .eq("gym_id", GYM_ID)
     .eq("is_active", true)
+    // Un ejercicio «de lista» es de una rutina puntual: no sirve para armar otras.
+    .or(SIN_LOS_DE_LISTA)
 
   if (!allExercises?.length) {
     return { success: false, error: "No hay ejercicios en la biblioteca. Agrega ejercicios primero." }
