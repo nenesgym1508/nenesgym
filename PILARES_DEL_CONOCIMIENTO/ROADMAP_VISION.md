@@ -70,6 +70,13 @@ El admin ya puede registrar a un socio que llega sin celular (`createClientActio
 
 ---
 
+### Fase 7: Lo que dejaron abierto las Sesiones 27 y 28 (2026-10-05)
+*   **Aplicar en producción las migraciones `044_finance_entries.sql` y `045_muscle_groups.sql`.** El código ya está desplegado y aguanta sin ellas: Finanzas muestra un aviso, los grupos musculares usan los 11 de siempre y «+ Agregar otro grupo…» dice que falta activar la función. Se aplican pegándolas en el SQL Editor de Supabase. Después: regenerar `database.types.ts` (hoy `muscle_groups` está escrito a mano).
+*   **Tachado con historial (solo si el dueño lo pide).** Lo tachado vive en el teléfono del socio y se borra al día siguiente, a propósito (ver `src/lib/hechos-del-dia.ts`). Si algún día se quiere saber QUÉ ejercicios hizo cada socio, haría falta una tabla `routine_exercise_done` (socio, ejercicio, fecha); «Hecho hoy» ya registra la rutina completa.
+*   **Ejercicios de lista huérfanos.** Al quitar de la rutina un ejercicio creado con «Añadir a la lista», su fila en `exercises` (`source = 'lista'`) se queda. No sale en ninguna biblioteca, pero ocupa espacio; si crecen, un borrado de las filas `lista` sin referencias lo resuelve.
+
+---
+
 ## 💡 Ideas a futuro (no priorizadas)
 
 ### Modo offline como panel aparte (propuesto Sesión 16 — 2026-08-03)
