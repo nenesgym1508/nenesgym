@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useCallback, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import {
   ChevronLeft, Plus, X, Check, Loader2, Dumbbell,
@@ -28,7 +28,7 @@ import {
   deleteRoutineBlockAction,
   moveRoutineBlockAction,
   moveRoutineDayAction,
-  addExerciseToRoutineBlockAction,
+  addExercisesToRoutineBlockAction,
   removeExerciseFromRoutineBlockAction,
   moveRoutineBlockExerciseAction,
   updateRoutineBlockExerciseAction
@@ -49,6 +49,9 @@ import {
   type Weekday
 } from "@/types/routine"
 import type { Exercise } from "@/types/exercise"
+import { AvisoDeGuardado, NO_SE_GUARDO } from "@/components/ui/aviso-de-guardado"
+
+type Overrides = { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null }
 
 interface RoutineEditorProps {
   initialRoutine: ClientRoutineWithDays
@@ -77,6 +80,9 @@ export function RoutineEditor({
     initialRoutine.days[0]?.id ?? null
   )
   const [isPending, startTransition] = useTransition()
+  // Lo que no se pudo guardar, para decirlo en vez de quedarse callado.
+  const [aviso, setAviso] = useState<string | null>(null)
+  const cerrarAviso = useCallback(() => setAviso(null), [])
 
   // Modales
   const [pickerBlockId, setPickerBlockId] = useState<string | null>(null)
@@ -244,47 +250,58 @@ export function RoutineEditor({
   }
 
   // Handlers para ejercicios
-  const handleAddExercise = (
-    blockId: string,
-    ex: Exercise,
-    overrides?: { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null }
-  ) => {
+  /**
+   * Añade uno o varios ejercicios con UNA sola acción (ver
+   * addExercisesToRoutineBlockAction): de a uno, cada ejercicio era un viaje
+   * completo al servidor con la página entera de vuelta, y en fila.
+   */
+  const handleAddExercises = (blockId: string, items: { exercise: Exercise; overrides?: Overrides }[]) => {
+    if (items.length === 0) return
+    const dayId = activeDayId
+    const block = activeDay?.blocks.find((b) => b.id === blockId)
+    const startPos = block?.exercises.length ?? 0
     startTransition(async () => {
-      const block = activeDay?.blocks.find((b) => b.id === blockId)
-      const pos = block?.exercises.length ?? 0
-      const res = await addExerciseToRoutineBlockAction(blockId, routine.id, ex.id, pos, overrides)
-      if (res.success && res.id) {
-        const newEx = {
-          id: res.id,
-          block_id: blockId,
-          exercise_id: ex.id,
-          position: pos,
-          sets: overrides?.sets ?? 3,
-          reps: overrides?.reps ?? 10,
-          // Estaba fijo a null: el tiempo se guardaba en la base pero no
-          // aparecía en pantalla hasta recargar.
-          duration_seconds: overrides?.duration_seconds ?? null,
-          rest_seconds: overrides?.rest_seconds ?? null,
-          suggested_weight: null,
-          notes: null,
-          exercise: ex
-        }
-        setRoutine((prev) => ({
-          ...prev,
-          days: prev.days.map((d) =>
-            d.id === activeDayId
-              ? {
-                  ...d,
-                  blocks: d.blocks.map((b) =>
-                    b.id === blockId ? { ...b, exercises: [...b.exercises, newEx] } : b
-                  )
-                }
-              : d
-          )
-        }))
+      const res = await addExercisesToRoutineBlockAction(
+        blockId,
+        routine.id,
+        items.map((it) => ({ exerciseId: it.exercise.id, overrides: it.overrides })),
+        startPos
+      ).catch(() => ({ error: NO_SE_GUARDO }))
+      if ("error" in res) {
+        setAviso(items.length === 1 ? "No se pudo añadir el ejercicio. Revisa tu conexión e intenta otra vez." : "No se pudieron añadir los ejercicios. Revisa tu conexión e intenta otra vez.")
+        return
       }
+      const nuevos = items.map((it, i) => ({
+        id: res.ids[i]!,
+        block_id: blockId,
+        exercise_id: it.exercise.id,
+        position: startPos + i,
+        sets: it.overrides?.sets ?? 3,
+        reps: it.overrides?.reps ?? 10,
+        duration_seconds: it.overrides?.duration_seconds ?? null,
+        rest_seconds: it.overrides?.rest_seconds ?? null,
+        suggested_weight: null,
+        notes: null,
+        exercise: it.exercise
+      }))
+      setRoutine((prev) => ({
+        ...prev,
+        days: prev.days.map((d) =>
+          d.id === dayId
+            ? {
+                ...d,
+                blocks: d.blocks.map((b) =>
+                  b.id === blockId ? { ...b, exercises: [...b.exercises, ...nuevos] } : b
+                )
+              }
+            : d
+        )
+      }))
     })
   }
+
+  const handleAddExercise = (blockId: string, ex: Exercise, overrides?: Overrides) =>
+    handleAddExercises(blockId, [{ exercise: ex, overrides }])
 
   const handleRemoveExercise = (exId: string, blockId: string) => {
     startTransition(async () => {
@@ -332,39 +349,50 @@ export function RoutineEditor({
     })
   }
 
+  /**
+   * El cambio se ve AL INSTANTE y se guarda por detrás. Antes se pintaba solo
+   * cuando el servidor respondía, y como la casilla mandaba cada tecla, al borrar
+   * el número volvía mientras esperaba. Si no se guarda, vuelve al valor anterior
+   * y lo dice.
+   */
   const handleUpdateExerciseField = (
     exId: string,
     blockId: string,
     field: string,
     val: string | number | null
   ) => {
-    startTransition(async () => {
-      const updates = { [field]: val }
-      const res = await updateRoutineBlockExerciseAction(exId, routine.id, updates)
-      if (!res.error) {
-        setRoutine((prev) => ({
-          ...prev,
-          days: prev.days.map((d) =>
-            d.id === activeDayId
-              ? {
-                  ...d,
-                  blocks: d.blocks.map((b) =>
-                    b.id === blockId
-                      ? {
-                          ...b,
-                          exercises: b.exercises.map((ex) =>
-                            ex.id === exId ? { ...ex, ...updates } : ex
-                          )
-                        }
-                      : b
-                  )
-                }
-              : d
-          )
-        }))
-      }
-    })
+    const dayId = activeDayId
+    const anterior = routine.days
+      .find((d) => d.id === dayId)
+      ?.blocks.find((b) => b.id === blockId)
+      ?.exercises.find((ex) => ex.id === exId) as Record<string, unknown> | undefined
+    const aplicar = (valor: unknown) =>
+      setRoutine((prev) => ({
+        ...prev,
+        days: prev.days.map((d) =>
+          d.id === dayId
+            ? {
+                ...d,
+                blocks: d.blocks.map((b) =>
+                  b.id === blockId
+                    ? { ...b, exercises: b.exercises.map((ex) => (ex.id === exId ? { ...ex, [field]: valor } : ex)) }
+                    : b
+                )
+              }
+            : d
+        )
+      }))
+    aplicar(val)
+    updateRoutineBlockExerciseAction(exId, routine.id, { [field]: val })
+      .catch(() => ({ error: NO_SE_GUARDO }))
+      .then((res) => {
+        if (res && "error" in res && res.error) {
+          aplicar(anterior?.[field] ?? null)
+          setAviso(NO_SE_GUARDO)
+        }
+      })
   }
+
 
   const handleSaveAsTemplate = () => {
     if (!templateName.trim()) return
@@ -802,6 +830,8 @@ export function RoutineEditor({
         )}
       </div>
 
+      <AvisoDeGuardado mensaje={aviso} onCerrar={cerrarAviso} />
+
       {/* Barra de Listo / confirmación de asignación */}
       {variant === "admin" && (
         <div className="fixed bottom-16 left-0 right-0 border-t border-white/8 bg-zinc-950/90 backdrop-blur-md p-4">
@@ -842,7 +872,7 @@ export function RoutineEditor({
             activeDay?.blocks.find((b) => b.id === pickerBlockId)?.exercises.map((e) => e.exercise_id) ?? []
           }
           onSelectMultiple={(selections) => {
-            selections.forEach(sel => handleAddExercise(pickerBlockId, sel.exercise, sel.overrides))
+            handleAddExercises(pickerBlockId, selections)
             setPickerBlockId(null)
           }}
           onClose={() => setPickerBlockId(null)}

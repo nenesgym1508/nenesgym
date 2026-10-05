@@ -1,7 +1,13 @@
-export type MuscleGroup =
-  | "pecho" | "espalda" | "pierna" | "hombro"
-  | "biceps" | "triceps" | "abdomen" | "gluteo" | "cardio"
-  | "movilidad" | "full_body"
+/**
+ * La clave de un grupo muscular («pecho», «antebrazo»…).
+ *
+ * Era una lista fija de 11; desde la migración 045 el gimnasio agrega los suyos
+ * (tabla `muscle_groups`), así que es cualquier texto. Los 11 de siempre siguen en
+ * `MUSCLE_GROUP_LABELS` como respaldo, y el nombre que se muestra sale siempre de
+ * `etiquetaDeGrupo`, nunca de indexar el mapa directo: un grupo nuevo no está en
+ * él, y `MUSCLE_GROUP_LABELS[clave].toLowerCase()` tumbaba la agenda de clases.
+ */
+export type MuscleGroup = string
 
 export type Equipment =
   | "peso_corporal" | "mancuernas" | "barra" | "maquina"
@@ -57,6 +63,46 @@ export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, string> = {
   cardio: "Cardio",
   movilidad: "Movilidad",
   full_body: "Full Body",
+}
+
+/** Un grupo muscular del catálogo del gimnasio (tabla `muscle_groups`). */
+export interface GrupoMuscular {
+  key: string
+  label: string
+}
+
+/** Los 11 de siempre, en su orden: lo que hay antes de la 045 o si la tabla no responde. */
+export const GRUPOS_MUSCULARES_DE_SIEMPRE: GrupoMuscular[] = Object.entries(MUSCLE_GROUP_LABELS).map(
+  ([key, label]) => ({ key, label })
+)
+
+/**
+ * El nombre visible de un grupo: el del catálogo si se tiene, el de los 11 de
+ * siempre si es uno de ellos, y si no la clave legible («antebrazo» → «Antebrazo»).
+ * Nunca vacío ni undefined: una etiqueta que falta no puede tumbar una pantalla.
+ */
+export function etiquetaDeGrupo(clave: string | null | undefined, grupos?: GrupoMuscular[]): string {
+  if (!clave) return ""
+  const delCatalogo = grupos?.find((g) => g.key === clave)?.label
+  if (delCatalogo) return delCatalogo
+  if (MUSCLE_GROUP_LABELS[clave]) return MUSCLE_GROUP_LABELS[clave]
+  const legible = clave.replace(/_/g, " ")
+  return legible.charAt(0).toUpperCase() + legible.slice(1)
+}
+
+/**
+ * La clave de un grupo nuevo a partir de su nombre: «Cuádriceps» → «cuadriceps»,
+ * «Tren superior» → «tren_superior». Es lo que guardan los ejercicios, y no
+ * cambia aunque después se renombre la etiqueta.
+ */
+export function claveDeGrupo(nombre: string): string {
+  return nombre
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40)
 }
 
 export const EQUIPMENT_LABELS: Record<Equipment, string> = {

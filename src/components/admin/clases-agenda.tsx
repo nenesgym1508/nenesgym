@@ -4,7 +4,7 @@ import { getDailyClasses, getWeekMuscleBalance, CLASS_OBJECTIVE_LABELS } from "@
 import { Card } from "@/components/ui/card"
 import { ROUTES, adminClaseDetalle } from "@/constants/routes"
 import { todayInBogota, addDays } from "@/lib/dates"
-import { MUSCLE_GROUP_LABELS } from "@/types/exercise"
+import { etiquetaDeGrupo } from "@/types/exercise"
 
 function getMondayDate(today: string): string {
   const d = new Date(today + "T12:00:00")
@@ -137,7 +137,7 @@ export async function ClasesAgenda() {
               <div className="space-y-1">
                 {balanceRows.slice(0, 4).map((r) => (
                   <div key={r.group} className="flex items-center justify-between text-xs">
-                    <span className="text-zinc-400">{MUSCLE_GROUP_LABELS[r.group]}</span>
+                    <span className="text-zinc-400">{etiquetaDeGrupo(r.group)}</span>
                     <span
                       className={`text-[11px] font-semibold ${
                         r.level === "Alto" ? "text-green-400" : r.level === "Medio" ? "text-yellow-400" : "text-zinc-500"
@@ -151,12 +151,12 @@ export async function ClasesAgenda() {
               <div className="mt-2 border-t border-white/5 pt-2 space-y-0.5">
                 {topGroup && (
                   <p className="text-[11px] text-zinc-500">
-                    Esta semana has trabajado bastante {MUSCLE_GROUP_LABELS[topGroup.group].toLowerCase()}.
+                    Esta semana has trabajado bastante {etiquetaDeGrupo(topGroup.group).toLowerCase()}.
                   </p>
                 )}
                 {lowGroup && lowGroup.group !== topGroup?.group && (
                   <p className="text-[11px] text-zinc-500">
-                    {MUSCLE_GROUP_LABELS[lowGroup.group]} aparece poco esta semana.
+                    {etiquetaDeGrupo(lowGroup.group)} aparece poco esta semana.
                   </p>
                 )}
               </div>

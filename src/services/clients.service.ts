@@ -46,6 +46,28 @@ export async function getAllClients() {
   return data ?? []
 }
 
+/**
+ * Solo id y nombre de cada cliente, para «Asignar a cliente» en los editores de
+ * rutinas.
+ *
+ * Esos editores recibían `getAllClients()` entero (documento, correo, teléfono,
+ * fecha), y como cada guardado vuelve a armar la página, esos datos viajaban al
+ * teléfono otra vez con cada cambio. Para elegir a quién asignar basta el nombre.
+ */
+export async function getClientNamesForAssign(): Promise<{ id: string; profile: { full_name: string | null } | null }[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("clients")
+    .select("id, profile:profiles!inner(full_name, role)")
+    .eq("profile.role", "client")
+    .order("created_at", { ascending: false })
+    .limit(500)
+  return ((data ?? []) as { id: string; profile: { full_name: string | null } | null }[]).map((c) => ({
+    id: c.id,
+    profile: c.profile ? { full_name: c.profile.full_name } : null,
+  }))
+}
+
 // Conteo de clientes sin descargar las filas. Usa la RPC admin_search_clients
 // (total_count vía count() over()); si no existiera, cae a un count head:true.
 export async function countClients(): Promise<number> {

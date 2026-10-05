@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useCallback, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { ChevronLeft, Plus, Trash2, Check, Loader2, X, UserPlus, CalendarPlus, Copy, Archive, ArchiveRestore, Globe, Lock } from "lucide-react"
 import Link from "next/link"
@@ -18,7 +18,7 @@ import {
   updateTrainingRoutineBlockTitleAction,
   deleteTrainingRoutineBlockAction,
   moveTrainingRoutineBlockAction,
-  addExerciseToTrainingRoutineBlockAction,
+  addExercisesToTrainingRoutineBlockAction,
   removeExerciseFromTrainingRoutineBlockAction,
   moveTrainingRoutineBlockExerciseAction,
   updateTrainingRoutineBlockExerciseAction
@@ -39,6 +39,9 @@ import {
   type Weekday
 } from "@/types/routine"
 import type { Exercise } from "@/types/exercise"
+import { AvisoDeGuardado, NO_SE_GUARDO } from "@/components/ui/aviso-de-guardado"
+
+type Overrides = { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null }
 import type { TrainingRoutine, TrainingRoutineDay } from "@/services/training-routines.service"
 
 interface TrainingRoutineEditorProps {
@@ -55,6 +58,9 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
   const [routine, setRoutine] = useState(initialRoutine)
   const [activeDayId, setActiveDayId] = useState<string | null>(initialRoutine.days[0]?.id ?? null)
   const [isPending, startTransition] = useTransition()
+  // Lo que no se pudo guardar, para decirlo en vez de quedarse callado.
+  const [aviso, setAviso] = useState<string | null>(null)
+  const cerrarAviso = useCallback(() => setAviso(null), [])
 
   const [pickerBlockId, setPickerBlockId] = useState<string | null>(null)
   const [createForBlockId, setCreateForBlockId] = useState<string | null>(null)
@@ -295,38 +301,54 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
     })
   }
 
-  const handleAddExercise = (blockId: string, ex: Exercise, overrides?: { sets: number; reps: number; rest_seconds: number }) => {
+  /**
+   * Añade uno o varios ejercicios con UNA sola acción (ver
+   * addExercisesToTrainingRoutineBlockAction). El tiempo (duration_seconds) se
+   * pinta con lo elegido: estaba fijo a null y no aparecía hasta recargar.
+   */
+  const handleAddExercises = (blockId: string, items: { exercise: Exercise; overrides?: Overrides }[]) => {
+    if (items.length === 0) return
+    const dayId = activeDayId
+    const block = activeDay?.blocks.find((b) => b.id === blockId)
+    const startPos = block?.exercises.length ?? 0
     startTransition(async () => {
-      const block = activeDay?.blocks.find((b) => b.id === blockId)
-      const pos = block?.exercises.length ?? 0
-      const res = await addExerciseToTrainingRoutineBlockAction(blockId, routine.id, ex.id, pos, overrides)
-      if (res.success && res.id) {
-        const newEx = {
-          id: res.id,
-          block_id: blockId,
-          exercise_id: ex.id,
-          position: pos,
-          sets: overrides?.sets ?? 3,
-          reps: overrides?.reps ?? 10,
-          duration_seconds: null,
-          rest_seconds: overrides?.rest_seconds ?? 60,
-          suggested_weight: null,
-          notes: null,
-          exercise: { ...ex }
-        }
-        setRoutine((prev) => ({
-          ...prev,
-          days: prev.days.map((d) =>
-            d.id === activeDayId
-              ? { ...d, blocks: d.blocks.map((b) => (b.id === blockId ? { ...b, exercises: [...b.exercises, newEx] } : b)) }
-              : d
-          )
-        }))
-      } else if (res.error) {
-        alert(res.error)
+      const res = await addExercisesToTrainingRoutineBlockAction(
+        blockId,
+        routine.id,
+        items.map((it) => ({ exerciseId: it.exercise.id, overrides: it.overrides })),
+        startPos
+      ).catch(() => ({ error: NO_SE_GUARDO }))
+      if ("error" in res) {
+        setAviso(items.length === 1 ? "No se pudo añadir el ejercicio. Revisa tu conexión e intenta otra vez." : "No se pudieron añadir los ejercicios. Revisa tu conexión e intenta otra vez.")
+        return
       }
+      const nuevos = items.map((it, i) => ({
+        id: res.ids[i]!,
+        block_id: blockId,
+        exercise_id: it.exercise.id,
+        position: startPos + i,
+        sets: it.overrides?.sets ?? 3,
+        reps: it.overrides?.reps ?? 10,
+        duration_seconds: it.overrides?.duration_seconds ?? null,
+        rest_seconds: it.overrides?.rest_seconds ?? 60,
+        suggested_weight: null,
+        notes: null,
+        exercise: { ...it.exercise }
+      }))
+      setRoutine((prev) => ({
+        ...prev,
+        days: prev.days.map((d) =>
+          d.id === dayId
+            ? { ...d, blocks: d.blocks.map((b) => (b.id === blockId ? { ...b, exercises: [...b.exercises, ...nuevos] } : b)) }
+            : d
+        )
+      }))
     })
   }
+
+  const handleAddExercise = (blockId: string, ex: Exercise, overrides?: Overrides) =>
+    handleAddExercises(blockId, [{ exercise: ex, overrides }])
+
 
   const handleRemoveExercise = (exId: string, blockId: string) => {
     startTransition(async () => {
@@ -367,29 +389,38 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
     })
   }
 
+  /** Al instante y por detrás; si no se guarda, vuelve al anterior y lo dice. */
   const handleUpdateExerciseField = (exId: string, blockId: string, field: string, val: string | number | null) => {
-    startTransition(async () => {
-      const updates = { [field]: val }
-      const res = await updateTrainingRoutineBlockExerciseAction(exId, routine.id, updates)
-      if (!res.error) {
-        setRoutine((prev) => ({
-          ...prev,
-          days: prev.days.map((d) =>
-            d.id === activeDayId
-              ? {
-                  ...d,
-                  blocks: d.blocks.map((b) =>
-                    b.id === blockId
-                      ? { ...b, exercises: b.exercises.map((ex) => (ex.id === exId ? { ...ex, ...updates } : ex)) }
-                      : b
-                  )
-                }
-              : d
-          )
-        }))
-      }
-    })
+    const dayId = activeDayId
+    const anterior = routine.days
+      .find((d) => d.id === dayId)
+      ?.blocks.find((b) => b.id === blockId)
+      ?.exercises.find((ex) => ex.id === exId) as Record<string, unknown> | undefined
+    const aplicar = (valor: unknown) =>
+      setRoutine((prev) => ({
+        ...prev,
+        days: prev.days.map((d) =>
+          d.id === dayId
+            ? {
+                ...d,
+                blocks: d.blocks.map((b) =>
+                  b.id === blockId ? { ...b, exercises: b.exercises.map((ex) => (ex.id === exId ? { ...ex, [field]: valor } : ex)) } : b
+                )
+              }
+            : d
+        )
+      }))
+    aplicar(val)
+    updateTrainingRoutineBlockExerciseAction(exId, routine.id, { [field]: val })
+      .catch(() => ({ error: NO_SE_GUARDO }))
+      .then((res) => {
+        if (res && "error" in res && res.error) {
+          aplicar(anterior?.[field] ?? null)
+          setAviso(NO_SE_GUARDO)
+        }
+      })
   }
+
 
   const menuActions = [
     {
@@ -546,6 +577,8 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
         )}
       </div>
 
+      <AvisoDeGuardado mensaje={aviso} onCerrar={cerrarAviso} />
+
       <div className="fixed bottom-16 left-0 right-0 border-t border-white/8 bg-zinc-950/90 backdrop-blur-md p-4">
         <button
           onClick={() => router.push(ROUTES.ADMIN_ENTRENAMIENTO)}
@@ -561,7 +594,7 @@ export function TrainingRoutineEditor({ initialRoutine, exercises, clients, sche
           exercises={exercises}
           existingIds={activeDay?.blocks.find((b) => b.id === pickerBlockId)?.exercises.map((e) => e.exercise_id) ?? []}
           onSelectMultiple={(selections) => {
-            selections.forEach(sel => handleAddExercise(pickerBlockId, sel.exercise, sel.overrides))
+            handleAddExercises(pickerBlockId, selections)
             setPickerBlockId(null)
           }}
           onClose={() => setPickerBlockId(null)}

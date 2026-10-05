@@ -4,6 +4,107 @@
 
 ---
 
+## 📌 Sesión 27 — 2026-10-05 (Editor de rutinas: números que se dejan borrar, añadir ejercicios rápido y grupos musculares propios)
+
+### 🎯 Qué se pidió
+
+*"Al editar los números no deja borrar las casillas por completo. Las categorías [grupos
+musculares] no permiten agregar más; me gustaría poder agregar manualmente. Es muy lento
+añadir ejercicios a una rutina: tarda unos segundos y a veces no carga, toca recargar."*
+(Fotos del editor de rutina en el teléfono del dueño: Series/Reps/Seg/Desc, «Descanso 6s».)
+
+### 🔍 Causas encontradas
+
+1. **Las casillas de números guardaban con cada tecla y pintaban solo al responder el
+   servidor.** `NumField` (en `class-editor.tsx`, la usan los tres editores) llamaba a
+   `onChange` en cada tecla. El editor mandaba la acción y actualizaba el estado **después
+   del await**, así que al borrar, la casilla volvía al valor anterior mientras esperaba. Con
+   «60», borrar el 0 para escribir 45 dejaba guardado «6».
+2. **Añadir ejercicios era un viaje completo por cada uno, en fila.** El selector deja marcar
+   varios, y `onSelectMultiple` hacía `forEach(handleAddExercise)`. Cada uno era una server
+   action con `revalidatePath`, y en Next 16 eso **vuelve a armar la página entera**
+   (comprobado en `action-handler.js`: cualquier revalidación quita el `skipPageRendering`).
+   La página trae la rutina, ~190 ejercicios y hasta 500 clientes con correo y teléfono, y
+   todo eso volvía al teléfono por cada ejercicio. Las acciones de Next van en fila: 5
+   ejercicios eran 5 viajes seguidos, y con señal floja se quedaba cargando. Además las 5
+   calculaban la misma posición.
+3. **Editor de clases:** el ejercicio añadido quedaba con un id inventado
+   (`crypto.randomUUID()`), porque `addExerciseToBlockAction` no devolvía el real. Editarlo o
+   quitarlo antes de recargar no se guardaba.
+4. **El grupo muscular era una lista fija** en la base (`exercises_muscle_group_check`, 11
+   valores) y en el código (`MuscleGroup` como unión de literales).
+
+### 🧱 Qué se hizo
+
+- **`NumField`**: lo escrito vive en la casilla y se entrega **al salir** (o con Enter).
+  Permite dejarla vacía (= null), solo acepta dígitos (máx. 4) y usa `type="text"` con
+  `inputMode="numeric"`, porque `type="number"` acepta «e» y «-» y cambia con la rueda.
+- **Una sola acción para añadir varios**: `addExercisesToRoutineBlockAction`,
+  `addExercisesToTrainingRoutineBlockAction` y `addExercisesToBlockAction` insertan todos de
+  una vez, con posiciones seguidas, y devuelven los ids reales en orden. Los tres editores
+  (`routine-editor`, `training-routine-editor`, `class-editor`) los usan para la selección
+  múltiple, para un solo ejercicio y para el creado desde el selector.
+- **Cambios de series, reps, descanso, peso y nota al instante**: el estado se actualiza
+  antes de guardar, sin bloquear botones. Si el guardado falla, vuelve al valor anterior.
+- **`AvisoDeGuardado`** (`components/ui/aviso-de-guardado.tsx`): «No se pudo guardar el
+  cambio. Revisa tu conexión e intenta otra vez», en vez de quedarse callado.
+- **Página más liviana**: los dos editores de rutina reciben `getClientNamesForAssign()` (id y
+  nombre), no `getAllClients()` entero.
+- **Grupos musculares propios** (migración **045**, *escrita, sin aplicar*):
+  - Tabla `muscle_groups` (`key` que no cambia, `label`, `position`, `is_active`), sembrada
+    con los 11 de siempre.
+  - Quita `exercises_muscle_group_check`.
+  - RLS: el admin escribe y los socios leen.
+  - En el formulario de ejercicio del admin, «+ Agregar otro grupo…» al final de la lista.
+    Abre un campo, crea el grupo (`createMuscleGroupAction`) y lo deja elegido.
+  - El catálogo se lee con `getMuscleGroups()` (caché, etiqueta `muscle-groups`, y los 11 de
+    siempre si la tabla no existe todavía). En el navegador va por `useGruposMusculares()`,
+    que lo pide una vez por visita.
+  - El formulario del socio, los filtros, las filas de rutina, el detalle, el generador de
+    clases y la agenda usan el catálogo.
+  - El nombre visible sale siempre de `etiquetaDeGrupo()`, que nunca devuelve vacío.
+    **Arregla un error latente:** `clases-agenda.tsx` hacía
+    `MUSCLE_GROUP_LABELS[grupo].toLowerCase()`, y con un grupo desconocido tumbaba la agenda.
+  - `MuscleGroup` pasa a `string`. El tipo de `muscle_groups` se escribió a mano en
+    `database.types.ts`, como el de `finance_entries`.
+
+### 🧭 Decisiones
+
+- **Tabla y no quitar el CHECK con texto libre**: con texto libre no hay dónde guardar el
+  nombre con tildes ni el orden, y «Glúteos»/«gluteo» fragmentarían los filtros.
+- **Solo el admin agrega grupos**: es el catálogo de todo el gimnasio. Uno que ya existe con
+  ese nombre (sin mirar tildes) se reusa en vez de dar error.
+- **Se mantiene `revalidatePath` en las acciones**: con `staleTimes.dynamic = 60` en
+  producción, quitarlo dejaría el editor viejo al volver a él antes de un minuto. Lo que se
+  redujo es cuántas veces se revalida (una por lote, no una por tecla ni por ejercicio) y
+  cuánto pesa lo que vuelve.
+- Los chips curados del selector (`PRIMARY_MUSCLE_OPTIONS`) siguen siendo 5 a propósito
+  (Sesión 7). La lista propia del socio (`client-exercises-manager`) no se tocó.
+
+### ✅ Verificación
+
+- `tsc` 0 · `build` OK.
+- `eslint`: los mismos 106 problemas de antes, ninguno nuevo.
+- Página temporal de prueba (borrada, no se guarda nada), a 390 px:
+  - «60» → borrar dos veces → casilla vacía; escribir 45 y salir → «Descanso 45s».
+  - «1a2» queda «12».
+  - Un ejercicio con grupo `antebrazo` muestra «Antebrazo».
+  - El selector trae los 11 y «+ Agregar otro grupo…».
+- No se probó contra la base real: añadir ejercicios y crear grupos escriben en
+  producción.
+
+### ⚠️ Pendiente
+
+1. **Aplicar la migración 044** (Finanzas): sigue sin aplicar, y la pestaña Finanzas la
+   necesita.
+2. **Aplicar la migración 045** (grupos musculares). Hasta entonces el código funciona con
+   los 11 de siempre, y «Agregar» responde «falta activar esta función».
+3. Después de aplicarlas, regenerar `database.types.ts` por MCP.
+4. **Observado sin tocar:** las acciones de `training-routines.actions.ts` no llaman a ningún
+   guard de admin (dependen solo de RLS).
+
+---
+
 ## 📌 Sesión 26 — 2026-10-02 (Pagos → Finanzas: panel del mes con otros ingresos y gastos)
 
 ### 🎯 Qué se pidió

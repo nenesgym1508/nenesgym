@@ -6,9 +6,11 @@ import { createExerciseAction, updateExerciseAction } from "@/actions/exercises.
 import { ExerciseImagesField } from "@/components/admin/exercise-images-field"
 import { Input, Textarea } from "@/components/ui/input"
 import { SelectField } from "@/components/ui/select-field"
+import { SelectorGrupoMuscular } from "@/components/ui/selector-grupo-muscular"
+import { useGruposMusculares } from "@/lib/grupos-musculares"
 import { Button } from "@/components/ui/button"
 import {
-  MUSCLE_GROUP_LABELS,
+  etiquetaDeGrupo,
   EQUIPMENT_LABELS,
   EXERCISE_TYPE_LABELS,
   USAGE_TAG_LABELS,
@@ -90,7 +92,8 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
     }
   }
 
-  const muscleGroups = Object.keys(MUSCLE_GROUP_LABELS) as MuscleGroup[]
+  // Del catálogo del gimnasio (migración 045), con los que el admin haya agregado.
+  const grupos = useGruposMusculares()
   const equipments = Object.keys(EQUIPMENT_LABELS) as Equipment[]
   const exerciseTypes = Object.keys(EXERCISE_TYPE_LABELS) as ExerciseType[]
   const usageTagOptions = Object.keys(USAGE_TAG_LABELS) as UsageTag[]
@@ -133,18 +136,21 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
             disabled={loading}
           />
 
-          <SelectField
+          <SelectorGrupoMuscular
             label="Músculo principal"
             value={muscleGroup}
-            onChange={(v) => setMuscleGroup(v as MuscleGroup | "")}
-            options={[{ value: "", label: "Sin especificar" }, ...muscleGroups.map((g) => ({ value: g, label: MUSCLE_GROUP_LABELS[g] }))]}
+            onChange={(v) => setMuscleGroup(v)}
+            permitirAgregar
           />
 
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-zinc-400">Músculos secundarios (opcional)</label>
             <div className="flex flex-wrap gap-1.5">
-              {muscleGroups
+              {grupos
+                .map((g) => g.key)
                 .filter((g) => g !== muscleGroup)
+                // Uno marcado que ya no está en la lista sigue a la vista, para poder quitarlo.
+                .concat(secondaryGroups.filter((g) => !grupos.some((x) => x.key === g)))
                 .map((g) => {
                   const on = secondaryGroups.includes(g)
                   return (
@@ -156,7 +162,7 @@ export function ExerciseForm({ exercise, onSuccess, onClose }: ExerciseFormProps
                         on ? "bg-red-600/20 text-red-400" : "bg-zinc-800 text-zinc-500 hover:text-zinc-300"
                       }`}
                     >
-                      {MUSCLE_GROUP_LABELS[g]}
+                      {etiquetaDeGrupo(g, grupos)}
                     </button>
                   )
                 })}

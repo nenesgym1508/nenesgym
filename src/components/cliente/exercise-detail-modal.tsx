@@ -2,8 +2,9 @@
 
 import { Dumbbell, X } from "lucide-react"
 import { ExerciseImageDetail } from "@/components/ui/exercise-image-detail"
+import { useGruposMusculares } from "@/lib/grupos-musculares"
 import {
-  MUSCLE_GROUP_LABELS,
+  etiquetaDeGrupo,
   EQUIPMENT_LABELS,
   EXERCISE_TYPE_LABELS,
   type Exercise,
@@ -15,6 +16,7 @@ interface ExerciseDetailModalProps {
 }
 
 export function ExerciseDetailModal({ exercise, onClose }: ExerciseDetailModalProps) {
+  const grupos = useGruposMusculares()
   // Se cae de vuelta a media_url para los ejercicios que aún no pasaron por el
   // formulario nuevo: la migración 033 rellenó el array, pero un ejercicio
   // creado por otra vía podría no tenerlo.
@@ -23,7 +25,7 @@ export function ExerciseDetailModal({ exercise, onClose }: ExerciseDetailModalPr
   )
 
   const details = [
-    exercise.muscle_group ? { label: "Músculo", value: MUSCLE_GROUP_LABELS[exercise.muscle_group] } : null,
+    exercise.muscle_group ? { label: "Músculo", value: etiquetaDeGrupo(exercise.muscle_group, grupos) } : null,
     exercise.equipment ? { label: "Equipo", value: EQUIPMENT_LABELS[exercise.equipment] } : null,
     exercise.exercise_type ? { label: "Tipo", value: EXERCISE_TYPE_LABELS[exercise.exercise_type] } : null,
   ].filter((d): d is { label: string; value: string } => d !== null)

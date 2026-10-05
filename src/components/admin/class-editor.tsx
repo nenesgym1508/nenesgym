@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useMemo } from "react"
+import { useCallback, useState, useTransition, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   ChevronLeft, ChevronUp, ChevronDown, Plus, Trash2, BookmarkPlus,
@@ -15,7 +15,7 @@ import {
   updateBlockTitleAction,
   deleteBlockAction,
   moveBlockAction,
-  addExerciseToBlockAction,
+  addExercisesToBlockAction,
   removeExerciseFromBlockAction,
   moveBlockExerciseAction,
   updateBlockExerciseAction,
@@ -24,6 +24,8 @@ import {
 } from "@/actions/classes.actions"
 import { saveClassAsTrainingRoutineAction } from "@/actions/training-routines.actions"
 import { ExerciseForm } from "@/components/admin/exercise-form"
+import { AvisoDeGuardado, NO_SE_GUARDO } from "@/components/ui/aviso-de-guardado"
+import { useGruposMusculares } from "@/lib/grupos-musculares"
 import { ActionMenu } from "@/components/ui/action-menu"
 import { ExerciseImageThumbnail } from "@/components/ui/exercise-image-thumbnail"
 import { ROUTES } from "@/constants/routes"
@@ -36,7 +38,7 @@ import {
   type BlockExercise,
 } from "@/types/class"
 import {
-  MUSCLE_GROUP_LABELS,
+  etiquetaDeGrupo,
   EQUIPMENT_LABELS,
   EXERCISE_TYPE_LABELS,
   USAGE_TAG_LABELS,
@@ -84,10 +86,14 @@ const LEVEL_COLOR: Record<BalanceLevel, string> = {
 // ─── Main Editor ─────────────────────────────────────────────────────────────
 
 export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
+  const grupos = useGruposMusculares()
   const router = useRouter()
   const [cls, setCls] = useState(initialClass)
   const [exerciseList, setExerciseList] = useState<Exercise[]>(exercises)
   const [isPending, startTransition] = useTransition()
+  // Lo que no se pudo guardar, para decirlo en vez de quedarse callado.
+  const [aviso, setAviso] = useState<string | null>(null)
+  const cerrarAviso = useCallback(() => setAviso(null), [])
 
   const [pickerBlockId, setPickerBlockId] = useState<string | null>(null)
   const [createForBlockId, setCreateForBlockId] = useState<string | null>(null)
@@ -194,26 +200,36 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
 
   // ── Ejercicios ────────────────────────────────────────────────────────────
 
-  const handleAddExercise = (blockId: string, exercise: Exercise, overrides?: { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null }) => {
+  type Overrides = { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null }
+
+  /**
+   * Añade uno o varios ejercicios con UNA sola acción y con sus ids REALES (ver
+   * addExercisesToBlockAction). Antes cada uno se añadía aparte y quedaba con un
+   * id inventado, así que editarlo o quitarlo después no se guardaba.
+   */
+  const handleAddExercises = (blockId: string, items: { exercise: Exercise; overrides?: Overrides }[]) => {
     const block = cls.blocks.find((b) => b.id === blockId)
-    if (!block) return
-    const position = block.exercises.length
+    if (!block || items.length === 0) return
+    const startPos = block.exercises.length
     startTransition(async () => {
-      await addExerciseToBlockAction(blockId, cls.id, {
-        exercise_id: exercise.id,
-        position,
-        sets: overrides?.sets ?? 3,
-        reps: overrides?.reps ?? 12,
-        rest_seconds: overrides?.rest_seconds ?? 60,
-      })
-      const newEx: BlockExercise = {
-        id: crypto.randomUUID(),
+      const res = await addExercisesToBlockAction(
+        blockId,
+        cls.id,
+        items.map((it) => ({ exerciseId: it.exercise.id, overrides: it.overrides })),
+        startPos
+      ).catch(() => ({ error: NO_SE_GUARDO }))
+      if ("error" in res) {
+        setAviso(items.length === 1 ? "No se pudo añadir el ejercicio. Revisa tu conexión e intenta otra vez." : "No se pudieron añadir los ejercicios. Revisa tu conexión e intenta otra vez.")
+        return
+      }
+      const nuevos: BlockExercise[] = items.map(({ exercise, overrides }, i) => ({
+        id: res.ids[i]!,
         block_id: blockId,
         exercise_id: exercise.id,
-        position,
+        position: startPos + i,
         sets: overrides?.sets ?? 3,
         reps: overrides?.reps ?? 12,
-        duration_seconds: null,
+        duration_seconds: overrides?.duration_seconds ?? null,
         rest_seconds: overrides?.rest_seconds ?? 60,
         suggested_weight: null,
         notes: null,
@@ -227,15 +243,19 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
           media_url: exercise.media_url,
           instructions: exercise.instructions,
         },
-      }
+      }))
       setCls((prev) => ({
         ...prev,
         blocks: prev.blocks.map((b) =>
-          b.id === blockId ? { ...b, exercises: [...b.exercises, newEx] } : b
+          b.id === blockId ? { ...b, exercises: [...b.exercises, ...nuevos] } : b
         ),
       }))
     })
   }
+
+  const handleAddExercise = (blockId: string, exercise: Exercise, overrides?: Overrides) =>
+    handleAddExercises(blockId, [{ exercise, overrides }])
+
 
   const handleRemoveExercise = (exId: string, blockId: string) => {
     startTransition(async () => {
@@ -269,24 +289,37 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
     })
   }
 
+  /** Al instante y por detrás; si no se guarda, vuelve al anterior y lo dice. */
   const handleUpdateExerciseField = (
     exId: string,
     blockId: string,
     field: string,
     value: string | number | null
   ) => {
-    startTransition(async () => {
-      await updateBlockExerciseAction(exId, cls.id, { [field]: value ?? undefined })
+    const anterior = cls.blocks
+      .find((b) => b.id === blockId)
+      ?.exercises.find((e) => e.id === exId) as Record<string, unknown> | undefined
+    const aplicar = (valor: unknown) =>
       setCls((prev) => ({
         ...prev,
         blocks: prev.blocks.map((b) =>
           b.id === blockId
-            ? { ...b, exercises: b.exercises.map((e) => (e.id === exId ? { ...e, [field]: value } : e)) }
+            ? { ...b, exercises: b.exercises.map((e) => (e.id === exId ? { ...e, [field]: valor } : e)) }
             : b
         ),
       }))
-    })
+    aplicar(value)
+    // null viaja como null (vaciar el campo), no como undefined.
+    updateBlockExerciseAction(exId, cls.id, { [field]: value } as Parameters<typeof updateBlockExerciseAction>[2])
+      .catch(() => ({ error: NO_SE_GUARDO }))
+      .then((res) => {
+        if (res && "error" in res && res.error) {
+          aplicar(anterior?.[field] ?? null)
+          setAviso(NO_SE_GUARDO)
+        }
+      })
   }
+
 
   // ── Picker / crear ejercicio ──────────────────────────────────────────────
 
@@ -410,7 +443,7 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
             <div className="space-y-1">
               {balance.map((b) => (
                 <div key={b.group} className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-300">{MUSCLE_GROUP_LABELS[b.group]}</span>
+                  <span className="text-zinc-300">{etiquetaDeGrupo(b.group, grupos)}</span>
                   <span className={`text-xs font-semibold ${LEVEL_COLOR[b.level]}`}>{b.level}</span>
                 </div>
               ))}
@@ -490,7 +523,7 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
         <ExercisePicker
           exercises={exerciseList}
           onSelectMultiple={(selections) => {
-            selections.forEach(sel => handleAddExercise(pickerBlockId, sel.exercise, sel.overrides))
+            handleAddExercises(pickerBlockId, selections)
             setPickerBlockId(null)
           }}
           onClose={() => setPickerBlockId(null)}
@@ -498,6 +531,8 @@ export function ClassEditor({ initialClass, exercises }: ClassEditorProps) {
           existingIds={cls.blocks.find((b) => b.id === pickerBlockId)?.exercises.map((e) => e.exercise_id) ?? []}
         />
       )}
+
+      <AvisoDeGuardado mensaje={aviso} onCerrar={cerrarAviso} />
 
       {/* Crear ejercicio (desde picker) */}
       {createForBlockId && (
@@ -716,9 +751,8 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, 
   const [expanded, setExpanded] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
 
-  const muscleLabel = ex.exercise.muscle_group
-    ? MUSCLE_GROUP_LABELS[ex.exercise.muscle_group as keyof typeof MUSCLE_GROUP_LABELS] ?? ex.exercise.muscle_group
-    : null
+  const grupos = useGruposMusculares()
+  const muscleLabel = ex.exercise.muscle_group ? etiquetaDeGrupo(ex.exercise.muscle_group, grupos) : null
   const formatDuracion = (segundos: number) =>
     segundos >= 60 && segundos % 60 === 0 ? `${segundos / 60} min` : `${segundos}s`
 
@@ -815,24 +849,62 @@ export function ExerciseRow({ ex, isFirst, isLast, isPending, readOnly = false, 
 
 
 
+/**
+ * Casilla de un número (series, reps, segundos, descanso).
+ *
+ * Lo escrito vive en la casilla y se entrega al SALIR de ella (o con Enter), no
+ * con cada tecla. Antes cada tecla llamaba a `onChange`, que en los editores
+ * guardaba en el servidor y solo pintaba el número nuevo cuando el servidor
+ * respondía: al borrar, la casilla volvía al valor anterior mientras esperaba, y
+ * no había forma de dejarla vacía para escribir otro número. Con «60» → borrar
+ * el 0 para poner «45» quedaba guardado «6».
+ *
+ * `type="text"` con teclado numérico y no `type="number"`: este último acepta
+ * «e», «-» y «.», y la rueda del mouse le cambia el valor sin querer.
+ */
 export function NumField({
   label,
   value,
   onChange,
 }: {
   label: string
-  value: number | null
+  value: number | null | undefined
   onChange: (v: number | null) => void
 }) {
+  const [texto, setTexto] = useState(value == null ? "" : String(value))
+  const [escribiendo, setEscribiendo] = useState(false)
+  // Si el valor cambia desde afuera (otro guardado, otra pestaña) y no se está
+  // escribiendo, la casilla lo muestra. Mientras se escribe, manda lo escrito.
+  const [valorConocido, setValorConocido] = useState(value)
+  if (!escribiendo && value !== valorConocido) {
+    setValorConocido(value)
+    setTexto(value == null ? "" : String(value))
+  }
+
+  const confirmar = () => {
+    setEscribiendo(false)
+    const nuevo = texto === "" ? null : parseInt(texto, 10)
+    // Vacía = sin valor (null), no cero: «sin descanso» y «descanso 0» no son lo mismo.
+    setValorConocido(nuevo)
+    if (nuevo !== (value ?? null)) onChange(nuevo)
+  }
+
   return (
     <div className="space-y-0.5">
       <label className="text-[9px] font-medium text-zinc-600 uppercase tracking-wider">{label}</label>
       <input
-        type="number"
-        min={1}
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value ? parseInt(e.target.value) : null)}
-        onBlur={(e) => onChange(e.target.value ? parseInt(e.target.value) : null)}
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        enterKeyHint="done"
+        value={texto}
+        onFocus={() => setEscribiendo(true)}
+        // Solo dígitos, y hasta 4: ninguna serie, rep o descanso pasa de 9999.
+        onChange={(e) => setTexto(e.target.value.replace(/\D/g, "").slice(0, 4))}
+        onBlur={confirmar}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur()
+        }}
         className="w-full rounded-md border border-white/8 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 text-center outline-none focus:border-red-600/50"
       />
     </div>
@@ -892,6 +964,7 @@ const HIDE_SCROLLBAR = "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] 
 const DEFAULT_QUICK_CONFIG = { sets: 4, reps: 12, rest_seconds: 60 }
 
 export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMultiple, onClose, onCreateNew, quickConfigDefaults = DEFAULT_QUICK_CONFIG, myExerciseIds, simplifiedUsage = false }: ExercisePickerProps) {
+  const grupos = useGruposMusculares()
   const hasScopeToggle = !!myExerciseIds
   const [scope, setScope] = useState<"mine" | "all">("all")
   const [search, setSearch] = useState("")
@@ -1125,7 +1198,7 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMulti
               </div>
 
               <FilterRow label="Uso" value={filterUsage} setValue={setFilterUsage} options={simplifiedUsage ? SIMPLIFIED_USAGE_OPTIONS : USAGE_OPTIONS} labels={USAGE_TAG_LABELS} />
-              <FilterRow label="Músculo" value={filterGroup} setValue={setFilterGroup} options={PRIMARY_MUSCLE_OPTIONS} labels={MUSCLE_GROUP_LABELS} />
+              <FilterRow label="Músculo" value={filterGroup} setValue={setFilterGroup} options={PRIMARY_MUSCLE_OPTIONS} labels={Object.fromEntries(grupos.map((g) => [g.key, g.label]))} />
 
               {filtersOpen && (
                 <div className="space-y-2 rounded-lg border border-white/8 bg-zinc-950/50 p-2">
@@ -1176,7 +1249,7 @@ export function ExercisePicker({ exercises, existingIds, onSelect, onSelectMulti
                   const alreadyIn = existingIds.includes(ex.id)
                   const isSelected = selectedExercises.some(p => p.id === ex.id)
                   const subtitle = [
-                    ex.muscle_group ? MUSCLE_GROUP_LABELS[ex.muscle_group] : null,
+                    ex.muscle_group ? etiquetaDeGrupo(ex.muscle_group, grupos) : null,
                     ex.equipment ? EQUIPMENT_LABELS[ex.equipment] : null,
                     ex.exercise_type ? EXERCISE_TYPE_LABELS[ex.exercise_type] : null,
                   ].filter(Boolean).join(" · ")
@@ -1252,8 +1325,9 @@ function ExerciseDetailSheet({
   onAdd: () => void
   alreadyIn: boolean
 }) {
+  const grupos = useGruposMusculares()
   const details = [
-    exercise.muscle_group ? { label: "Músculo", value: MUSCLE_GROUP_LABELS[exercise.muscle_group] } : null,
+    exercise.muscle_group ? { label: "Músculo", value: etiquetaDeGrupo(exercise.muscle_group, grupos) } : null,
     exercise.equipment ? { label: "Equipo", value: EQUIPMENT_LABELS[exercise.equipment] } : null,
     exercise.exercise_type ? { label: "Tipo", value: EXERCISE_TYPE_LABELS[exercise.exercise_type] } : null,
   ].filter((d): d is { label: string; value: string } => d !== null)

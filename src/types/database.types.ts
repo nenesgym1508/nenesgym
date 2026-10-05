@@ -1103,6 +1103,38 @@ export type Database = {
           },
         ]
       }
+      // Escrito a mano (migración 045), como se hizo con finance_entries: se
+      // regenera por MCP cuando la migración quede aplicada.
+      muscle_groups: {
+        Row: {
+          created_at: string
+          gym_id: string
+          id: string
+          is_active: boolean
+          key: string
+          label: string
+          position: number
+        }
+        Insert: {
+          created_at?: string
+          gym_id: string
+          id?: string
+          is_active?: boolean
+          key: string
+          label: string
+          position?: number
+        }
+        Update: {
+          created_at?: string
+          gym_id?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          label?: string
+          position?: number
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           ai_entidad: string | null

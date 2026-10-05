@@ -5,10 +5,10 @@ import { Loader2, X } from "lucide-react"
 import { createMyExerciseAction, updateMyExerciseAction } from "@/actions/exercises.actions"
 import { ExerciseImagesField } from "@/components/admin/exercise-images-field"
 import { SelectField } from "@/components/ui/select-field"
+import { SelectorGrupoMuscular } from "@/components/ui/selector-grupo-muscular"
 import { Input, Textarea } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
-  MUSCLE_GROUP_LABELS,
   EQUIPMENT_LABELS,
   USAGE_TAG_LABELS,
   type Exercise,
@@ -80,7 +80,6 @@ export function ClientExerciseForm({ exercise, onSuccess, onClose }: ClientExerc
     }
   }
 
-  const muscleGroups = Object.keys(MUSCLE_GROUP_LABELS) as MuscleGroup[]
   const equipments = Object.keys(EQUIPMENT_LABELS) as Equipment[]
   const usageTagOptions = Object.keys(USAGE_TAG_LABELS) as UsageTag[]
 
@@ -122,11 +121,10 @@ export function ClientExerciseForm({ exercise, onSuccess, onClose }: ClientExerc
             disabled={loading}
           />
 
-          <SelectField
+          <SelectorGrupoMuscular
             label="Músculo principal"
             value={muscleGroup}
-            onChange={(v) => setMuscleGroup(v as MuscleGroup | "")}
-            options={[{ value: "", label: "Sin especificar" }, ...muscleGroups.map((g) => ({ value: g, label: MUSCLE_GROUP_LABELS[g] }))]}
+            onChange={(v) => setMuscleGroup(v)}
           />
 
           <SelectField

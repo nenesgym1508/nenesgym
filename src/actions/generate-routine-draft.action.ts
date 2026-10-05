@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server"
 import { updateTag } from "next/cache"
 import { GYM_ID } from "@/constants/plans"
 import { addDays } from "@/lib/dates"
-import { MUSCLE_GROUP_LABELS } from "@/types/exercise"
+import { etiquetaDeGrupo } from "@/types/exercise"
+import { getMuscleGroups } from "@/services/muscle-groups.service"
 import type { ClassObjective, ClassLevel } from "@/services/classes.service"
 import type { MuscleGroup } from "@/services/exercises.service"
 
@@ -58,7 +59,7 @@ export async function generateTrainingRoutineDraftAction(params: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: "No autenticado" }
 
-  const groupLabel = MUSCLE_GROUP_LABELS[params.muscle_group] ?? params.muscle_group
+  const groupLabel = etiquetaDeGrupo(params.muscle_group, await getMuscleGroups())
 
   const { data: allExercises } = await supabase
     .from("exercises")

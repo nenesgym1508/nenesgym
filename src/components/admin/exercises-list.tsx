@@ -6,8 +6,9 @@ import { ExerciseImageThumbnail } from "@/components/ui/exercise-image-thumbnail
 import { toggleExerciseAction, deleteExerciseAction } from "@/actions/exercises.actions"
 import { ExerciseForm } from "@/components/admin/exercise-form"
 import { ExerciseDetailModal } from "@/components/cliente/exercise-detail-modal"
+import { useGruposMusculares } from "@/lib/grupos-musculares"
 import {
-  MUSCLE_GROUP_LABELS,
+  etiquetaDeGrupo,
   EXERCISE_TYPE_LABELS,
   type Exercise,
   type MuscleGroup,
@@ -81,7 +82,9 @@ export function ExercisesList({ initialExercises }: ExercisesListProps) {
     setExercises((prev) => prev.filter((e) => e.id !== ex.id))
   }
 
-  const muscleGroups = Object.keys(MUSCLE_GROUP_LABELS) as MuscleGroup[]
+  // Los del gimnasio, con los que el admin haya agregado (migración 045).
+  const grupos = useGruposMusculares()
+  const muscleGroups = grupos.map((g) => g.key)
   const favoritesCount = exercises.filter((e) => e.is_active).length
   const createdCount = exercises.filter((e) => e.source === "manual").length
 
@@ -143,7 +146,7 @@ export function ExercisesList({ initialExercises }: ExercisesListProps) {
                   : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
               }`}
             >
-              {MUSCLE_GROUP_LABELS[g]}
+              {etiquetaDeGrupo(g, grupos)}
             </button>
           ))}
         </div>
@@ -220,6 +223,7 @@ interface ExerciseRowProps {
 }
 
 function ExerciseRow({ ex, isLast, togglingId, deletingId, onEdit, onToggle, onDelete, onView }: ExerciseRowProps) {
+  const grupos = useGruposMusculares()
   return (
     <div className={`flex items-center gap-3 px-4 py-3 ${!isLast ? "border-b border-white/5" : ""}`}>
       <button
@@ -235,7 +239,7 @@ function ExerciseRow({ ex, isLast, togglingId, deletingId, onEdit, onToggle, onD
           <div className="mt-0.5 flex flex-wrap gap-1.5">
             {ex.muscle_group && (
               <span className="text-[10px] font-medium rounded px-1.5 py-0.5 text-zinc-400 bg-zinc-800">
-                {MUSCLE_GROUP_LABELS[ex.muscle_group as MuscleGroup]}
+                {etiquetaDeGrupo(ex.muscle_group, grupos)}
               </span>
             )}
             {ex.exercise_type && (

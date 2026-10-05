@@ -198,6 +198,46 @@ export async function addExerciseToBlockAction(
   return { success: true }
 }
 
+/**
+ * Añade VARIOS ejercicios a un bloque de una clase en una sola ida al servidor, y
+ * devuelve sus ids reales.
+ *
+ * Antes el editor añadía de a uno con `addExerciseToBlockAction`, que no devolvía
+ * el id, y le ponía al ejercicio nuevo un id inventado (`crypto.randomUUID()`).
+ * Cambiarle las series o quitarlo apuntaba a ese id, que no existe en la base: el
+ * cambio no se guardaba y nadie se enteraba hasta recargar.
+ */
+export async function addExercisesToBlockAction(
+  blockId: string,
+  classId: string,
+  items: { exerciseId: string; overrides?: { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null } }[],
+  startPosition: number
+): Promise<{ error: string } | { success: true; ids: string[] }> {
+  if (items.length === 0) return { success: true, ids: [] }
+  const guard = await requireAdmin()
+  if ("error" in guard) return { error: guard.error ?? "No autorizado" }
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("class_block_exercises")
+    .insert(
+      items.map((item, i) => ({
+        block_id: blockId,
+        exercise_id: item.exerciseId,
+        position: startPosition + i,
+        sets: item.overrides?.sets ?? 3,
+        reps: item.overrides?.reps ?? 12,
+        duration_seconds: item.overrides?.duration_seconds ?? null,
+        rest_seconds: item.overrides?.rest_seconds ?? 60,
+      }))
+    )
+    .select("id, position")
+
+  if (error) return { error: error.message }
+  revalidateClasses(classId)
+  const ids = [...(data ?? [])].sort((a, b) => a.position - b.position).map((r) => r.id)
+  return { success: true, ids }
+}
+
 export async function updateBlockExerciseAction(
   id: string,
   classId: string,

@@ -855,6 +855,40 @@ export async function addExerciseToTrainingRoutineBlockAction(blockId: string, r
   return { success: true, id: data.id }
 }
 
+/**
+ * Añade VARIOS ejercicios a un bloque de la biblioteca en una sola ida al servidor.
+ * Mismo motivo que `addExercisesToRoutineBlockAction`: de a uno, cada ejercicio
+ * era un viaje completo con la página entera de vuelta, y en fila.
+ */
+export async function addExercisesToTrainingRoutineBlockAction(
+  blockId: string,
+  routineId: string,
+  items: { exerciseId: string; overrides?: { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null } }[],
+  startPosition: number
+): Promise<{ error: string } | { success: true; ids: string[] }> {
+  if (items.length === 0) return { success: true, ids: [] }
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("training_routine_exercises")
+    .insert(
+      items.map((item, i) => ({
+        block_id: blockId,
+        exercise_id: item.exerciseId,
+        position: startPosition + i,
+        sets: item.overrides?.sets ?? 3,
+        reps: item.overrides?.reps ?? 10,
+        duration_seconds: item.overrides?.duration_seconds ?? null,
+        rest_seconds: item.overrides?.rest_seconds ?? 60,
+      }))
+    )
+    .select("id, position")
+
+  if (error) return { error: error.message }
+  revalidateRoutines(routineId)
+  const ids = [...(data ?? [])].sort((a, b) => a.position - b.position).map((r) => r.id)
+  return { success: true, ids }
+}
+
 export async function updateTrainingRoutineBlockExerciseAction(exerciseRowId: string, routineId: string, data: {
   sets?: number | null
   reps?: number | null

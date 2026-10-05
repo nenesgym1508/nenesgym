@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { requireAdminSession } from "@/lib/auth/session"
 import { getTrainingRoutineWithDays } from "@/services/training-routines.service"
 import { getExercises } from "@/services/exercises.service"
-import { getAllClients } from "@/services/clients.service"
+import { getClientNamesForAssign } from "@/services/clients.service"
 import { TrainingRoutineEditor } from "@/components/admin/training-routine-editor"
 import { ROUTES } from "@/constants/routes"
 
@@ -25,7 +25,8 @@ export default async function TrainingRoutineDetailPage({
     // Solo el catálogo del gimnasio: sin este filtro el selector mezclaría los
     // ejercicios personales de TODOS los clientes (visibility = 'client').
     getExercises({ visibility: "gym" }),
-    getAllClients()
+    // Solo id y nombre: es para «Asignar a cliente», y viaja con cada guardado.
+    getClientNamesForAssign()
   ])
 
   if (!routine) {

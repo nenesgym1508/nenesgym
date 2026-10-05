@@ -4,6 +4,47 @@ Este documento almacena la memoria de errores y gotchas resueltos en el proyecto
 
 ---
 
+## 📌 Lecciones Recientes (Sesión 27 - 2026-10-05)
+
+### 1. En Next 16, cualquier revalidación en una server action vuelve a armar la página entera
+`revalidatePath` o `updateTag` dentro de una acción hacen que la respuesta traiga **toda la
+página actual renderizada de nuevo**, con todas sus props. Está en `action-handler.js`:
+cualquier revalidación quita el `skipPageRendering`. En el editor de rutinas eso eran ~190
+ejercicios y hasta 500 clientes por cada guardado. Como las acciones de Next van **en fila**,
+un `forEach` que dispara una acción por ítem significa N viajes completos seguidos.
+- **Regla**: lo que se hace en lote se manda en **una** acción (un `insert` con varias
+  filas). Las props de una página con editor van flacas: solo lo que el editor usa.
+- No sirve quitar el `revalidatePath`: con `staleTimes.dynamic = 60`, volver a la pantalla
+  antes de un minuto mostraría lo viejo.
+
+### 2. Una casilla controlada que se actualiza después del servidor no se deja borrar
+Si `value` sale del estado y el estado cambia **después** del `await` de la acción, cada tecla
+vuelve a pintar el valor anterior mientras espera. Además, si cada tecla guarda, quedan
+guardados los valores intermedios: al borrar el 0 de «60» se guardó «6».
+- **Regla**: la casilla guarda lo escrito en estado local y lo entrega **al salir**. El
+  editor actualiza su estado **antes** de guardar y lo revierte si falla.
+
+### 3. Un id inventado en el cliente no sirve para editar después
+`crypto.randomUUID()` para el ejercicio recién añadido funcionaba hasta que alguien le
+cambiaba las series: la acción apuntaba a un id que no está en la base y no actualizaba
+nada, en silencio.
+- **Regla**: la acción que inserta devuelve el id real (`.select("id")`), y el estado usa
+  ese.
+
+### 4. Nunca indexar un mapa de etiquetas con un valor que viene de la base
+`MUSCLE_GROUP_LABELS[grupo].toLowerCase()` en la agenda de clases se cae con cualquier grupo
+que no esté en el mapa.
+- **Regla**: las etiquetas salen de una función con respaldo (`etiquetaDeGrupo`) que nunca
+  devuelve `undefined`.
+
+### 5. El repo no es la base: verificar el CHECK real antes de escribir la migración
+La 002 del repo crea el CHECK de `muscle_group` sin «gluteo» y nunca crea
+`secondary_muscle_groups`. En producción ya estaban, por una migración aplicada por MCP que no
+quedó en el repo. La 045 se escribió contra el estado real (nombre exacto del constraint,
+consultado en `pg_constraint`).
+
+---
+
 ## 📌 Lecciones Recientes (Sesión 25 - 2026-09-30)
 
 ### 1. Una regla de negocio que vive en dos sitios hay que cambiarla en los dos

@@ -455,6 +455,52 @@ export async function addExerciseToRoutineBlockAction(
   return { success: true, id: data.id }
 }
 
+/**
+ * Añade VARIOS ejercicios a un bloque en una sola ida al servidor.
+ *
+ * El selector deja marcar varios, y antes se guardaban de a uno: cada uno era su
+ * propia acción, y cada acción —por el revalidatePath— volvía a armar la página
+ * entera (rutina, ~190 ejercicios y la lista de clientes) y se la mandaba al
+ * teléfono. Las acciones de Next van en fila, así que 5 ejercicios eran 5 viajes
+ * completos seguidos: segundos de espera, y en una conexión floja se quedaba
+ * cargando. Además las 5 calculaban la misma posición y quedaban empatadas.
+ *
+ * Devuelve los ids en el mismo orden en que llegaron.
+ */
+export async function addExercisesToRoutineBlockAction(
+  blockId: string,
+  routineId: string,
+  items: { exerciseId: string; overrides?: { sets: number; reps: number; rest_seconds: number; duration_seconds?: number | null } }[],
+  startPosition: number
+): Promise<{ error: string } | { success: true; ids: string[] }> {
+  if (items.length === 0) return { success: true, ids: [] }
+  const guard = await requireAdminOrRoutineOwner(routineId)
+  if ("error" in guard) return { error: guard.error ?? "No autorizado" }
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("client_routine_exercises")
+    .insert(
+      items.map((item, i) => ({
+        block_id: blockId,
+        exercise_id: item.exerciseId,
+        position: startPosition + i,
+        sets: item.overrides?.sets ?? 3,
+        reps: item.overrides?.reps ?? 10,
+        duration_seconds: item.overrides?.duration_seconds ?? null,
+        rest_seconds: item.overrides?.rest_seconds ?? null,
+      }))
+    )
+    .select("id, position")
+
+  if (error) return { error: error.message }
+  revalidateAdminRoutines(routineId)
+  revalidatePath(clienteRutinaDetalle(routineId))
+  // Postgres no promete devolver las filas en el orden del INSERT: se ordenan
+  // por la posición que se les dio.
+  const ids = [...(data ?? [])].sort((a, b) => a.position - b.position).map((r) => r.id)
+  return { success: true, ids }
+}
+
 export async function updateRoutineBlockExerciseAction(exerciseRowId: string, routineId: string, data: {
   sets?: number | null
   reps?: number | null

@@ -9,9 +9,10 @@ import {
   deleteMyExerciseAction,
 } from "@/actions/exercises.actions"
 import { ClientExerciseForm } from "@/components/cliente/client-exercise-form"
+import { useGruposMusculares } from "@/lib/grupos-musculares"
 import { ExerciseDetailModal } from "@/components/cliente/exercise-detail-modal"
 import {
-  MUSCLE_GROUP_LABELS,
+  etiquetaDeGrupo,
   EQUIPMENT_LABELS,
   type Exercise,
 } from "@/types/exercise"
@@ -475,7 +476,8 @@ function ExerciseRowItem({
   onView: (ex: Exercise) => void
   action?: React.ReactNode
 }) {
-  const muscleText = ex.muscle_group ? MUSCLE_GROUP_LABELS[ex.muscle_group] : null
+  const grupos = useGruposMusculares()
+  const muscleText = ex.muscle_group ? etiquetaDeGrupo(ex.muscle_group, grupos) : null
   const equipText = ex.equipment ? EQUIPMENT_LABELS[ex.equipment] : null
   const metaText = [muscleText, equipText].filter(Boolean).join(" · ")
 

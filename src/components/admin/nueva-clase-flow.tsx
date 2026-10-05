@@ -10,7 +10,8 @@ import { PageHeader } from "@/components/layout/page-header"
 import { Input, Textarea } from "@/components/ui/input"
 import { ROUTES, adminRutinaBibliotecaDetalle } from "@/constants/routes"
 import { CLASS_OBJECTIVE_LABELS, CLASS_LEVEL_LABELS, type ClassObjective, type ClassLevel } from "@/types/class"
-import { MUSCLE_GROUP_LABELS, type MuscleGroup } from "@/types/exercise"
+import { type MuscleGroup } from "@/types/exercise"
+import { useGruposMusculares } from "@/lib/grupos-musculares"
 import { formatRoutineGoal } from "@/types/routine"
 import type { TrainingRoutineWithDayOptions } from "@/services/training-routines.service"
 
@@ -181,7 +182,8 @@ function GenerarStep({ classDate, onBack }: { classDate: string; onBack: () => v
 
   const objectives = Object.keys(CLASS_OBJECTIVE_LABELS) as ClassObjective[]
   const levels = Object.keys(CLASS_LEVEL_LABELS) as ClassLevel[]
-  const muscleGroups = Object.keys(MUSCLE_GROUP_LABELS) as MuscleGroup[]
+  // Los del gimnasio, con los que el admin haya agregado (migración 045).
+  const grupos = useGruposMusculares()
 
   const handleGenerate = async () => {
     if (!genMuscle || !genObjective || !genLevel) { setGenError("Completa todos los campos"); return }
@@ -211,7 +213,7 @@ function GenerarStep({ classDate, onBack }: { classDate: string; onBack: () => v
         label="Grupo muscular principal"
         value={genMuscle}
         onChange={(v) => setGenMuscle(v as MuscleGroup | "")}
-        options={[{ value: "", label: "Seleccionar..." }, ...muscleGroups.map((g) => ({ value: g, label: MUSCLE_GROUP_LABELS[g] }))]}
+        options={[{ value: "", label: "Seleccionar..." }, ...grupos.map((g) => ({ value: g.key, label: g.label }))]}
       />
       <SelectField
         label="Objetivo"
